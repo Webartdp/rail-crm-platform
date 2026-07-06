@@ -12,6 +12,17 @@ export type WorkEventPayload = {
   payload?: Record<string, unknown>;
 };
 
+export type WorkEvent = {
+  id: number;
+  event_type: string;
+  event_time: string;
+  employee_id?: number;
+  assignment_id?: number;
+  latitude?: string;
+  longitude?: string;
+  payload?: string;
+};
+
 export async function postWorkEvent(path: string, payload: WorkEventPayload) {
   const response = await fetch(`${API_URL}${path}`, {
     method: 'POST',
@@ -25,6 +36,19 @@ export async function postWorkEvent(path: string, payload: WorkEventPayload) {
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
     throw new Error(error.message || 'Request failed');
+  }
+
+  return response.json();
+}
+
+export async function getWorkEvents(): Promise<{ data: WorkEvent[] }> {
+  const response = await fetch(`${API_URL}/work-events`, {
+    headers: { Accept: 'application/json' },
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    throw new Error('Could not load work events');
   }
 
   return response.json();
