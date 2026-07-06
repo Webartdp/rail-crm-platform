@@ -17,6 +17,7 @@ Current implementation:
 - backend stores event in work_events
 - browser geolocation is requested when available
 - duration pair is calculated by /api/v1/work-event-durations
+- stored coordinates can be opened from /maps as Google Maps links
 
 Status:
 
@@ -38,11 +39,11 @@ Current implementation:
 - backend stores event in work_events
 - coordinates are stored when browser provides them
 - duration pair is calculated by /api/v1/work-event-durations
+- stored coordinates can be opened from /maps as Google Maps links
 
 Status:
 
 - implemented as MVP flow
-- Google Maps visual display is not implemented yet
 
 ## Dienstbeginn
 
@@ -63,6 +64,7 @@ Current implementation:
 - Leistungsart list contains WTU, WSU, E-WU, Rb, Azf, RID-Kontrolle, Zugbeschtreifung and custom value
 - backend validates required Dienstbeginn fields
 - backend stores dienstbeginn event in work_events
+- stored coordinates can be opened from /maps as Google Maps links
 
 Status:
 
@@ -84,6 +86,7 @@ Current implementation:
 - backend also rejects arbeit_stop when planned_exceeded is true and Bemerkung is empty
 - backend stores arbeit_stop event in work_events
 - duration pair is calculated by /api/v1/work-event-durations
+- stored coordinates can be opened from /maps as Google Maps links
 
 Status:
 
@@ -104,6 +107,7 @@ Current implementation:
 - API event: dienstfahrt_start
 - backend stores event in work_events
 - duration pair is calculated by /api/v1/work-event-durations
+- stored coordinates can be opened from /maps as Google Maps links
 
 Status:
 
@@ -124,15 +128,15 @@ Current implementation:
 - API event: dienstfahrt_stop
 - backend stores event in work_events
 - duration pair is calculated by /api/v1/work-event-durations
+- stored coordinates can be opened from /maps as Google Maps links
 
 Status:
 
 - implemented as MVP flow
-- Google Maps visual display is not implemented yet
 
 ## Not implemented yet
 
-- Google Maps visual rendering
+- embedded Google Maps view inside the app
 - real employee authentication
 - real assignment selection
 - audit log records
