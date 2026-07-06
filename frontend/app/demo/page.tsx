@@ -27,9 +27,11 @@ export default function DemoPage() {
       await postWorkEvent(current.route, {
         employee_id: 1,
         assignment_id: 1,
+        planned_exceeded: plannedExceeded,
+        bemerkung,
         payload: {
-          planned_exceeded: plannedExceeded,
-          bemerkung,
+          source: 'demo',
+          action_label: current.label,
         },
       });
 
