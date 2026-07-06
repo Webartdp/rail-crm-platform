@@ -1,6 +1,6 @@
 # Current Frontend Routes
 
-Visible prototype pages:
+Visible pages:
 
 - /
 - /login
@@ -14,16 +14,19 @@ Visible prototype pages:
 - /billing
 - /employee
 - /demo
+- /work-events
 
-## Main review path
+## Main check path
 
 1. Open /login
 2. Open /admin
-3. Go through management sections
-4. Open /employee
-5. Open /demo
-6. Check Stop and Bemerkung rule
+3. Open /employee
+4. Open /demo
+5. Check Stop and Bemerkung rule
+6. Open /work-events
 
 ## Status
 
-These pages are prototype screens. They do not yet load real data from backend.
+/demo sends workflow actions to API when backend is running.
+
+/work-events reads saved work events from API.
