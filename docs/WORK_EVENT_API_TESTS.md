@@ -8,6 +8,20 @@ Base URL:
 http://localhost:8000/api/v1
 ```
 
+## Create work order
+
+```bash
+curl -X POST http://localhost:8000/api/v1/work-orders \
+  -H "Content-Type: application/json" \
+  -d '{"title":"WTU / ICE 204 / Gleis 12","reference_number":"REF-2026-001","leistungsart":"WTU","zugnummer":"ICE 204","einsatzort":"Gleis 12","planned_start_at":"2026-07-06T07:30","planned_end_at":"2026-07-06T15:30"}'
+```
+
+## List work orders
+
+```bash
+curl http://localhost:8000/api/v1/work-orders
+```
+
 ## Gasfahrt
 
 ```bash
@@ -46,4 +60,16 @@ curl -X POST http://localhost:8000/api/v1/work-events/arbeit/stop \
 
 ```bash
 curl http://localhost:8000/api/v1/work-events
+```
+
+## Durations
+
+```bash
+curl http://localhost:8000/api/v1/work-event-durations
+```
+
+## Audit
+
+```bash
+curl http://localhost:8000/api/v1/audit
 ```
