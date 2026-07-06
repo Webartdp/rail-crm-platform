@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AuditController;
 use App\Http\Controllers\Api\V1\EmployeeFieldStateController;
 use App\Http\Controllers\Api\V1\WorkEventController;
 use App\Http\Controllers\Api\V1\WorkEventDurationController;
@@ -9,6 +10,7 @@ Route::prefix('v1')->group(function () {
     Route::get('/employee/field-state', EmployeeFieldStateController::class);
     Route::get('/work-events', [WorkEventController::class, 'index']);
     Route::get('/work-event-durations', WorkEventDurationController::class);
+    Route::get('/audit', AuditController::class);
 
     Route::post('/work-events/gasfahrt/start', [WorkEventController::class, 'startGasfahrt']);
     Route::post('/work-events/gasfahrt/stop', [WorkEventController::class, 'stopGasfahrt']);
