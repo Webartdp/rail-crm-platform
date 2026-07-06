@@ -21,6 +21,23 @@ class WorkEventController extends Controller
 
     public function dienstbeginn(Request $request): JsonResponse
     {
+        $payload = $request->input('payload', []);
+        $required = ['date', 'leistungsart', 'referenznummer', 'zugnummer', 'einsatzort'];
+        $errors = [];
+
+        foreach ($required as $field) {
+            if (trim((string) ($payload[$field] ?? '')) === '') {
+                $errors[$field] = [ucfirst($field).' is required.'];
+            }
+        }
+
+        if ($errors !== []) {
+            return response()->json([
+                'message' => 'Dienstbeginn required fields are missing.',
+                'errors' => $errors,
+            ], 422);
+        }
+
         return $this->storeEvent($request, 'dienstbeginn', 'Dienstbeginn stored');
     }
 
