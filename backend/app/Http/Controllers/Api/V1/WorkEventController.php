@@ -97,6 +97,16 @@ class WorkEventController extends Controller
             'updated_at' => $now,
         ]);
 
+        DB::table('audit_logs')->insert([
+            'employee_id' => $request->input('employee_id'),
+            'action' => $eventType,
+            'entity_type' => 'work_event',
+            'entity_id' => $id,
+            'payload' => json_encode($payload),
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
         return response()->json([
             'message' => $message,
             'event' => [
