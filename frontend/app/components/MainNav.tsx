@@ -10,6 +10,7 @@ const navItems = [
   ['/billing', 'Billing'],
   ['/employee', 'Employee'],
   ['/demo', 'Demo'],
+  ['/work-events', 'Work Events'],
 ];
 
 export default function MainNav() {
