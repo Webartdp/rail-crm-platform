@@ -30,7 +30,7 @@ export default function AssignmentsPage() {
           <h1>Assignments</h1>
           <p className="hero-text">Planned work orders with Referenznummer, planned time and status.</p>
         </div>
-        <div className="status-pill">Work Orders</div>
+        <a className="action-link" href="/work-orders/new">Neuer Auftrag</a>
       </section>
 
       <section className="panel">
