@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
     Route::get('/employee/field-state', EmployeeFieldStateController::class);
     Route::get('/work-orders', [WorkOrderController::class, 'index']);
+    Route::post('/work-orders', [WorkOrderController::class, 'store']);
     Route::get('/work-events', [WorkEventController::class, 'index']);
     Route::get('/work-event-durations', WorkEventDurationController::class);
     Route::get('/audit', AuditController::class);
