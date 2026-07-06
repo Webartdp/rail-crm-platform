@@ -6,6 +6,8 @@ const navItems = [
   ['/objects', 'Objects'],
   ['/assignments', 'Assignments'],
   ['/approvals', 'Approvals'],
+  ['/documents', 'Documents'],
+  ['/billing', 'Billing'],
   ['/employee', 'Employee'],
   ['/demo', 'Demo'],
 ];
