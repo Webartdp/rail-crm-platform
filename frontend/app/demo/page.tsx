@@ -1,10 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { postWorkEvent } from '../../lib/api';
 import { workflowSteps } from '../../lib/workflow';
+import { getWorkOrders, type WorkOrder } from '../../lib/work-orders';
 
 const leistungsartOptions = ['', 'WTU', 'WSU', 'E-WU', 'Rb', 'Azf', 'RID-Kontrolle', 'Zugbeschtreifung'];
+const fallbackOrders = [
+  { id: 1, title: 'WTU / ICE 204 / Gleis 12', reference_number: 'REF-2026-001', status: 'planned' },
+];
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -25,9 +29,20 @@ function getPosition(): Promise<{ latitude?: number; longitude?: number; locatio
   });
 }
 
+function applyOrderTitle(title: string) {
+  const parts = title.split('/').map((part) => part.trim());
+  return {
+    leistungsart: parts[0] || 'WTU',
+    zugnummer: parts[1] || '',
+    einsatzort: parts[2] || '',
+  };
+}
+
 export default function DemoPage() {
   const [step, setStep] = useState(0);
   const [log, setLog] = useState<string[]>([]);
+  const [orders, setOrders] = useState<WorkOrder[]>(fallbackOrders);
+  const [selectedOrderId, setSelectedOrderId] = useState(1);
   const [date, setDate] = useState(today());
   const [leistungsart, setLeistungsart] = useState('WTU');
   const [leistungsartCustom, setLeistungsartCustom] = useState('');
@@ -40,12 +55,32 @@ export default function DemoPage() {
   const [message, setMessage] = useState('Bereit.');
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    getWorkOrders()
+      .then((response) => {
+        if (response.data.length > 0) setOrders(response.data);
+      })
+      .catch(() => setMessage('API nicht erreichbar. Fallback-Auftrag aktiv.'));
+  }, []);
+
   const current = workflowSteps[step] || workflowSteps[workflowSteps.length - 1];
   const realLeistungsart = leistungsart === '' ? leistungsartCustom.trim() : leistungsart;
   const plannedExceeded = current.label === 'Stop' && plannedStop !== '' && timeNow() > plannedStop;
   const stopBlocked = current.label === 'Stop' && plannedExceeded && bemerkung.trim() === '';
   const dienstbeginnBlocked = current.label === 'Dienstbeginn' && (!date || !realLeistungsart || !referenznummer.trim() || !zugnummer.trim() || !einsatzort.trim());
   const disabled = saving || stopBlocked || dienstbeginnBlocked;
+
+  function selectOrder(id: number) {
+    const order = orders.find((item) => item.id === id);
+    if (!order) return;
+
+    const parsed = applyOrderTitle(order.title || '');
+    setSelectedOrderId(order.id);
+    setReferenznummer(order.reference_number || '');
+    setLeistungsart(parsed.leistungsart);
+    setZugnummer(parsed.zugnummer);
+    setEinsatzort(parsed.einsatzort);
+  }
 
   async function next() {
     if (stopBlocked) {
@@ -64,7 +99,7 @@ export default function DemoPage() {
     try {
       await postWorkEvent(current.route, {
         employee_id: 1,
-        assignment_id: 1,
+        assignment_id: selectedOrderId,
         ...position,
         planned_exceeded: plannedExceeded,
         bemerkung,
@@ -113,6 +148,7 @@ export default function DemoPage() {
         <div className="panel">
           <h2>Auftragsdaten</h2>
           <div className="form-grid">
+            <label>Auftrag<select value={selectedOrderId} onChange={(event) => selectOrder(Number(event.target.value))}>{orders.map((order) => <option key={order.id} value={order.id}>{order.reference_number || `#${order.id}`} — {order.title}</option>)}</select></label>
             <label>Datum<input value={date} onChange={(event) => setDate(event.target.value)} type="date" /></label>
             <label>Leistungsart<select value={leistungsart} onChange={(event) => setLeistungsart(event.target.value)}>{leistungsartOptions.map((item) => <option key={item} value={item}>{item === '' ? 'Eigene Eingabe' : item}</option>)}</select></label>
             {leistungsart === '' ? <label>Eigene Leistungsart<input value={leistungsartCustom} onChange={(event) => setLeistungsartCustom(event.target.value)} placeholder="Leistungsart eingeben" /></label> : null}
