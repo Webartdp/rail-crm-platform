@@ -52,6 +52,9 @@ class WorkEventController extends Controller
     private function storeEvent(Request $request, string $eventType, string $message): JsonResponse
     {
         $now = now();
+        $payload = $request->input('payload', []);
+        $payload['planned_exceeded'] = $request->boolean('planned_exceeded');
+        $payload['bemerkung'] = $request->input('bemerkung');
 
         $id = DB::table('work_events')->insertGetId([
             'employee_id' => $request->input('employee_id'),
@@ -62,7 +65,7 @@ class WorkEventController extends Controller
             'longitude' => $request->input('longitude'),
             'location_accuracy' => $request->input('location_accuracy'),
             'address_text' => $request->input('address_text'),
-            'payload' => json_encode($request->input('payload', [])),
+            'payload' => json_encode($payload),
             'created_at' => $now,
             'updated_at' => $now,
         ]);
