@@ -9,6 +9,16 @@ use Illuminate\Support\Facades\DB;
 
 class WorkEventController extends Controller
 {
+    public function index(): JsonResponse
+    {
+        $events = DB::table('work_events')
+            ->orderByDesc('event_time')
+            ->limit(50)
+            ->get();
+
+        return response()->json(['data' => $events]);
+    }
+
     public function startGasfahrt(Request $request): JsonResponse
     {
         return $this->storeEvent($request, 'gasfahrt_start', 'Gasfahrt started');
