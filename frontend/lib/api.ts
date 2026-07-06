@@ -7,6 +7,8 @@ export type WorkEventPayload = {
   longitude?: number;
   location_accuracy?: number;
   address_text?: string;
+  planned_exceeded?: boolean;
+  bemerkung?: string;
   payload?: Record<string, unknown>;
 };
 
