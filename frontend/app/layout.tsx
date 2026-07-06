@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import MainNav from './components/MainNav';
 import './styles.css';
+import './navigation.css';
 
 export const metadata: Metadata = {
   title: 'Rail CRM Platform',
