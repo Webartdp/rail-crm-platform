@@ -1,8 +1,8 @@
 const cards = [
-  ['Employees', '24 active'],
-  ['Assignments', '8 today'],
-  ['Open approvals', '5 pending'],
-  ['Work events', '37 logged'],
+  ['/employees', 'Employees', '24 active'],
+  ['/assignments', 'Assignments', '8 today'],
+  ['/approvals', 'Open approvals', '5 pending'],
+  ['/demo', 'Work events', 'Workflow demo'],
 ];
 
 export default function AdminPage() {
@@ -18,11 +18,11 @@ export default function AdminPage() {
       </section>
 
       <section className="stats-grid">
-        {cards.map(([title, value]) => (
-          <div className="panel stat-card" key={title}>
+        {cards.map(([href, title, value]) => (
+          <a className="panel stat-card nav-card" href={href} key={href}>
             <p className="eyebrow">{title}</p>
             <h2>{value}</h2>
-          </div>
+          </a>
         ))}
       </section>
 
