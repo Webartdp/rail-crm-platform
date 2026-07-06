@@ -2,7 +2,7 @@
 
 ## What is ready to view
 
-The first visual frontend prototype is ready in the `foundation-scaffold` branch.
+The first visual frontend prototype is ready in the `main` branch.
 
 It shows the employee field screen with:
 
@@ -20,14 +20,12 @@ It shows the employee field screen with:
 - timeline
 - map placeholder
 
-There is also a simple interactive demo page for checking the button flow.
+There is also an interactive demo page for checking the button flow and Stop validation rule.
 
 ## How to run frontend locally
 
 ```bash
-git clone https://github.com/Webartdp/rail-crm-platform.git
-cd rail-crm-platform
-git checkout foundation-scaffold
+git pull
 cd frontend
 npm install
 npm run dev
@@ -45,14 +43,13 @@ Open interactive button demo:
 http://localhost:3000/demo
 ```
 
-## What to check on screen
+## What to check on /demo
 
-- employee action buttons
-- German field names
-- required customer fields
-- visual order of the workflow
-- mobile-friendly layout
-- demo button flow
+1. Click through Gasfahrt, Gasfahrt beendet and Dienstbeginn.
+2. When the next action is Stop, set "Geplante Zeit überschritten?" to "Ja".
+3. Stop should be blocked until Bemerkung is filled.
+4. Fill Bemerkung.
+5. Continue the flow.
 
 ## Important
 
