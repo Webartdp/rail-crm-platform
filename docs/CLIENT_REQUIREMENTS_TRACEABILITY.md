@@ -16,11 +16,11 @@ Current implementation:
 - API event: gasfahrt_start
 - backend stores event in work_events
 - browser geolocation is requested when available
+- duration pair is calculated by /api/v1/work-event-durations
 
 Status:
 
 - implemented as MVP flow
-- exact travel duration calculation is not implemented yet
 
 ## Gasfahrt beendet
 
@@ -37,12 +37,12 @@ Current implementation:
 - API event: gasfahrt_stop
 - backend stores event in work_events
 - coordinates are stored when browser provides them
+- duration pair is calculated by /api/v1/work-event-durations
 
 Status:
 
 - implemented as MVP flow
 - Google Maps visual display is not implemented yet
-- duration calculation is not implemented yet
 
 ## Dienstbeginn
 
@@ -83,11 +83,12 @@ Current implementation:
 - frontend blocks Stop when planned time is exceeded and Bemerkung is empty
 - backend also rejects arbeit_stop when planned_exceeded is true and Bemerkung is empty
 - backend stores arbeit_stop event in work_events
+- duration pair is calculated by /api/v1/work-event-durations
 
 Status:
 
 - Stop validation is implemented
-- duration calculation is not implemented yet
+- duration calculation is implemented as API summary
 
 ## Start Dienstfahrt
 
@@ -102,11 +103,11 @@ Current implementation:
 - frontend demo button: Start Dienstfahrt
 - API event: dienstfahrt_start
 - backend stores event in work_events
+- duration pair is calculated by /api/v1/work-event-durations
 
 Status:
 
 - implemented as MVP flow
-- duration calculation is not implemented yet
 
 ## Stop Dienstfahrt
 
@@ -122,16 +123,15 @@ Current implementation:
 - frontend demo button: Stop Dienstfahrt
 - API event: dienstfahrt_stop
 - backend stores event in work_events
+- duration pair is calculated by /api/v1/work-event-durations
 
 Status:
 
 - implemented as MVP flow
 - Google Maps visual display is not implemented yet
-- duration calculation is not implemented yet
 
 ## Not implemented yet
 
-- exact duration calculation between paired start and stop events
 - Google Maps visual rendering
 - real employee authentication
 - real assignment selection
