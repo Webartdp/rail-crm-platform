@@ -20,6 +20,8 @@ It shows the employee field screen with:
 - timeline
 - map placeholder
 
+There is also a simple interactive demo page for checking the button flow.
+
 ## How to run frontend locally
 
 ```bash
@@ -31,10 +33,16 @@ npm install
 npm run dev
 ```
 
-Open in browser:
+Open main prototype:
 
 ```text
 http://localhost:3000
+```
+
+Open interactive button demo:
+
+```text
+http://localhost:3000/demo
 ```
 
 ## What to check on screen
@@ -44,9 +52,10 @@ http://localhost:3000
 - required customer fields
 - visual order of the workflow
 - mobile-friendly layout
+- demo button flow
 
 ## Important
 
 This is the first frontend prototype, not the finished CRM.
 
-Buttons do not yet save real data. Backend API stubs were added and will be connected in the next stage.
+Main screen buttons do not yet save real data. Backend API stubs were added and will be connected in the next stage.
