@@ -16,17 +16,9 @@ function timeNow() {
 
 function getPosition(): Promise<{ latitude?: number; longitude?: number; location_accuracy?: number }> {
   return new Promise((resolve) => {
-    if (!navigator.geolocation) {
-      resolve({});
-      return;
-    }
-
+    if (!navigator.geolocation) return resolve({});
     navigator.geolocation.getCurrentPosition(
-      (position) => resolve({
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-        location_accuracy: Math.round(position.coords.accuracy),
-      }),
+      (position) => resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude, location_accuracy: Math.round(position.coords.accuracy) }),
       () => resolve({}),
       { enableHighAccuracy: true, timeout: 5000 }
     );
@@ -42,20 +34,22 @@ export default function DemoPage() {
   const [referenznummer, setReferenznummer] = useState('REF-2026-001');
   const [zugnummer, setZugnummer] = useState('ICE 204');
   const [einsatzort, setEinsatzort] = useState('Gleis 12');
-  const [plannedExceeded, setPlannedExceeded] = useState(false);
+  const [plannedStart, setPlannedStart] = useState('07:30');
+  const [plannedStop, setPlannedStop] = useState('15:30');
   const [bemerkung, setBemerkung] = useState('');
   const [message, setMessage] = useState('Bereit.');
   const [saving, setSaving] = useState(false);
 
   const current = workflowSteps[step] || workflowSteps[workflowSteps.length - 1];
   const realLeistungsart = leistungsart === '' ? leistungsartCustom.trim() : leistungsart;
+  const plannedExceeded = current.label === 'Stop' && plannedStop !== '' && timeNow() > plannedStop;
   const stopBlocked = current.label === 'Stop' && plannedExceeded && bemerkung.trim() === '';
   const dienstbeginnBlocked = current.label === 'Dienstbeginn' && (!date || !realLeistungsart || !referenznummer.trim() || !zugnummer.trim() || !einsatzort.trim());
   const disabled = saving || stopBlocked || dienstbeginnBlocked;
 
   async function next() {
     if (stopBlocked) {
-      setMessage('Stop ist blockiert: Bemerkung ist Pflicht.');
+      setMessage('Stop ist blockiert: geplante Zeit überschritten, Bemerkung ist Pflicht.');
       return;
     }
 
@@ -82,10 +76,11 @@ export default function DemoPage() {
           referenznummer,
           zugnummer,
           einsatzort,
+          planned_start: plannedStart,
+          planned_stop: plannedStop,
           client_time: timeNow(),
         },
       });
-
       setLog((items) => [...items, `${timeNow()} — ${current.label} gespeichert in API`]);
       setMessage(`${current.label} gespeichert.`);
     } catch (error) {
@@ -110,10 +105,9 @@ export default function DemoPage() {
 
       <section className="grid">
         <div className="panel action-panel">
-          <button className="action-button primary" onClick={next} type="button" disabled={disabled}>
-            {saving ? 'Speichern...' : current.label}
-          </button>
+          <button className="action-button primary" onClick={next} type="button" disabled={disabled}>{saving ? 'Speichern...' : current.label}</button>
           <p className="hint">{message}</p>
+          {current.label === 'Stop' ? <p className="hint">Geplante Stopzeit: {plannedStop}. Aktuell: {timeNow()}. Überschritten: {plannedExceeded ? 'Ja' : 'Nein'}.</p> : null}
         </div>
 
         <div className="panel">
@@ -125,7 +119,8 @@ export default function DemoPage() {
             <label>Referenznummer<input value={referenznummer} onChange={(event) => setReferenznummer(event.target.value)} /></label>
             <label>Zugnummer<input value={zugnummer} onChange={(event) => setZugnummer(event.target.value)} /></label>
             <label>Einsatzort<input value={einsatzort} onChange={(event) => setEinsatzort(event.target.value)} /></label>
-            <label>Geplante Zeit überschritten?<select value={plannedExceeded ? 'yes' : 'no'} onChange={(event) => setPlannedExceeded(event.target.value === 'yes')}><option value="no">Nein</option><option value="yes">Ja</option></select></label>
+            <label>Geplanter Start<input value={plannedStart} onChange={(event) => setPlannedStart(event.target.value)} type="time" /></label>
+            <label>Geplanter Stop<input value={plannedStop} onChange={(event) => setPlannedStop(event.target.value)} type="time" /></label>
             <label className="wide-field">Bemerkung<textarea value={bemerkung} onChange={(event) => setBemerkung(event.target.value)} placeholder="Pflicht, wenn Zeit überschritten ist" /></label>
           </div>
         </div>
