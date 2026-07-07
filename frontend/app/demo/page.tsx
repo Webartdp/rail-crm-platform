@@ -5,9 +5,10 @@ import { postWorkEvent } from '../../lib/api';
 import { workflowSteps } from '../../lib/workflow';
 import { getWorkOrders, type WorkOrder } from '../../lib/work-orders';
 
+const employeeId = 1;
 const leistungsartOptions = ['', 'WTU', 'WSU', 'E-WU', 'Rb', 'Azf', 'RID-Kontrolle', 'Zugbeschtreifung'];
 const fallbackOrders = [
-  { id: 1, title: 'WTU / ICE 204 / Gleis 12', reference_number: 'REF-2026-001', status: 'planned' },
+  { id: 1, employee_id: employeeId, title: 'WTU / ICE 204 / Gleis 12', reference_number: 'REF-2026-001', status: 'planned' },
 ];
 
 function today() {
@@ -56,7 +57,7 @@ export default function DemoPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    getWorkOrders()
+    getWorkOrders(employeeId)
       .then((response) => {
         if (response.data.length > 0) setOrders(response.data);
       })
@@ -98,7 +99,7 @@ export default function DemoPage() {
 
     try {
       await postWorkEvent(current.route, {
-        employee_id: 1,
+        employee_id: employeeId,
         assignment_id: selectedOrderId,
         ...position,
         planned_exceeded: plannedExceeded,
@@ -135,12 +136,13 @@ export default function DemoPage() {
           <h1>Button Flow</h1>
           <p className="hero-text">Gasfahrt, Dienstbeginn, Stop und Dienstfahrt nach Kundenanforderung.</p>
         </div>
-        <div className="status-pill">Next: {current.label}</div>
+        <div className="status-pill">Employee #{employeeId}</div>
       </section>
 
       <section className="grid">
         <div className="panel action-panel">
           <button className="action-button primary" onClick={next} type="button" disabled={disabled}>{saving ? 'Speichern...' : current.label}</button>
+          <p className="hint">Next: {current.label}</p>
           <p className="hint">{message}</p>
           {current.label === 'Stop' ? <p className="hint">Geplante Stopzeit: {plannedStop}. Aktuell: {timeNow()}. Überschritten: {plannedExceeded ? 'Ja' : 'Nein'}.</p> : null}
         </div>
