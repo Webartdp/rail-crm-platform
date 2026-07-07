@@ -2,6 +2,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1
 
 export type WorkOrder = {
   id: number;
+  employee_id?: number;
   title: string;
   reference_number?: string;
   status?: string;
@@ -11,6 +12,7 @@ export type WorkOrder = {
 };
 
 export type WorkOrderInput = {
+  employee_id?: number;
   title: string;
   reference_number?: string;
   leistungsart?: string;
@@ -20,8 +22,9 @@ export type WorkOrderInput = {
   planned_end_at?: string;
 };
 
-export async function getWorkOrders(): Promise<{ data: WorkOrder[] }> {
-  const response = await fetch(`${API_URL}/work-orders`, {
+export async function getWorkOrders(employeeId?: number): Promise<{ data: WorkOrder[] }> {
+  const query = employeeId ? `?employee_id=${employeeId}` : '';
+  const response = await fetch(`${API_URL}/work-orders${query}`, {
     headers: { Accept: 'application/json' },
     cache: 'no-store',
   });
