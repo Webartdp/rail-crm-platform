@@ -16,7 +16,8 @@ class EmployeeFieldStateController extends Controller
 
         $query = DB::table('work_events')
             ->where('employee_id', $employeeId)
-            ->orderByDesc('event_time');
+            ->orderByDesc('event_time')
+            ->orderByDesc('id');
 
         if ($assignmentId) {
             $query->where('assignment_id', $assignmentId);
