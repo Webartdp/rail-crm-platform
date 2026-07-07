@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { postWorkEvent } from '../../lib/api';
-import { workflowSteps } from '../../lib/workflow';
+import { postWorkEvent, workEventRoutes } from '../../lib/api';
+import { getFieldState, type FieldState } from '../../lib/field-state';
 import { getWorkOrders, type WorkOrder } from '../../lib/work-orders';
 
 const employeeId = 1;
@@ -10,6 +10,14 @@ const leistungsartOptions = ['', 'WTU', 'WSU', 'E-WU', 'Rb', 'Azf', 'RID-Kontrol
 const fallbackOrders = [
   { id: 1, employee_id: employeeId, title: 'WTU / ICE 204 / Gleis 12', reference_number: 'REF-2026-001', status: 'planned' },
 ];
+const routeByAction: Record<string, string> = {
+  gasfahrt_start: workEventRoutes.gasfahrtStart,
+  gasfahrt_stop: workEventRoutes.gasfahrtStop,
+  dienstbeginn: workEventRoutes.dienstbeginn,
+  arbeit_stop: workEventRoutes.arbeitStop,
+  dienstfahrt_start: workEventRoutes.dienstfahrtStart,
+  dienstfahrt_stop: workEventRoutes.dienstfahrtStop,
+};
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -32,18 +40,14 @@ function getPosition(): Promise<{ latitude?: number; longitude?: number; locatio
 
 function applyOrderTitle(title: string) {
   const parts = title.split('/').map((part) => part.trim());
-  return {
-    leistungsart: parts[0] || 'WTU',
-    zugnummer: parts[1] || '',
-    einsatzort: parts[2] || '',
-  };
+  return { leistungsart: parts[0] || 'WTU', zugnummer: parts[1] || '', einsatzort: parts[2] || '' };
 }
 
 export default function DemoPage() {
-  const [step, setStep] = useState(0);
   const [log, setLog] = useState<string[]>([]);
   const [orders, setOrders] = useState<WorkOrder[]>(fallbackOrders);
   const [selectedOrderId, setSelectedOrderId] = useState(1);
+  const [fieldState, setFieldState] = useState<FieldState | null>(null);
   const [date, setDate] = useState(today());
   const [leistungsart, setLeistungsart] = useState('WTU');
   const [leistungsartCustom, setLeistungsartCustom] = useState('');
@@ -56,31 +60,43 @@ export default function DemoPage() {
   const [message, setMessage] = useState('Bereit.');
   const [saving, setSaving] = useState(false);
 
+  async function refreshState(orderId = selectedOrderId) {
+    try {
+      const state = await getFieldState(employeeId, orderId);
+      setFieldState(state);
+    } catch (error) {
+      setFieldState(null);
+      setMessage('Field State API nicht erreichbar.');
+    }
+  }
+
   useEffect(() => {
     getWorkOrders(employeeId)
       .then((response) => {
         if (response.data.length > 0) setOrders(response.data);
       })
       .catch(() => setMessage('API nicht erreichbar. Fallback-Auftrag aktiv.'));
+    refreshState(1);
   }, []);
 
-  const current = workflowSteps[step] || workflowSteps[workflowSteps.length - 1];
+  const currentAction = fieldState?.allowed_actions?.[0] || 'gasfahrt_start';
+  const currentLabel = fieldState?.next_button || 'Gasfahrt';
   const realLeistungsart = leistungsart === '' ? leistungsartCustom.trim() : leistungsart;
-  const plannedExceeded = current.label === 'Stop' && plannedStop !== '' && timeNow() > plannedStop;
-  const stopBlocked = current.label === 'Stop' && plannedExceeded && bemerkung.trim() === '';
-  const dienstbeginnBlocked = current.label === 'Dienstbeginn' && (!date || !realLeistungsart || !referenznummer.trim() || !zugnummer.trim() || !einsatzort.trim());
+  const plannedExceeded = currentLabel === 'Stop' && plannedStop !== '' && timeNow() > plannedStop;
+  const stopBlocked = currentLabel === 'Stop' && plannedExceeded && bemerkung.trim() === '';
+  const dienstbeginnBlocked = currentLabel === 'Dienstbeginn' && (!date || !realLeistungsart || !referenznummer.trim() || !zugnummer.trim() || !einsatzort.trim());
   const disabled = saving || stopBlocked || dienstbeginnBlocked;
 
   function selectOrder(id: number) {
     const order = orders.find((item) => item.id === id);
     if (!order) return;
-
     const parsed = applyOrderTitle(order.title || '');
     setSelectedOrderId(order.id);
     setReferenznummer(order.reference_number || '');
     setLeistungsart(parsed.leistungsart);
     setZugnummer(parsed.zugnummer);
     setEinsatzort(parsed.einsatzort);
+    refreshState(order.id);
   }
 
   async function next() {
@@ -94,11 +110,17 @@ export default function DemoPage() {
       return;
     }
 
+    const route = routeByAction[currentAction];
+    if (!route) {
+      setMessage('Keine API Route für nächste Aktion gefunden.');
+      return;
+    }
+
     setSaving(true);
     const position = await getPosition();
 
     try {
-      await postWorkEvent(current.route, {
+      await postWorkEvent(route, {
         employee_id: employeeId,
         assignment_id: selectedOrderId,
         ...position,
@@ -106,7 +128,7 @@ export default function DemoPage() {
         bemerkung,
         payload: {
           source: 'demo',
-          action_label: current.label,
+          action_label: currentLabel,
           date,
           leistungsart: realLeistungsart,
           referenznummer,
@@ -117,13 +139,13 @@ export default function DemoPage() {
           client_time: timeNow(),
         },
       });
-      setLog((items) => [...items, `${timeNow()} — ${current.label} gespeichert in API`]);
-      setMessage(`${current.label} gespeichert.`);
+      setLog((items) => [...items, `${timeNow()} — ${currentLabel} gespeichert in API`]);
+      setMessage(`${currentLabel} gespeichert.`);
+      await refreshState(selectedOrderId);
     } catch (error) {
-      setLog((items) => [...items, `${timeNow()} — ${current.label} lokal protokolliert`]);
+      setLog((items) => [...items, `${timeNow()} — ${currentLabel} lokal protokolliert`]);
       setMessage('API nicht erreichbar. Aktion lokal im Demo protokolliert.');
     } finally {
-      setStep((value) => Math.min(value + 1, workflowSteps.length - 1));
       setSaving(false);
     }
   }
@@ -136,15 +158,16 @@ export default function DemoPage() {
           <h1>Button Flow</h1>
           <p className="hero-text">Gasfahrt, Dienstbeginn, Stop und Dienstfahrt nach Kundenanforderung.</p>
         </div>
-        <div className="status-pill">Employee #{employeeId}</div>
+        <div className="status-pill">{fieldState?.current_state || 'loading'}</div>
       </section>
 
       <section className="grid">
         <div className="panel action-panel">
-          <button className="action-button primary" onClick={next} type="button" disabled={disabled}>{saving ? 'Speichern...' : current.label}</button>
-          <p className="hint">Next: {current.label}</p>
+          <button className="action-button primary" onClick={next} type="button" disabled={disabled}>{saving ? 'Speichern...' : currentLabel}</button>
+          <p className="hint">Allowed action: {currentAction}</p>
+          <p className="hint">Last event: {fieldState?.last_event_type || 'none'}</p>
           <p className="hint">{message}</p>
-          {current.label === 'Stop' ? <p className="hint">Geplante Stopzeit: {plannedStop}. Aktuell: {timeNow()}. Überschritten: {plannedExceeded ? 'Ja' : 'Nein'}.</p> : null}
+          {currentLabel === 'Stop' ? <p className="hint">Geplante Stopzeit: {plannedStop}. Aktuell: {timeNow()}. Überschritten: {plannedExceeded ? 'Ja' : 'Nein'}.</p> : null}
         </div>
 
         <div className="panel">
