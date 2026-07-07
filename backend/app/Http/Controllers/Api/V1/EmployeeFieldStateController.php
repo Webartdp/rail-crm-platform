@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +26,8 @@ class EmployeeFieldStateController extends Controller
 
         $lastEvent = $query->first();
         $state = $this->stateFromEvent($lastEvent?->event_type);
+        $planned = $this->plannedStatus($assignmentId);
+        $requiresBemerkung = $state['action'] === 'arbeit_stop' && $planned['planned_exceeded'];
 
         return response()->json([
             'employee_id' => $employeeId,
@@ -33,7 +36,10 @@ class EmployeeFieldStateController extends Controller
             'current_state' => $state['state'],
             'allowed_actions' => [$state['action']],
             'next_button' => $state['button'],
-            'required_fields' => $state['required_fields'],
+            'required_fields' => $requiresBemerkung ? ['bemerkung'] : $state['required_fields'],
+            'planned_end_at' => $planned['planned_end_at'],
+            'planned_exceeded' => $planned['planned_exceeded'],
+            'requires_bemerkung' => $requiresBemerkung,
             'leistungsart_options' => [
                 'WTU',
                 'WSU',
@@ -45,6 +51,24 @@ class EmployeeFieldStateController extends Controller
                 'custom',
             ],
         ]);
+    }
+
+    private function plannedStatus($assignmentId): array
+    {
+        if (!$assignmentId) {
+            return ['planned_end_at' => null, 'planned_exceeded' => false];
+        }
+
+        $workOrder = DB::table('work_orders')->where('id', $assignmentId)->first();
+
+        if (!$workOrder?->planned_end_at) {
+            return ['planned_end_at' => null, 'planned_exceeded' => false];
+        }
+
+        return [
+            'planned_end_at' => $workOrder->planned_end_at,
+            'planned_exceeded' => now()->greaterThan(Carbon::parse($workOrder->planned_end_at)),
+        ];
     }
 
     private function stateFromEvent(?string $eventType): array
