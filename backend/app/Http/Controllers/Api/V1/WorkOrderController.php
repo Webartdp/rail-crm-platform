@@ -9,11 +9,15 @@ use Illuminate\Support\Facades\DB;
 
 class WorkOrderController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return response()->json([
-            'data' => DB::table('work_orders')->orderByDesc('id')->limit(100)->get(),
-        ]);
+        $query = DB::table('work_orders')->orderByDesc('id')->limit(100);
+
+        if ($request->filled('employee_id')) {
+            $query->where('employee_id', $request->input('employee_id'));
+        }
+
+        return response()->json(['data' => $query->get()]);
     }
 
     public function store(Request $request): JsonResponse
@@ -35,6 +39,7 @@ class WorkOrderController extends Controller
         ];
 
         $id = DB::table('work_orders')->insertGetId([
+            'employee_id' => $request->input('employee_id'),
             'title' => $title,
             'reference_number' => $request->input('reference_number'),
             'status' => $request->input('status', 'planned'),
