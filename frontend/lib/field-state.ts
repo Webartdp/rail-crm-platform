@@ -8,6 +8,9 @@ export type FieldState = {
   allowed_actions: string[];
   next_button: string;
   required_fields: string[];
+  planned_end_at?: string | null;
+  planned_exceeded: boolean;
+  requires_bemerkung: boolean;
   leistungsart_options: string[];
 };
 
