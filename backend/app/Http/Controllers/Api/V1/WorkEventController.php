@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -53,17 +54,18 @@ class WorkEventController extends Controller
 
     public function stopArbeit(Request $request): JsonResponse
     {
-        $plannedExceeded = (bool) $request->boolean('planned_exceeded');
+        $plannedExceeded = $this->plannedTimeExceeded($request);
         $bemerkung = trim((string) $request->input('bemerkung', ''));
 
         if ($plannedExceeded && $bemerkung === '') {
             return response()->json([
                 'message' => 'Bemerkung is required when planned time is exceeded.',
                 'errors' => ['bemerkung' => ['Bemerkung is required.']],
+                'planned_exceeded' => true,
             ], 422);
         }
 
-        return $this->storeEvent($request, 'arbeit_stop', 'Work stopped');
+        return $this->storeEvent($request, 'arbeit_stop', 'Work stopped', $plannedExceeded);
     }
 
     public function startDienstfahrt(Request $request): JsonResponse
@@ -76,7 +78,7 @@ class WorkEventController extends Controller
         return $this->storeEvent($request, 'dienstfahrt_stop', 'Dienstfahrt stopped');
     }
 
-    private function storeEvent(Request $request, string $eventType, string $message): JsonResponse
+    private function storeEvent(Request $request, string $eventType, string $message, ?bool $plannedExceeded = null): JsonResponse
     {
         $allowed = $this->allowedAction($request);
 
@@ -90,7 +92,7 @@ class WorkEventController extends Controller
 
         $now = now();
         $payload = $request->input('payload', []);
-        $payload['planned_exceeded'] = $request->boolean('planned_exceeded');
+        $payload['planned_exceeded'] = $plannedExceeded ?? $request->boolean('planned_exceeded');
         $payload['bemerkung'] = $request->input('bemerkung');
 
         $id = DB::table('work_events')->insertGetId([
@@ -126,6 +128,19 @@ class WorkEventController extends Controller
                 'event_time' => $now->toISOString(),
             ],
         ]);
+    }
+
+    private function plannedTimeExceeded(Request $request): bool
+    {
+        $workOrder = DB::table('work_orders')
+            ->where('id', $request->input('assignment_id'))
+            ->first();
+
+        if (!$workOrder?->planned_end_at) {
+            return $request->boolean('planned_exceeded');
+        }
+
+        return now()->greaterThan(Carbon::parse($workOrder->planned_end_at));
     }
 
     private function allowedAction(Request $request): string
