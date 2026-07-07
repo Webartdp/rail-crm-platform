@@ -28,6 +28,16 @@ curl "http://localhost:8000/api/v1/work-orders?employee_id=1"
 curl "http://localhost:8000/api/v1/employee/field-state?employee_id=1&assignment_id=1"
 ```
 
+## Wrong action order test
+
+If no event exists yet, this should return HTTP 409 because Gasfahrt must be first:
+
+```bash
+curl -i -X POST http://localhost:8000/api/v1/work-events/dienstbeginn \
+  -H "Content-Type: application/json" \
+  -d '{"employee_id":1,"assignment_id":1,"payload":{"date":"2026-07-06","leistungsart":"WTU","referenznummer":"REF-2026-001","zugnummer":"ICE 204","einsatzort":"Gleis 12"}}'
+```
+
 ## Gasfahrt
 
 ```bash
