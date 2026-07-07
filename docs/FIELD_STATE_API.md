@@ -19,6 +19,9 @@ Response fields:
 - allowed_actions
 - next_button
 - required_fields
+- planned_end_at
+- planned_exceeded
+- requires_bemerkung
 - leistungsart_options
 
 ## State machine
@@ -58,7 +61,17 @@ After dienstfahrt_stop:
 - state: dienstfahrt_finished
 - next: Dienstbeginn
 
+## Stop rule
+
+When next button is Stop, backend checks work_orders.planned_end_at.
+
+If planned time is exceeded:
+
+- planned_exceeded is true
+- requires_bemerkung is true
+- required_fields contains bemerkung
+
 ## Rule
 
-Frontend should use allowed_actions and next_button from this API.
-It should not guess the next button locally.
+Frontend should use allowed_actions, next_button and requires_bemerkung from this API.
+It should not guess the next button or planned time rule locally.
