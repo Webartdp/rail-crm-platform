@@ -64,9 +64,11 @@ export default function DemoPage() {
     try {
       const state = await getFieldState(employeeId, orderId);
       setFieldState(state);
+      return state;
     } catch (error) {
       setFieldState(null);
       setMessage('Field State API nicht erreichbar.');
+      return null;
     }
   }
 
@@ -143,8 +145,9 @@ export default function DemoPage() {
       setMessage(`${currentLabel} gespeichert.`);
       await refreshState(selectedOrderId);
     } catch (error) {
-      setLog((items) => [...items, `${timeNow()} — ${currentLabel} lokal protokolliert`]);
-      setMessage('API nicht erreichbar. Aktion lokal im Demo protokolliert.');
+      const state = await refreshState(selectedOrderId);
+      setLog((items) => [...items, `${timeNow()} — ${currentLabel} nicht gespeichert`]);
+      setMessage(state ? `Aktion abgelehnt. Nächste erlaubte Aktion: ${state.next_button}.` : 'Aktion nicht gespeichert. API oder Field State nicht erreichbar.');
     } finally {
       setSaving(false);
     }
