@@ -6,6 +6,7 @@ import { createWorkOrder } from '../../../lib/work-orders';
 const leistungsartOptions = ['WTU', 'WSU', 'E-WU', 'Rb', 'Azf', 'RID-Kontrolle', 'Zugbeschtreifung'];
 
 export default function NewWorkOrderPage() {
+  const [employeeId, setEmployeeId] = useState('1');
   const [leistungsart, setLeistungsart] = useState('WTU');
   const [referenznummer, setReferenznummer] = useState('REF-2026-001');
   const [zugnummer, setZugnummer] = useState('ICE 204');
@@ -19,6 +20,7 @@ export default function NewWorkOrderPage() {
 
     try {
       await createWorkOrder({
+        employee_id: Number(employeeId),
         title,
         reference_number: referenznummer,
         leistungsart,
@@ -46,6 +48,7 @@ export default function NewWorkOrderPage() {
 
       <section className="panel">
         <div className="form-grid">
+          <label>Employee ID<input value={employeeId} onChange={(event) => setEmployeeId(event.target.value)} /></label>
           <label>Leistungsart<select value={leistungsart} onChange={(event) => setLeistungsart(event.target.value)}>{leistungsartOptions.map((item) => <option key={item}>{item}</option>)}</select></label>
           <label>Referenznummer<input value={referenznummer} onChange={(event) => setReferenznummer(event.target.value)} /></label>
           <label>Zugnummer<input value={zugnummer} onChange={(event) => setZugnummer(event.target.value)} /></label>
