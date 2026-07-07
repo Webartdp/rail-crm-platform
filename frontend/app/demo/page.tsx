@@ -84,8 +84,8 @@ export default function DemoPage() {
   const currentAction = fieldState?.allowed_actions?.[0] || 'gasfahrt_start';
   const currentLabel = fieldState?.next_button || 'Gasfahrt';
   const realLeistungsart = leistungsart === '' ? leistungsartCustom.trim() : leistungsart;
-  const plannedExceeded = currentLabel === 'Stop' && plannedStop !== '' && timeNow() > plannedStop;
-  const stopBlocked = currentLabel === 'Stop' && plannedExceeded && bemerkung.trim() === '';
+  const plannedExceeded = Boolean(fieldState?.planned_exceeded);
+  const stopBlocked = Boolean(fieldState?.requires_bemerkung) && bemerkung.trim() === '';
   const dienstbeginnBlocked = currentLabel === 'Dienstbeginn' && (!date || !realLeistungsart || !referenznummer.trim() || !zugnummer.trim() || !einsatzort.trim());
   const disabled = saving || stopBlocked || dienstbeginnBlocked;
 
@@ -169,8 +169,9 @@ export default function DemoPage() {
           <button className="action-button primary" onClick={next} type="button" disabled={disabled}>{saving ? 'Speichern...' : currentLabel}</button>
           <p className="hint">Allowed action: {currentAction}</p>
           <p className="hint">Last event: {fieldState?.last_event_type || 'none'}</p>
+          <p className="hint">Planned end: {fieldState?.planned_end_at || plannedStop}</p>
           <p className="hint">{message}</p>
-          {currentLabel === 'Stop' ? <p className="hint">Geplante Stopzeit: {plannedStop}. Aktuell: {timeNow()}. Überschritten: {plannedExceeded ? 'Ja' : 'Nein'}.</p> : null}
+          {currentLabel === 'Stop' ? <p className="hint">Backend planned exceeded: {plannedExceeded ? 'Ja' : 'Nein'}.</p> : null}
         </div>
 
         <div className="panel">
