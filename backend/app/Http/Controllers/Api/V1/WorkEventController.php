@@ -78,6 +78,16 @@ class WorkEventController extends Controller
 
     private function storeEvent(Request $request, string $eventType, string $message): JsonResponse
     {
+        $allowed = $this->allowedAction($request);
+
+        if ($allowed !== $eventType) {
+            return response()->json([
+                'message' => 'Action is not allowed in current workflow state.',
+                'allowed_action' => $allowed,
+                'requested_action' => $eventType,
+            ], 409);
+        }
+
         $now = now();
         $payload = $request->input('payload', []);
         $payload['planned_exceeded'] = $request->boolean('planned_exceeded');
@@ -116,5 +126,26 @@ class WorkEventController extends Controller
                 'event_time' => $now->toISOString(),
             ],
         ]);
+    }
+
+    private function allowedAction(Request $request): string
+    {
+        $last = DB::table('work_events')
+            ->where('employee_id', $request->input('employee_id'))
+            ->where('assignment_id', $request->input('assignment_id'))
+            ->orderByDesc('event_time')
+            ->orderByDesc('id')
+            ->first();
+
+        return match ($last?->event_type) {
+            null => 'gasfahrt_start',
+            'gasfahrt_start' => 'gasfahrt_stop',
+            'gasfahrt_stop' => 'dienstbeginn',
+            'dienstbeginn' => 'arbeit_stop',
+            'arbeit_stop' => 'dienstfahrt_start',
+            'dienstfahrt_start' => 'dienstfahrt_stop',
+            'dienstfahrt_stop' => 'dienstbeginn',
+            default => 'gasfahrt_start',
+        };
     }
 }
