@@ -4,17 +4,28 @@ Requirement:
 
 Stop is blocked when actual time exceeds planned time and Bemerkung is empty.
 
-MVP frontend:
+## Backend source of truth
 
-- Geplanter Start field
-- Geplanter Stop field
-- current browser time is compared with Geplanter Stop
-- Stop is disabled if time is exceeded and Bemerkung is empty
+Laravel checks selected work order planned_end_at.
 
-Backend:
+If current backend time is later than planned_end_at and Bemerkung is empty, arbeit_stop returns validation error.
 
-- arbeit_stop rejects planned_exceeded=true without Bemerkung
+The backend also stores planned_exceeded in the work event payload.
 
-Later:
+## Field state
 
-- planned time must come from selected work order
+GET /api/v1/employee/field-state returns:
+
+- planned_end_at
+- planned_exceeded
+- requires_bemerkung
+
+Frontend must use these fields instead of calculating the rule locally.
+
+## Frontend
+
+The demo screen disables Stop when requires_bemerkung is true and Bemerkung is empty.
+
+## Fallback
+
+If a work order has no planned_end_at, backend can still use planned_exceeded from request as fallback.
