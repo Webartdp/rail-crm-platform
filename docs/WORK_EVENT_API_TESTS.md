@@ -16,16 +16,16 @@ curl -X POST http://localhost:8000/api/v1/work-orders \
   -d '{"employee_id":1,"title":"WTU / ICE 204 / Gleis 12","reference_number":"REF-2026-001","leistungsart":"WTU","zugnummer":"ICE 204","einsatzort":"Gleis 12","planned_start_at":"2026-07-06T07:30","planned_end_at":"2026-07-06T15:30"}'
 ```
 
-## List all work orders
-
-```bash
-curl http://localhost:8000/api/v1/work-orders
-```
-
 ## List employee 1 work orders
 
 ```bash
 curl "http://localhost:8000/api/v1/work-orders?employee_id=1"
+```
+
+## Field state
+
+```bash
+curl "http://localhost:8000/api/v1/employee/field-state?employee_id=1&assignment_id=1"
 ```
 
 ## Gasfahrt
