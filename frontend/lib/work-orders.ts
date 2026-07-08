@@ -1,3 +1,5 @@
+import { getStoredToken } from './auth';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 export type WorkOrder = {
@@ -37,11 +39,13 @@ export async function getWorkOrders(employeeId?: number): Promise<{ data: WorkOr
 }
 
 export async function createWorkOrder(payload: WorkOrderInput): Promise<{ data: WorkOrder }> {
+  const token = getStoredToken();
   const response = await fetch(`${API_URL}/work-orders`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
+      Authorization: token ? `Bearer ${token}` : '',
     },
     body: JSON.stringify(payload),
   });
