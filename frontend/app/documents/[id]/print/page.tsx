@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getDocumentPrintData, type DocumentPrintData } from '../../../../lib/document-print';
+import { closeWorkOrder } from '../../../../lib/work-orders';
 
 type PageProps = {
   params: { id: string };
@@ -16,13 +17,30 @@ export default function DocumentPrintPage({ params }: PageProps) {
   const [data, setData] = useState<DocumentPrintData | null>(null);
   const [message, setMessage] = useState('Loading document print data...');
 
+  async function load() {
+    try {
+      const response = await getDocumentPrintData(documentId);
+      setData(response.data);
+      setMessage('Ready to print.');
+    } catch (error) {
+      setMessage('Could not load print data. Check login/role.');
+    }
+  }
+
+  async function closeRelatedWorkOrder() {
+    if (!data?.work_order?.id) return;
+
+    try {
+      await closeWorkOrder(data.work_order.id, 'document_print_page');
+      setMessage('Related work order closed.');
+      await load();
+    } catch (error) {
+      setMessage('Could not close related work order. Manager/admin token required.');
+    }
+  }
+
   useEffect(() => {
-    getDocumentPrintData(documentId)
-      .then((response) => {
-        setData(response.data);
-        setMessage('Ready to print.');
-      })
-      .catch(() => setMessage('Could not load print data. Check login/role.'));
+    load();
   }, [documentId]);
 
   if (!data) {
@@ -38,8 +56,12 @@ export default function DocumentPrintPage({ params }: PageProps) {
           <p className="eyebrow">Print</p>
           <h1>{document.title}</h1>
           <p className="hero-text">Printable document summary with OCR and signatures.</p>
+          <p className="hint">{message}</p>
         </div>
-        <button className="action-button primary" onClick={() => window.print()} type="button">Print</button>
+        <div>
+          <button className="action-button primary" onClick={() => window.print()} type="button">Print</button>
+          {work_order?.id && work_order.status !== 'closed' ? <button className="action-link" onClick={closeRelatedWorkOrder} type="button">Close Auftrag</button> : null}
+        </div>
       </section>
 
       <section className="panel print-sheet">
