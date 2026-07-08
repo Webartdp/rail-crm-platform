@@ -105,6 +105,43 @@ class DocumentController extends Controller
         return response()->download($path, $document->original_filename ?: basename($path));
     }
 
+    public function printData(Request $request, int $id): JsonResponse
+    {
+        $user = CurrentUser::fromRequest($request);
+        if (!CurrentUser::hasRole($user, ['manager', 'admin'])) {
+            return response()->json(['message' => 'Only manager or admin can print documents.'], 403);
+        }
+
+        $document = DB::table('documents')->where('id', $id)->first();
+        if (!$document) {
+            return response()->json(['message' => 'Document not found.'], 404);
+        }
+
+        $workOrder = $document->work_order_id
+            ? DB::table('work_orders')->where('id', $document->work_order_id)->first()
+            : null;
+
+        $signatures = DB::table('document_signatures')
+            ->where('document_id', $id)
+            ->orderBy('id')
+            ->get();
+
+        return response()->json([
+            'data' => [
+                'document' => $document,
+                'work_order' => $workOrder,
+                'signatures' => $signatures,
+                'printed_by' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->role,
+                ],
+                'printed_at' => now()->toISOString(),
+            ],
+        ]);
+    }
+
     public function startOcr(Request $request, int $id): JsonResponse
     {
         $user = CurrentUser::fromRequest($request);
