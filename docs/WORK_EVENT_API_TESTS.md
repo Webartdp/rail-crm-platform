@@ -162,6 +162,29 @@ curl -X POST http://localhost:8000/api/v1/documents \
   -d '{"title":"Report REF-2026-001","type":"report","status":"draft","work_order_id":1}'
 ```
 
+## Upload document file
+
+Requires manager/admin token. Replace `/path/to/report.pdf` with a local PDF/JPG/PNG/WebP file.
+
+```bash
+curl -X POST http://localhost:8000/api/v1/documents \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "title=Uploaded Report REF-2026-001" \
+  -F "type=report" \
+  -F "work_order_id=1" \
+  -F "file=@/path/to/report.pdf"
+```
+
+## Download document file
+
+Requires manager/admin token. Use document id from the upload response.
+
+```bash
+curl -L http://localhost:8000/api/v1/documents/1/download \
+  -H "Authorization: Bearer $TOKEN" \
+  -o downloaded-document.pdf
+```
+
 ## List events
 
 ```bash
