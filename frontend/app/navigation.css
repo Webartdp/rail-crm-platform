@@ -18,14 +18,22 @@
   gap: 10px;
 }
 
-.main-nav a {
+.main-nav a,
+.nav-button {
   padding: 8px 10px;
   border-radius: 999px;
   color: #667085;
   font-weight: 700;
 }
 
-.main-nav a:hover {
+.nav-button {
+  border: 0;
+  background: #f2f4f7;
+  cursor: pointer;
+}
+
+.main-nav a:hover,
+.nav-button:hover {
   color: #1d4ed8;
   background: #eff6ff;
 }
