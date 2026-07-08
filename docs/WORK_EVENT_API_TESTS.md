@@ -8,14 +8,6 @@ Base URL:
 http://localhost:8000/api/v1
 ```
 
-## Create employee profile
-
-```bash
-curl -X POST http://localhost:8000/api/v1/employee-profiles \
-  -H "Content-Type: application/json" \
-  -d '{"first_name":"Max","last_name":"Muller","phone":"+49 000 000000","standard_hourly_rate":28,"travel_hourly_rate":0,"night_coefficient":1.25,"sunday_coefficient":1.5,"holiday_coefficient":2,"home_location":"Dresden"}'
-```
-
 ## Register admin user
 
 ```bash
@@ -45,11 +37,25 @@ curl http://localhost:8000/api/v1/auth/me \
   -H "Authorization: Bearer $TOKEN"
 ```
 
+## Create employee profile
+
+Requires admin token:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/employee-profiles \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"first_name":"Max","last_name":"Muller","phone":"+49 000 000000","standard_hourly_rate":28,"travel_hourly_rate":0,"night_coefficient":1.25,"sunday_coefficient":1.5,"holiday_coefficient":2,"home_location":"Dresden"}'
+```
+
 ## Update employee travel rate
+
+Requires admin token:
 
 ```bash
 curl -X PUT http://localhost:8000/api/v1/employee-profiles/1 \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{"first_name":"Max","last_name":"Muller","phone":"+49 000 000000","standard_hourly_rate":28,"travel_hourly_rate":15,"night_coefficient":1.25,"sunday_coefficient":1.5,"holiday_coefficient":2,"home_location":"Dresden"}'
 ```
 
@@ -61,9 +67,12 @@ curl http://localhost:8000/api/v1/employee-profiles
 
 ## Create work order for employee 1
 
+Requires manager/admin token:
+
 ```bash
 curl -X POST http://localhost:8000/api/v1/work-orders \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
   -d '{"employee_id":1,"title":"WTU / ICE 204 / Gleis 12","reference_number":"REF-2026-001","leistungsart":"WTU","zugnummer":"ICE 204","einsatzort":"Gleis 12","planned_start_at":"2026-07-06T07:30","planned_end_at":"2026-07-06T15:30"}'
 ```
 
@@ -140,6 +149,17 @@ curl -X POST http://localhost:8000/api/v1/work-event-approvals/1/approve \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{"comment":"Approved."}'
+```
+
+## Create document metadata
+
+Requires manager/admin token:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/documents \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"title":"Report REF-2026-001","type":"report","status":"draft","work_order_id":1}'
 ```
 
 ## List events
