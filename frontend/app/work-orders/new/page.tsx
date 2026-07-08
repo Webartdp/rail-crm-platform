@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import RoleGuard from '../../components/RoleGuard';
 import { createWorkOrder } from '../../../lib/work-orders';
 
 const leistungsartOptions = ['WTU', 'WSU', 'E-WU', 'Rb', 'Azf', 'RID-Kontrolle', 'Zugbeschtreifung'];
@@ -31,34 +32,36 @@ export default function NewWorkOrderPage() {
       });
       setMessage('Auftrag gespeichert.');
     } catch (error) {
-      setMessage('API nicht erreichbar. Auftrag wurde nicht gespeichert.');
+      setMessage('API nicht erreichbar oder manager/admin role fehlt. Auftrag wurde nicht gespeichert.');
     }
   }
 
   return (
     <main className="page-shell">
-      <section className="hero-card">
-        <div>
-          <p className="eyebrow">Work Order</p>
-          <h1>Neuer Auftrag</h1>
-          <p className="hero-text">Create a planned assignment for employee workflow.</p>
-        </div>
-        <div className="status-pill">Planning</div>
-      </section>
+      <RoleGuard allowedRoles={['manager', 'admin']} title="New work order access">
+        <section className="hero-card">
+          <div>
+            <p className="eyebrow">Work Order</p>
+            <h1>Neuer Auftrag</h1>
+            <p className="hero-text">Create a planned assignment for employee workflow.</p>
+          </div>
+          <div className="status-pill">Planning</div>
+        </section>
 
-      <section className="panel">
-        <div className="form-grid">
-          <label>Employee ID<input value={employeeId} onChange={(event) => setEmployeeId(event.target.value)} /></label>
-          <label>Leistungsart<select value={leistungsart} onChange={(event) => setLeistungsart(event.target.value)}>{leistungsartOptions.map((item) => <option key={item}>{item}</option>)}</select></label>
-          <label>Referenznummer<input value={referenznummer} onChange={(event) => setReferenznummer(event.target.value)} /></label>
-          <label>Zugnummer<input value={zugnummer} onChange={(event) => setZugnummer(event.target.value)} /></label>
-          <label>Einsatzort<input value={einsatzort} onChange={(event) => setEinsatzort(event.target.value)} /></label>
-          <label>Geplanter Start<input value={plannedStart} onChange={(event) => setPlannedStart(event.target.value)} type="datetime-local" /></label>
-          <label>Geplanter Stop<input value={plannedStop} onChange={(event) => setPlannedStop(event.target.value)} type="datetime-local" /></label>
-        </div>
-        <button className="action-button primary" onClick={submit} type="button">Auftrag speichern</button>
-        <p className="hint">{message}</p>
-      </section>
+        <section className="panel">
+          <div className="form-grid">
+            <label>Employee ID<input value={employeeId} onChange={(event) => setEmployeeId(event.target.value)} /></label>
+            <label>Leistungsart<select value={leistungsart} onChange={(event) => setLeistungsart(event.target.value)}>{leistungsartOptions.map((item) => <option key={item}>{item}</option>)}</select></label>
+            <label>Referenznummer<input value={referenznummer} onChange={(event) => setReferenznummer(event.target.value)} /></label>
+            <label>Zugnummer<input value={zugnummer} onChange={(event) => setZugnummer(event.target.value)} /></label>
+            <label>Einsatzort<input value={einsatzort} onChange={(event) => setEinsatzort(event.target.value)} /></label>
+            <label>Geplanter Start<input value={plannedStart} onChange={(event) => setPlannedStart(event.target.value)} type="datetime-local" /></label>
+            <label>Geplanter Stop<input value={plannedStop} onChange={(event) => setPlannedStop(event.target.value)} type="datetime-local" /></label>
+          </div>
+          <button className="action-button primary" onClick={submit} type="button">Auftrag speichern</button>
+          <p className="hint">{message}</p>
+        </section>
+      </RoleGuard>
     </main>
   );
 }
