@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
+import RoleGuard from '../components/RoleGuard';
 import { getDocumentSignatures, rejectDocumentSignature, requestDocumentSignature, signDocumentSignature, type DocumentSignature, type SignatureType } from '../../lib/document-signatures';
 import { createDocument, downloadDocument, getDocuments, saveDocumentOcrText, startDocumentOcr, uploadDocument, type DocumentRow } from '../../lib/documents';
 
@@ -245,105 +246,107 @@ export default function DocumentsPage() {
 
   return (
     <main className="page-shell">
-      <section className="hero-card">
-        <div>
-          <p className="eyebrow">Documents</p>
-          <h1>Documents</h1>
-          <p className="hero-text">Reports, acts, PDF files, OCR and signature workflow.</p>
-        </div>
-        <div className="status-pill">Belege</div>
-      </section>
-
-      <section className="panel">
-        <h2>New document</h2>
-        <div className="form-grid">
-          <label>Title<input value={title} onChange={(event) => setTitle(event.target.value)} /></label>
-          <label>Type<input value={type} onChange={(event) => setType(event.target.value)} /></label>
-          <label>Work order ID<input value={workOrderId} onChange={(event) => setWorkOrderId(event.target.value)} /></label>
-          <label>File<input accept="application/pdf,image/jpeg,image/png,image/webp" onChange={(event) => setFile(event.target.files?.[0] || null)} type="file" /></label>
-        </div>
-        <button className="action-button primary" onClick={() => submit(Boolean(file))} type="button">{file ? 'Upload document' : 'Create metadata'}</button>
-        <button className="action-link" onClick={() => submit(false)} type="button">Create metadata only</button>
-      </section>
-
-      {previewItem && previewUrl ? (
-        <section className="panel">
-          <h2>Preview: {previewItem.original_filename || previewItem.title}</h2>
-          <button className="action-link" onClick={closePreview} type="button">Close preview</button>
-          {previewItem.mime_type === 'application/pdf' ? (
-            <iframe title="Document preview" src={previewUrl} width="100%" height="640" />
-          ) : (
-            <img alt={previewItem.title} src={previewUrl} style={{ maxWidth: '100%', height: 'auto' }} />
-          )}
-        </section>
-      ) : null}
-
-      {signatureDocument ? (
-        <section className="panel">
-          <h2>Signatures: {signatureDocument.title}</h2>
-          <div className="form-grid">
-            <label>Signer name<input value={signerName} onChange={(event) => setSignerName(event.target.value)} /></label>
-            <label>Signer email<input value={signerEmail} onChange={(event) => setSignerEmail(event.target.value)} /></label>
-            <label>Signature type<select value={signatureType} onChange={(event) => setSignatureType(event.target.value as SignatureType)}><option value="typed">Typed</option><option value="canvas">Canvas</option></select></label>
-            {signatureType === 'typed' ? <label className="wide-field">Typed signature<textarea value={signatureText} onChange={(event) => setSignatureText(event.target.value)} /></label> : null}
+      <RoleGuard allowedRoles={['manager', 'admin']} title="Documents access">
+        <section className="hero-card">
+          <div>
+            <p className="eyebrow">Documents</p>
+            <h1>Documents</h1>
+            <p className="hero-text">Reports, acts, PDF files, OCR and signature workflow.</p>
           </div>
-          {signatureType === 'canvas' ? (
-            <div>
-              <canvas
-                ref={canvasRef}
-                width={720}
-                height={220}
-                onPointerDown={startCanvasSignature}
-                onPointerMove={drawCanvasSignature}
-                onPointerUp={endCanvasSignature}
-                onPointerCancel={endCanvasSignature}
-                style={{ width: '100%', maxWidth: '720px', height: '220px', background: '#fff', border: '1px solid #cbd5e1', touchAction: 'none' }}
-              />
-              <br />
-              <button className="action-link" onClick={clearCanvasSignature} type="button">Clear canvas</button>
+          <div className="status-pill">Belege</div>
+        </section>
+
+        <section className="panel">
+          <h2>New document</h2>
+          <div className="form-grid">
+            <label>Title<input value={title} onChange={(event) => setTitle(event.target.value)} /></label>
+            <label>Type<input value={type} onChange={(event) => setType(event.target.value)} /></label>
+            <label>Work order ID<input value={workOrderId} onChange={(event) => setWorkOrderId(event.target.value)} /></label>
+            <label>File<input accept="application/pdf,image/jpeg,image/png,image/webp" onChange={(event) => setFile(event.target.files?.[0] || null)} type="file" /></label>
+          </div>
+          <button className="action-button primary" onClick={() => submit(Boolean(file))} type="button">{file ? 'Upload document' : 'Create metadata'}</button>
+          <button className="action-link" onClick={() => submit(false)} type="button">Create metadata only</button>
+        </section>
+
+        {previewItem && previewUrl ? (
+          <section className="panel">
+            <h2>Preview: {previewItem.original_filename || previewItem.title}</h2>
+            <button className="action-link" onClick={closePreview} type="button">Close preview</button>
+            {previewItem.mime_type === 'application/pdf' ? (
+              <iframe title="Document preview" src={previewUrl} width="100%" height="640" />
+            ) : (
+              <img alt={previewItem.title} src={previewUrl} style={{ maxWidth: '100%', height: 'auto' }} />
+            )}
+          </section>
+        ) : null}
+
+        {signatureDocument ? (
+          <section className="panel">
+            <h2>Signatures: {signatureDocument.title}</h2>
+            <div className="form-grid">
+              <label>Signer name<input value={signerName} onChange={(event) => setSignerName(event.target.value)} /></label>
+              <label>Signer email<input value={signerEmail} onChange={(event) => setSignerEmail(event.target.value)} /></label>
+              <label>Signature type<select value={signatureType} onChange={(event) => setSignatureType(event.target.value as SignatureType)}><option value="typed">Typed</option><option value="canvas">Canvas</option></select></label>
+              {signatureType === 'typed' ? <label className="wide-field">Typed signature<textarea value={signatureText} onChange={(event) => setSignatureText(event.target.value)} /></label> : null}
             </div>
-          ) : null}
-          <button className="action-button primary" onClick={requestSignature} type="button">Request signature</button>
-          <button className="action-link" onClick={() => setSignatureDocument(null)} type="button">Close signatures</button>
-          <div className="table-row"><strong>Signer</strong><strong>Status</strong><strong>Action</strong></div>
-          {signatures.length === 0 ? <p className="hint">No signature requests yet.</p> : null}
-          {signatures.map((signature) => (
-            <div className="table-row" key={signature.id}>
-              <span>{signature.signer_name || '—'}<br /><small>{signature.signer_email || '—'} / {signature.signature_type}</small></span>
-              <span>{signature.status}<br /><small>{signature.signed_at || signature.rejected_at || signature.requested_at || '—'}</small>{signature.status === 'signed' && signature.signature_type === 'canvas' && signature.signature_data ? <img alt="Saved signature" src={signature.signature_data} style={{ maxWidth: '180px', display: 'block', background: '#fff' }} /> : null}</span>
+            {signatureType === 'canvas' ? (
+              <div>
+                <canvas
+                  ref={canvasRef}
+                  width={720}
+                  height={220}
+                  onPointerDown={startCanvasSignature}
+                  onPointerMove={drawCanvasSignature}
+                  onPointerUp={endCanvasSignature}
+                  onPointerCancel={endCanvasSignature}
+                  style={{ width: '100%', maxWidth: '720px', height: '220px', background: '#fff', border: '1px solid #cbd5e1', touchAction: 'none' }}
+                />
+                <br />
+                <button className="action-link" onClick={clearCanvasSignature} type="button">Clear canvas</button>
+              </div>
+            ) : null}
+            <button className="action-button primary" onClick={requestSignature} type="button">Request signature</button>
+            <button className="action-link" onClick={() => setSignatureDocument(null)} type="button">Close signatures</button>
+            <div className="table-row"><strong>Signer</strong><strong>Status</strong><strong>Action</strong></div>
+            {signatures.length === 0 ? <p className="hint">No signature requests yet.</p> : null}
+            {signatures.map((signature) => (
+              <div className="table-row" key={signature.id}>
+                <span>{signature.signer_name || '—'}<br /><small>{signature.signer_email || '—'} / {signature.signature_type}</small></span>
+                <span>{signature.status}<br /><small>{signature.signed_at || signature.rejected_at || signature.requested_at || '—'}</small>{signature.status === 'signed' && signature.signature_type === 'canvas' && signature.signature_data ? <img alt="Saved signature" src={signature.signature_data} style={{ maxWidth: '180px', display: 'block', background: '#fff' }} /> : null}</span>
+                <span>
+                  {signature.status === 'pending' ? <button className="action-link" onClick={() => signSignature(signature)} type="button">Sign</button> : null}
+                  {signature.status === 'pending' ? <button className="action-link" onClick={() => rejectSignature(signature)} type="button">Reject</button> : null}
+                </span>
+              </div>
+            ))}
+          </section>
+        ) : null}
+
+        <section className="panel">
+          <h2>OCR text</h2>
+          <textarea value={ocrText} onChange={(event) => setOcrText(event.target.value)} placeholder="Paste or edit extracted text here before saving to a document" />
+        </section>
+
+        <section className="panel">
+          <p className="hint">{message}</p>
+          <div className="table-row"><strong>Document</strong><strong>File</strong><strong>Status</strong></div>
+          {items.map((item) => (
+            <div className="table-row" key={item.id}>
+              <span>{item.title}<br /><small>{item.type} / Auftrag #{item.work_order_id || '—'}</small></span>
+              <span>{item.original_filename || 'No file'}<br /><small>{item.mime_type || '—'} / {sizeLabel(item.size_bytes)}</small></span>
               <span>
-                {signature.status === 'pending' ? <button className="action-link" onClick={() => signSignature(signature)} type="button">Sign</button> : null}
-                {signature.status === 'pending' ? <button className="action-link" onClick={() => rejectSignature(signature)} type="button">Reject</button> : null}
+                {item.status} / OCR: {item.ocr_status || 'not_started'}
+                {item.file_path && canPreview(item) ? <button className="action-link" onClick={() => preview(item)} type="button">Preview</button> : null}
+                {item.file_path ? <button className="action-link" onClick={() => download(item)} type="button">Download</button> : null}
+                <a className="action-link" href={`/documents/${item.id}/print`}>Print</a>
+                <button className="action-link" onClick={() => markOcrPending(item)} type="button">OCR pending</button>
+                <button className="action-link" onClick={() => saveOcr(item)} type="button">Save OCR text</button>
+                <button className="action-link" onClick={() => openSignatures(item)} type="button">Signatures</button>
               </span>
             </div>
           ))}
         </section>
-      ) : null}
-
-      <section className="panel">
-        <h2>OCR text</h2>
-        <textarea value={ocrText} onChange={(event) => setOcrText(event.target.value)} placeholder="Paste or edit extracted text here before saving to a document" />
-      </section>
-
-      <section className="panel">
-        <p className="hint">{message}</p>
-        <div className="table-row"><strong>Document</strong><strong>File</strong><strong>Status</strong></div>
-        {items.map((item) => (
-          <div className="table-row" key={item.id}>
-            <span>{item.title}<br /><small>{item.type} / Auftrag #{item.work_order_id || '—'}</small></span>
-            <span>{item.original_filename || 'No file'}<br /><small>{item.mime_type || '—'} / {sizeLabel(item.size_bytes)}</small></span>
-            <span>
-              {item.status} / OCR: {item.ocr_status || 'not_started'}
-              {item.file_path && canPreview(item) ? <button className="action-link" onClick={() => preview(item)} type="button">Preview</button> : null}
-              {item.file_path ? <button className="action-link" onClick={() => download(item)} type="button">Download</button> : null}
-              <a className="action-link" href={`/documents/${item.id}/print`}>Print</a>
-              <button className="action-link" onClick={() => markOcrPending(item)} type="button">OCR pending</button>
-              <button className="action-link" onClick={() => saveOcr(item)} type="button">Save OCR text</button>
-              <button className="action-link" onClick={() => openSignatures(item)} type="button">Signatures</button>
-            </span>
-          </div>
-        ))}
-      </section>
+      </RoleGuard>
     </main>
   );
 }
