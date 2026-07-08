@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Support\CurrentUser;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class InvoiceController extends Controller
@@ -35,8 +37,13 @@ class InvoiceController extends Controller
         ]);
     }
 
-    public function store(): JsonResponse
+    public function store(Request $request): JsonResponse
     {
+        $user = CurrentUser::fromRequest($request);
+        if (!CurrentUser::hasRole($user, ['manager', 'admin'])) {
+            return response()->json(['message' => 'Only manager or admin can create invoice drafts.'], 403);
+        }
+
         $items = $this->approvedCostItems();
 
         if ($items === []) {
@@ -72,6 +79,7 @@ class InvoiceController extends Controller
         }
 
         DB::table('audit_logs')->insert([
+            'user_id' => $user->id,
             'action' => 'invoice_created',
             'entity_type' => 'invoice',
             'entity_id' => $invoiceId,
