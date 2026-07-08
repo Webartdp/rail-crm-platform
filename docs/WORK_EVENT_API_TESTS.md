@@ -211,7 +211,7 @@ curl -X POST http://localhost:8000/api/v1/documents/1/ocr/text \
 curl http://localhost:8000/api/v1/documents/1/signatures
 ```
 
-## Request document signature
+## Request typed document signature
 
 Requires manager/admin token.
 
@@ -219,10 +219,21 @@ Requires manager/admin token.
 curl -X POST http://localhost:8000/api/v1/documents/1/signatures \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
-  -d '{"signer_name":"Max Muller","signer_email":"max@example.com","comment":"Please sign this document."}'
+  -d '{"signer_name":"Max Muller","signer_email":"max@example.com","signature_type":"typed","comment":"Please sign this document."}'
 ```
 
-## Sign document
+## Request canvas document signature
+
+Requires manager/admin token.
+
+```bash
+curl -X POST http://localhost:8000/api/v1/documents/1/signatures \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"signer_name":"Max Muller","signer_email":"max@example.com","signature_type":"canvas","comment":"Please draw and sign this document."}'
+```
+
+## Sign document with typed signature
 
 Requires authenticated user token. Use signature id from the request/list response.
 
@@ -230,7 +241,18 @@ Requires authenticated user token. Use signature id from the request/list respon
 curl -X POST http://localhost:8000/api/v1/documents/1/signatures/1/sign \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
-  -d '{"signature_data":"Signed by Max Muller"}'
+  -d '{"signature_type":"typed","signature_data":"Signed by Max Muller"}'
+```
+
+## Sign document with canvas signature
+
+Requires authenticated user token. In the browser this value is created by canvas.toDataURL('image/png').
+
+```bash
+curl -X POST http://localhost:8000/api/v1/documents/1/signatures/1/sign \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"signature_type":"canvas","signature_data":"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB"}'
 ```
 
 ## Reject document signature
