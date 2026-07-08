@@ -98,6 +98,12 @@ curl http://localhost:8000/api/v1/work-events
 curl http://localhost:8000/api/v1/work-event-durations
 ```
 
+## Costs
+
+```bash
+curl http://localhost:8000/api/v1/work-event-costs
+```
+
 ## Audit
 
 ```bash
