@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Support\CurrentUser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +37,11 @@ class WorkEventApprovalController extends Controller
 
     private function setStatusById(Request $request, int $id, string $status): JsonResponse
     {
+        $user = CurrentUser::fromRequest($request);
+        if (!CurrentUser::hasRole($user, ['manager', 'admin'])) {
+            return response()->json(['message' => 'Only manager or admin can approve work event pairs.'], 403);
+        }
+
         $approval = DB::table('work_event_approvals')->where('id', $id)->first();
 
         if (!$approval) {
@@ -45,7 +51,7 @@ class WorkEventApprovalController extends Controller
         $now = now();
         DB::table('work_event_approvals')->where('id', $id)->update([
             'status' => $status,
-            'approved_by' => $request->input('approved_by'),
+            'approved_by' => $user->id,
             'approved_at' => $status === 'approved' ? $now : null,
             'comment' => $request->input('comment'),
             'updated_at' => $now,
@@ -54,7 +60,7 @@ class WorkEventApprovalController extends Controller
         $this->updateWorkOrderStatus($approval->assignment_id, $status, $now);
 
         DB::table('audit_logs')->insert([
-            'user_id' => $request->input('approved_by'),
+            'user_id' => $user->id,
             'employee_id' => $approval->employee_id,
             'action' => 'work_event_'.$status,
             'entity_type' => 'work_event_approval',
