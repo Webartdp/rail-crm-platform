@@ -17,64 +17,85 @@ class WorkEventApprovalController extends Controller
 
     public function index(): JsonResponse
     {
-        return response()->json(['data' => $this->completedPairs()]);
+        $this->syncPendingApprovals();
+
+        return response()->json([
+            'data' => DB::table('work_event_approvals')->orderByDesc('id')->limit(200)->get(),
+        ]);
     }
 
-    public function approve(Request $request): JsonResponse
+    public function approve(Request $request, int $id): JsonResponse
     {
-        return $this->setStatus($request, 'approved');
+        return $this->setStatusById($request, $id, 'approved');
     }
 
-    public function reject(Request $request): JsonResponse
+    public function reject(Request $request, int $id): JsonResponse
     {
-        return $this->setStatus($request, 'rejected');
+        return $this->setStatusById($request, $id, 'rejected');
     }
 
-    private function setStatus(Request $request, string $status): JsonResponse
+    private function setStatusById(Request $request, int $id, string $status): JsonResponse
     {
-        $required = ['employee_id', 'assignment_id', 'pair_type', 'start_time', 'stop_time'];
-        foreach ($required as $field) {
-            if (!$request->filled($field)) {
-                return response()->json(['message' => $field.' is required.'], 422);
-            }
+        $approval = DB::table('work_event_approvals')->where('id', $id)->first();
+
+        if (!$approval) {
+            return response()->json(['message' => 'Approval not found.'], 404);
         }
 
         $now = now();
-        $where = [
-            'employee_id' => $request->input('employee_id'),
-            'assignment_id' => $request->input('assignment_id'),
-            'pair_type' => $request->input('pair_type'),
-            'start_time' => $request->input('start_time'),
-            'stop_time' => $request->input('stop_time'),
-        ];
-
-        $existing = DB::table('work_event_approvals')->where($where)->first();
-        $payload = [
+        DB::table('work_event_approvals')->where('id', $id)->update([
             'status' => $status,
             'approved_by' => $request->input('approved_by'),
             'approved_at' => $status === 'approved' ? $now : null,
             'comment' => $request->input('comment'),
             'updated_at' => $now,
-        ];
-
-        if ($existing) {
-            DB::table('work_event_approvals')->where('id', $existing->id)->update($payload);
-        } else {
-            DB::table('work_event_approvals')->insert(array_merge($where, $payload, ['created_at' => $now]));
-        }
+        ]);
 
         DB::table('audit_logs')->insert([
             'user_id' => $request->input('approved_by'),
-            'employee_id' => $request->input('employee_id'),
+            'employee_id' => $approval->employee_id,
             'action' => 'work_event_'.$status,
             'entity_type' => 'work_event_approval',
-            'entity_id' => $existing?->id,
-            'payload' => json_encode($where),
+            'entity_id' => $id,
+            'payload' => json_encode(['approval_id' => $id]),
             'created_at' => $now,
             'updated_at' => $now,
         ]);
 
-        return response()->json(['message' => 'Work event pair '.$status.'.']);
+        return response()->json([
+            'message' => 'Work event pair '.$status.'.',
+            'data' => DB::table('work_event_approvals')->where('id', $id)->first(),
+        ]);
+    }
+
+    private function syncPendingApprovals(): void
+    {
+        foreach ($this->completedPairs() as $item) {
+            $exists = DB::table('work_event_approvals')
+                ->where('employee_id', $item['employee_id'])
+                ->where('assignment_id', $item['assignment_id'])
+                ->where('pair_type', $item['pair_type'])
+                ->where('start_time', $item['start_time'])
+                ->where('stop_time', $item['stop_time'])
+                ->exists();
+
+            if ($exists) {
+                continue;
+            }
+
+            $now = now();
+            DB::table('work_event_approvals')->insert([
+                'employee_id' => $item['employee_id'],
+                'assignment_id' => $item['assignment_id'],
+                'pair_type' => $item['pair_type'],
+                'start_time' => $item['start_time'],
+                'stop_time' => $item['stop_time'],
+                'status' => 'pending',
+                'comment' => null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+        }
     }
 
     private function completedPairs(): array
@@ -103,29 +124,18 @@ class WorkEventApprovalController extends Controller
                 }
 
                 $start = $open[$key][$startType];
-                $approval = DB::table('work_event_approvals')
-                    ->where('employee_id', $event->employee_id)
-                    ->where('assignment_id', $event->assignment_id)
-                    ->where('pair_type', $pair['type'])
-                    ->where('start_time', $start->event_time)
-                    ->where('stop_time', $event->event_time)
-                    ->first();
-
                 $items[] = [
                     'employee_id' => $event->employee_id,
                     'assignment_id' => $event->assignment_id,
                     'pair_type' => $pair['type'],
                     'start_time' => $start->event_time,
                     'stop_time' => $event->event_time,
-                    'minutes' => round(max(0, strtotime($event->event_time) - strtotime($start->event_time)) / 60),
-                    'status' => $approval?->status ?? 'pending',
-                    'comment' => $approval?->comment,
                 ];
 
                 unset($open[$key][$startType]);
             }
         }
 
-        return array_reverse($items);
+        return $items;
     }
 }
