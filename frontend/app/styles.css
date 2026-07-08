@@ -103,6 +103,21 @@ textarea { min-height: 96px; resize: vertical; }
 
 .map-box { display: grid; min-height: 250px; place-items: center; border: 1px dashed var(--line); border-radius: 20px; background: linear-gradient(135deg, #f9fafb, #e5e7eb); color: var(--muted); font-weight: 800; }
 
+.print-sheet table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+.print-sheet th, .print-sheet td { border: 1px solid var(--line); padding: 10px 12px; text-align: left; vertical-align: top; }
+.print-sheet th { width: 220px; background: #f8fafc; }
+.print-box { white-space: pre-wrap; border: 1px solid var(--line); border-radius: 16px; padding: 16px; min-height: 120px; margin-bottom: 24px; }
+.print-signature { border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin-bottom: 16px; break-inside: avoid; }
+
+@media print {
+  body { background: #fff; }
+  .page-shell { width: 100%; padding: 0; }
+  .no-print, .main-nav { display: none !important; }
+  .panel, .hero-card { box-shadow: none; border-radius: 0; border: 0; }
+  .print-sheet { padding: 0; }
+  .print-document h1 { font-size: 32px; }
+}
+
 @media (max-width: 900px) {
   .hero-card, .grid, .lower-grid, .form-grid, .stats-grid, .table-row { grid-template-columns: 1fr; }
   .hero-card { display: grid; }
