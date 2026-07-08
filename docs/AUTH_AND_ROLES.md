@@ -64,8 +64,15 @@ Authorization: Bearer <token>
 
 ## Current role checks
 
+Only admin can:
+
+- create employee profiles
+- update employee profiles and tariff settings
+
 Only manager/admin can:
 
+- create work orders
+- create documents
 - approve or reject work event intervals
 - create invoice drafts
 
@@ -74,6 +81,16 @@ Only manager/admin can:
 The demo workflow uses the logged-in user's employee_profile_id as employee_id.
 
 If no logged-in user exists, it falls back to employee #1 for demo compatibility.
+
+## Frontend protected writes
+
+The following helpers send Bearer token:
+
+- employee-profiles create/update
+- work-orders create
+- documents create
+- approvals approve/reject
+- invoices create
 
 ## MVP note
 
