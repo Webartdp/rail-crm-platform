@@ -94,6 +94,22 @@ curl -X POST http://localhost:8000/api/v1/work-events/arbeit/stop \
   -d '{"employee_id":1,"assignment_id":1,"planned_exceeded":true,"bemerkung":"Task took longer than planned.","payload":{"is_night":true,"is_sunday":false,"is_holiday":false}}'
 ```
 
+## List approvals
+
+```bash
+curl http://localhost:8000/api/v1/work-event-approvals
+```
+
+## Approve interval
+
+Use values from the approval list response:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/work-event-approvals/approve \
+  -H "Content-Type: application/json" \
+  -d '{"employee_id":1,"assignment_id":1,"pair_type":"arbeit","start_time":"2026-07-06 07:30:00","stop_time":"2026-07-06 15:30:00","approved_by":1,"comment":"Approved."}'
+```
+
 ## List events
 
 ```bash
@@ -107,6 +123,8 @@ curl http://localhost:8000/api/v1/work-event-durations
 ```
 
 ## Costs
+
+Only approved intervals are included:
 
 ```bash
 curl http://localhost:8000/api/v1/work-event-costs
