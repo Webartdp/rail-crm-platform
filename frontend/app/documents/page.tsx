@@ -112,10 +112,13 @@ export default function DocumentsPage() {
 
   useEffect(() => {
     load();
+  }, []);
+
+  useEffect(() => {
     return () => {
       if (previewUrl) window.URL.revokeObjectURL(previewUrl);
     };
-  }, []);
+  }, [previewUrl]);
 
   return (
     <main className="page-shell">
