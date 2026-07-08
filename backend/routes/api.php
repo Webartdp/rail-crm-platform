@@ -37,6 +37,8 @@ Route::prefix('v1')->group(function () {
     Route::get('/invoices/{id}', [InvoiceController::class, 'show']);
     Route::get('/documents', [DocumentController::class, 'index']);
     Route::post('/documents', [DocumentController::class, 'store']);
+    Route::get('/documents/{id}', [DocumentController::class, 'show']);
+    Route::get('/documents/{id}/download', [DocumentController::class, 'download']);
     Route::get('/audit', AuditController::class);
 
     Route::post('/work-events/gasfahrt/start', [WorkEventController::class, 'startGasfahrt']);
