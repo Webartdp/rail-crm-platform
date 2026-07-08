@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\AuditController;
 use App\Http\Controllers\Api\V1\EmployeeFieldStateController;
 use App\Http\Controllers\Api\V1\EmployeeProfileController;
+use App\Http\Controllers\Api\V1\InvoiceController;
 use App\Http\Controllers\Api\V1\WorkEventApprovalController;
 use App\Http\Controllers\Api\V1\WorkEventController;
 use App\Http\Controllers\Api\V1\WorkEventCostController;
@@ -24,6 +25,9 @@ Route::prefix('v1')->group(function () {
     Route::get('/work-event-approvals', [WorkEventApprovalController::class, 'index']);
     Route::post('/work-event-approvals/{id}/approve', [WorkEventApprovalController::class, 'approve']);
     Route::post('/work-event-approvals/{id}/reject', [WorkEventApprovalController::class, 'reject']);
+    Route::get('/invoices', [InvoiceController::class, 'index']);
+    Route::post('/invoices', [InvoiceController::class, 'store']);
+    Route::get('/invoices/{id}', [InvoiceController::class, 'show']);
     Route::get('/audit', AuditController::class);
 
     Route::post('/work-events/gasfahrt/start', [WorkEventController::class, 'startGasfahrt']);
