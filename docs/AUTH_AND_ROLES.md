@@ -72,9 +72,19 @@ Only admin can:
 Only manager/admin can:
 
 - create work orders
+- close work orders
 - create documents
+- download/print documents
+- create OCR actions
+- request signatures
 - approve or reject work event intervals
 - create invoice drafts
+- view manager dashboard
+
+Authenticated users can:
+
+- sign pending document signatures
+- reject pending document signatures
 
 ## Employee workflow
 
@@ -87,10 +97,21 @@ If no logged-in user exists, it falls back to employee #1 for demo compatibility
 The following helpers send Bearer token:
 
 - employee-profiles create/update
-- work-orders create
-- documents create
+- work-orders create/close
+- documents create/upload/download/print/OCR
+- document signatures request/sign/reject
 - approvals approve/reject
 - invoices create
+
+## Frontend route guards
+
+Frontend route guards are documented in:
+
+```text
+docs/FRONTEND_ROUTE_GUARDS.md
+```
+
+They hide manager/admin pages from ordinary employees and show access denied panels for direct URLs.
 
 ## MVP note
 
