@@ -13,6 +13,8 @@ Route::prefix('v1')->group(function () {
     Route::get('/employee/field-state', EmployeeFieldStateController::class);
     Route::get('/employee-profiles', [EmployeeProfileController::class, 'index']);
     Route::post('/employee-profiles', [EmployeeProfileController::class, 'store']);
+    Route::get('/employee-profiles/{id}', [EmployeeProfileController::class, 'show']);
+    Route::put('/employee-profiles/{id}', [EmployeeProfileController::class, 'update']);
     Route::get('/work-orders', [WorkOrderController::class, 'index']);
     Route::post('/work-orders', [WorkOrderController::class, 'store']);
     Route::get('/work-events', [WorkEventController::class, 'index']);
