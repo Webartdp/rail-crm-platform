@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { getDocumentSignatures, rejectDocumentSignature, requestDocumentSignature, signDocumentSignature, type DocumentSignature } from '../../lib/document-signatures';
 import { createDocument, downloadDocument, getDocuments, saveDocumentOcrText, startDocumentOcr, uploadDocument, type DocumentRow } from '../../lib/documents';
 
 function sizeLabel(size?: number | null) {
@@ -22,6 +23,11 @@ export default function DocumentsPage() {
   const [ocrText, setOcrText] = useState('');
   const [previewItem, setPreviewItem] = useState<DocumentRow | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [signatureDocument, setSignatureDocument] = useState<DocumentRow | null>(null);
+  const [signatures, setSignatures] = useState<DocumentSignature[]>([]);
+  const [signerName, setSignerName] = useState('Max Müller');
+  const [signerEmail, setSignerEmail] = useState('max@example.com');
+  const [signatureText, setSignatureText] = useState('Signed by Max Müller');
   const [message, setMessage] = useState('Loading documents...');
 
   async function load() {
@@ -110,6 +116,55 @@ export default function DocumentsPage() {
     }
   }
 
+  async function openSignatures(item: DocumentRow) {
+    try {
+      const response = await getDocumentSignatures(item.id);
+      setSignatureDocument(item);
+      setSignatures(response.data);
+      setMessage(`Loaded signatures for ${item.title}.`);
+    } catch (error) {
+      setMessage('Could not load signatures.');
+    }
+  }
+
+  async function requestSignature() {
+    if (!signatureDocument) return;
+    try {
+      await requestDocumentSignature(signatureDocument.id, {
+        signer_name: signerName,
+        signer_email: signerEmail,
+        comment: 'Please sign this document.',
+      });
+      await openSignatures(signatureDocument);
+      setMessage('Signature requested.');
+    } catch (error) {
+      setMessage('Could not request signature. Manager/admin role required.');
+    }
+  }
+
+  async function signSignature(signature: DocumentSignature) {
+    if (!signatureDocument) return;
+    try {
+      await signDocumentSignature(signatureDocument.id, signature.id, signatureText || `Signed by ${signature.signer_name || 'user'}`);
+      await openSignatures(signatureDocument);
+      await load();
+      setMessage('Document signed.');
+    } catch (error) {
+      setMessage('Could not sign document. Check login and pending status.');
+    }
+  }
+
+  async function rejectSignature(signature: DocumentSignature) {
+    if (!signatureDocument) return;
+    try {
+      await rejectDocumentSignature(signatureDocument.id, signature.id, 'Rejected from CRM UI.');
+      await openSignatures(signatureDocument);
+      setMessage('Signature rejected.');
+    } catch (error) {
+      setMessage('Could not reject signature. Check login and pending status.');
+    }
+  }
+
   useEffect(() => {
     load();
   }, []);
@@ -126,7 +181,7 @@ export default function DocumentsPage() {
         <div>
           <p className="eyebrow">Documents</p>
           <h1>Documents</h1>
-          <p className="hero-text">Reports, acts, PDF files and future OCR workflow.</p>
+          <p className="hero-text">Reports, acts, PDF files, OCR and signature workflow.</p>
         </div>
         <div className="status-pill">Belege</div>
       </section>
@@ -155,6 +210,31 @@ export default function DocumentsPage() {
         </section>
       ) : null}
 
+      {signatureDocument ? (
+        <section className="panel">
+          <h2>Signatures: {signatureDocument.title}</h2>
+          <div className="form-grid">
+            <label>Signer name<input value={signerName} onChange={(event) => setSignerName(event.target.value)} /></label>
+            <label>Signer email<input value={signerEmail} onChange={(event) => setSignerEmail(event.target.value)} /></label>
+            <label className="wide-field">Typed signature<textarea value={signatureText} onChange={(event) => setSignatureText(event.target.value)} /></label>
+          </div>
+          <button className="action-button primary" onClick={requestSignature} type="button">Request signature</button>
+          <button className="action-link" onClick={() => setSignatureDocument(null)} type="button">Close signatures</button>
+          <div className="table-row"><strong>Signer</strong><strong>Status</strong><strong>Action</strong></div>
+          {signatures.length === 0 ? <p className="hint">No signature requests yet.</p> : null}
+          {signatures.map((signature) => (
+            <div className="table-row" key={signature.id}>
+              <span>{signature.signer_name || '—'}<br /><small>{signature.signer_email || '—'}</small></span>
+              <span>{signature.status}<br /><small>{signature.signed_at || signature.rejected_at || signature.requested_at || '—'}</small></span>
+              <span>
+                {signature.status === 'pending' ? <button className="action-link" onClick={() => signSignature(signature)} type="button">Sign</button> : null}
+                {signature.status === 'pending' ? <button className="action-link" onClick={() => rejectSignature(signature)} type="button">Reject</button> : null}
+              </span>
+            </div>
+          ))}
+        </section>
+      ) : null}
+
       <section className="panel">
         <h2>OCR text</h2>
         <textarea value={ocrText} onChange={(event) => setOcrText(event.target.value)} placeholder="Paste or edit extracted text here before saving to a document" />
@@ -173,6 +253,7 @@ export default function DocumentsPage() {
               {item.file_path ? <button className="action-link" onClick={() => download(item)} type="button">Download</button> : null}
               <button className="action-link" onClick={() => markOcrPending(item)} type="button">OCR pending</button>
               <button className="action-link" onClick={() => saveOcr(item)} type="button">Save OCR text</button>
+              <button className="action-link" onClick={() => openSignatures(item)} type="button">Signatures</button>
             </span>
           </div>
         ))}
