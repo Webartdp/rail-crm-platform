@@ -96,18 +96,20 @@ curl -X POST http://localhost:8000/api/v1/work-events/arbeit/stop \
 
 ## List approvals
 
+This creates missing pending approval rows and returns stable approval IDs:
+
 ```bash
 curl http://localhost:8000/api/v1/work-event-approvals
 ```
 
-## Approve interval
+## Approve interval by ID
 
-Use values from the approval list response:
+Use the `id` from the approval list response:
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/work-event-approvals/approve \
+curl -X POST http://localhost:8000/api/v1/work-event-approvals/1/approve \
   -H "Content-Type: application/json" \
-  -d '{"employee_id":1,"assignment_id":1,"pair_type":"arbeit","start_time":"2026-07-06 07:30:00","stop_time":"2026-07-06 15:30:00","approved_by":1,"comment":"Approved."}'
+  -d '{"approved_by":1,"comment":"Approved."}'
 ```
 
 ## List events
@@ -128,6 +130,20 @@ Only approved intervals are included:
 
 ```bash
 curl http://localhost:8000/api/v1/work-event-costs
+```
+
+## Create invoice draft
+
+Only approved and not-yet-invoiced intervals are included:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/invoices
+```
+
+## List invoices
+
+```bash
+curl http://localhost:8000/api/v1/invoices
 ```
 
 ## Audit
