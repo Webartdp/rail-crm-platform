@@ -40,6 +40,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/documents', [DocumentController::class, 'store']);
     Route::get('/documents/{id}', [DocumentController::class, 'show']);
     Route::get('/documents/{id}/download', [DocumentController::class, 'download']);
+    Route::get('/documents/{id}/print-data', [DocumentController::class, 'printData']);
     Route::post('/documents/{id}/ocr/start', [DocumentController::class, 'startOcr']);
     Route::post('/documents/{id}/ocr/text', [DocumentController::class, 'saveOcrText']);
     Route::get('/documents/{documentId}/signatures', [DocumentSignatureController::class, 'index']);
