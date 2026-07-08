@@ -3,6 +3,10 @@
 import { useEffect, useState } from 'react';
 import { getWorkEventApprovals, setWorkEventApprovalStatus, type WorkEventApproval } from '../../lib/approvals';
 
+function minutesBetween(start: string, stop: string) {
+  return Math.round(Math.max(0, new Date(stop).getTime() - new Date(start).getTime()) / 60000);
+}
+
 export default function ApprovalsPage() {
   const [items, setItems] = useState<WorkEventApproval[]>([]);
   const [message, setMessage] = useState('Loading approvals...');
@@ -19,7 +23,7 @@ export default function ApprovalsPage() {
 
   async function change(action: 'approve' | 'reject', item: WorkEventApproval) {
     try {
-      await setWorkEventApprovalStatus(action, item);
+      await setWorkEventApprovalStatus(action, item.id);
       await load();
     } catch (error) {
       setMessage('Could not update approval.');
@@ -45,8 +49,8 @@ export default function ApprovalsPage() {
         <p className="hint">{message}</p>
         <div className="table-row"><strong>Interval</strong><strong>Status</strong><strong>Action</strong></div>
         {items.map((item) => (
-          <div className="table-row" key={`${item.employee_id}-${item.assignment_id}-${item.pair_type}-${item.start_time}-${item.stop_time}`}>
-            <span>{item.pair_type} / employee #{item.employee_id} / Auftrag #{item.assignment_id} / {item.minutes} min</span>
+          <div className="table-row" key={item.id}>
+            <span>#{item.id} / {item.pair_type} / employee #{item.employee_id} / Auftrag #{item.assignment_id} / {minutesBetween(item.start_time, item.stop_time)} min</span>
             <span>{item.status}</span>
             <span>
               <button className="action-link" onClick={() => change('approve', item)} type="button">Approve</button>
