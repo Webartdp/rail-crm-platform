@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import RoleGuard from '../../components/RoleGuard';
 import { createEmployeeProfile } from '../../../lib/employee-profiles';
 
 export default function NewEmployeePage() {
@@ -30,36 +31,38 @@ export default function NewEmployeePage() {
       });
       setMessage('Employee profile gespeichert.');
     } catch (error) {
-      setMessage('API nicht erreichbar. Employee profile wurde nicht gespeichert.');
+      setMessage('API nicht erreichbar oder admin role fehlt. Employee profile wurde nicht gespeichert.');
     }
   }
 
   return (
     <main className="page-shell">
-      <section className="hero-card">
-        <div>
-          <p className="eyebrow">Employee</p>
-          <h1>New Employee</h1>
-          <p className="hero-text">Create employee profile with personal tariff settings.</p>
-        </div>
-        <div className="status-pill">Tariff</div>
-      </section>
+      <RoleGuard allowedRoles={['admin']} title="New employee access">
+        <section className="hero-card">
+          <div>
+            <p className="eyebrow">Employee</p>
+            <h1>New Employee</h1>
+            <p className="hero-text">Create employee profile with personal tariff settings.</p>
+          </div>
+          <div className="status-pill">Tariff</div>
+        </section>
 
-      <section className="panel">
-        <div className="form-grid">
-          <label>First name<input value={firstName} onChange={(event) => setFirstName(event.target.value)} /></label>
-          <label>Last name<input value={lastName} onChange={(event) => setLastName(event.target.value)} /></label>
-          <label>Phone<input value={phone} onChange={(event) => setPhone(event.target.value)} /></label>
-          <label>Work hourly rate<input value={rate} onChange={(event) => setRate(event.target.value)} /></label>
-          <label>Travel hourly rate<input value={travelRate} onChange={(event) => setTravelRate(event.target.value)} /></label>
-          <label>Night coefficient<input value={night} onChange={(event) => setNight(event.target.value)} /></label>
-          <label>Sunday coefficient<input value={sunday} onChange={(event) => setSunday(event.target.value)} /></label>
-          <label>Holiday coefficient<input value={holiday} onChange={(event) => setHoliday(event.target.value)} /></label>
-          <label>Home location<input value={homeLocation} onChange={(event) => setHomeLocation(event.target.value)} /></label>
-        </div>
-        <button className="action-button primary" onClick={submit} type="button">Employee speichern</button>
-        <p className="hint">{message}</p>
-      </section>
+        <section className="panel">
+          <div className="form-grid">
+            <label>First name<input value={firstName} onChange={(event) => setFirstName(event.target.value)} /></label>
+            <label>Last name<input value={lastName} onChange={(event) => setLastName(event.target.value)} /></label>
+            <label>Phone<input value={phone} onChange={(event) => setPhone(event.target.value)} /></label>
+            <label>Work hourly rate<input value={rate} onChange={(event) => setRate(event.target.value)} /></label>
+            <label>Travel hourly rate<input value={travelRate} onChange={(event) => setTravelRate(event.target.value)} /></label>
+            <label>Night coefficient<input value={night} onChange={(event) => setNight(event.target.value)} /></label>
+            <label>Sunday coefficient<input value={sunday} onChange={(event) => setSunday(event.target.value)} /></label>
+            <label>Holiday coefficient<input value={holiday} onChange={(event) => setHoliday(event.target.value)} /></label>
+            <label>Home location<input value={homeLocation} onChange={(event) => setHomeLocation(event.target.value)} /></label>
+          </div>
+          <button className="action-button primary" onClick={submit} type="button">Employee speichern</button>
+          <p className="hint">{message}</p>
+        </section>
+      </RoleGuard>
     </main>
   );
 }
