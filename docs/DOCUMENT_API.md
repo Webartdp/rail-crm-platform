@@ -30,9 +30,21 @@ Download stored file:
 GET /api/v1/documents/{id}/download
 ```
 
+Mark document OCR as pending:
+
+```text
+POST /api/v1/documents/{id}/ocr/start
+```
+
+Save extracted OCR text:
+
+```text
+POST /api/v1/documents/{id}/ocr/text
+```
+
 ## Roles
 
-Create/upload/download requires:
+Create/upload/download/OCR actions require:
 
 ```text
 manager / admin
@@ -69,6 +81,12 @@ storage/app/documents
 
 The folder is created automatically on upload.
 
+## OCR fields
+
+- ocr_status: not_started / pending / done
+- extracted_text
+- ocr_processed_at
+
 ## Fields
 
 - client_id
@@ -81,6 +99,9 @@ The folder is created automatically on upload.
 - mime_type
 - size_bytes
 - uploaded_by
+- ocr_status
+- extracted_text
+- ocr_processed_at
 
 ## Frontend
 
@@ -94,9 +115,11 @@ The UI supports:
 - real file upload
 - file metadata display
 - protected download via API
+- mark OCR pending
+- save extracted OCR text
 
 ## Not implemented yet
 
+- automatic OCR extraction service
 - PDF inline preview
-- OCR extraction
 - signature workflow
