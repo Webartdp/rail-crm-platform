@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { getDocumentSignatures, rejectDocumentSignature, requestDocumentSignature, signDocumentSignature, type DocumentSignature } from '../../lib/document-signatures';
+import { useEffect, useRef, useState, type PointerEvent } from 'react';
+import { getDocumentSignatures, rejectDocumentSignature, requestDocumentSignature, signDocumentSignature, type DocumentSignature, type SignatureType } from '../../lib/document-signatures';
 import { createDocument, downloadDocument, getDocuments, saveDocumentOcrText, startDocumentOcr, uploadDocument, type DocumentRow } from '../../lib/documents';
 
 function sizeLabel(size?: number | null) {
@@ -15,6 +15,8 @@ function canPreview(item: DocumentRow) {
 }
 
 export default function DocumentsPage() {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const drawingRef = useRef(false);
   const [items, setItems] = useState<DocumentRow[]>([]);
   const [title, setTitle] = useState('Report REF-2026-001');
   const [type, setType] = useState('report');
@@ -27,7 +29,9 @@ export default function DocumentsPage() {
   const [signatures, setSignatures] = useState<DocumentSignature[]>([]);
   const [signerName, setSignerName] = useState('Max Müller');
   const [signerEmail, setSignerEmail] = useState('max@example.com');
+  const [signatureType, setSignatureType] = useState<SignatureType>('typed');
   const [signatureText, setSignatureText] = useState('Signed by Max Müller');
+  const [canvasHasDrawing, setCanvasHasDrawing] = useState(false);
   const [message, setMessage] = useState('Loading documents...');
 
   async function load() {
@@ -134,6 +138,7 @@ export default function DocumentsPage() {
         signer_name: signerName,
         signer_email: signerEmail,
         comment: 'Please sign this document.',
+        signature_type: signatureType,
       });
       await openSignatures(signatureDocument);
       setMessage('Signature requested.');
@@ -144,11 +149,24 @@ export default function DocumentsPage() {
 
   async function signSignature(signature: DocumentSignature) {
     if (!signatureDocument) return;
+
     try {
-      await signDocumentSignature(signatureDocument.id, signature.id, signatureText || `Signed by ${signature.signer_name || 'user'}`);
+      const typeToSave = signatureType;
+      let dataToSave = signatureText || `Signed by ${signature.signer_name || 'user'}`;
+
+      if (typeToSave === 'canvas') {
+        if (!canvasRef.current || !canvasHasDrawing) {
+          setMessage('Draw a signature on the canvas before signing.');
+          return;
+        }
+        dataToSave = canvasRef.current.toDataURL('image/png');
+      }
+
+      await signDocumentSignature(signatureDocument.id, signature.id, dataToSave, typeToSave);
+      clearCanvasSignature();
       await openSignatures(signatureDocument);
       await load();
-      setMessage('Document signed.');
+      setMessage(typeToSave === 'canvas' ? 'Document signed with canvas signature.' : 'Document signed.');
     } catch (error) {
       setMessage('Could not sign document. Check login and pending status.');
     }
@@ -163,6 +181,56 @@ export default function DocumentsPage() {
     } catch (error) {
       setMessage('Could not reject signature. Check login and pending status.');
     }
+  }
+
+  function canvasPoint(event: PointerEvent<HTMLCanvasElement>) {
+    const canvas = event.currentTarget;
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (event.clientX - rect.left) * (canvas.width / rect.width),
+      y: (event.clientY - rect.top) * (canvas.height / rect.height),
+    };
+  }
+
+  function startCanvasSignature(event: PointerEvent<HTMLCanvasElement>) {
+    const canvas = event.currentTarget;
+    const context = canvas.getContext('2d');
+    if (!context) return;
+
+    const point = canvasPoint(event);
+    drawingRef.current = true;
+    canvas.setPointerCapture(event.pointerId);
+    context.beginPath();
+    context.moveTo(point.x, point.y);
+    context.lineWidth = 3;
+    context.lineCap = 'round';
+    context.lineJoin = 'round';
+    context.strokeStyle = '#111827';
+    setCanvasHasDrawing(true);
+  }
+
+  function drawCanvasSignature(event: PointerEvent<HTMLCanvasElement>) {
+    if (!drawingRef.current) return;
+    const context = event.currentTarget.getContext('2d');
+    if (!context) return;
+
+    const point = canvasPoint(event);
+    context.lineTo(point.x, point.y);
+    context.stroke();
+  }
+
+  function endCanvasSignature(event: PointerEvent<HTMLCanvasElement>) {
+    drawingRef.current = false;
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  }
+
+  function clearCanvasSignature() {
+    const canvas = canvasRef.current;
+    const context = canvas?.getContext('2d');
+    if (!canvas || !context) return;
+
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    setCanvasHasDrawing(false);
   }
 
   useEffect(() => {
@@ -216,16 +284,33 @@ export default function DocumentsPage() {
           <div className="form-grid">
             <label>Signer name<input value={signerName} onChange={(event) => setSignerName(event.target.value)} /></label>
             <label>Signer email<input value={signerEmail} onChange={(event) => setSignerEmail(event.target.value)} /></label>
-            <label className="wide-field">Typed signature<textarea value={signatureText} onChange={(event) => setSignatureText(event.target.value)} /></label>
+            <label>Signature type<select value={signatureType} onChange={(event) => setSignatureType(event.target.value as SignatureType)}><option value="typed">Typed</option><option value="canvas">Canvas</option></select></label>
+            {signatureType === 'typed' ? <label className="wide-field">Typed signature<textarea value={signatureText} onChange={(event) => setSignatureText(event.target.value)} /></label> : null}
           </div>
+          {signatureType === 'canvas' ? (
+            <div>
+              <canvas
+                ref={canvasRef}
+                width={720}
+                height={220}
+                onPointerDown={startCanvasSignature}
+                onPointerMove={drawCanvasSignature}
+                onPointerUp={endCanvasSignature}
+                onPointerCancel={endCanvasSignature}
+                style={{ width: '100%', maxWidth: '720px', height: '220px', background: '#fff', border: '1px solid #cbd5e1', touchAction: 'none' }}
+              />
+              <br />
+              <button className="action-link" onClick={clearCanvasSignature} type="button">Clear canvas</button>
+            </div>
+          ) : null}
           <button className="action-button primary" onClick={requestSignature} type="button">Request signature</button>
           <button className="action-link" onClick={() => setSignatureDocument(null)} type="button">Close signatures</button>
           <div className="table-row"><strong>Signer</strong><strong>Status</strong><strong>Action</strong></div>
           {signatures.length === 0 ? <p className="hint">No signature requests yet.</p> : null}
           {signatures.map((signature) => (
             <div className="table-row" key={signature.id}>
-              <span>{signature.signer_name || '—'}<br /><small>{signature.signer_email || '—'}</small></span>
-              <span>{signature.status}<br /><small>{signature.signed_at || signature.rejected_at || signature.requested_at || '—'}</small></span>
+              <span>{signature.signer_name || '—'}<br /><small>{signature.signer_email || '—'} / {signature.signature_type}</small></span>
+              <span>{signature.status}<br /><small>{signature.signed_at || signature.rejected_at || signature.requested_at || '—'}</small>{signature.status === 'signed' && signature.signature_type === 'canvas' && signature.signature_data ? <img alt="Saved signature" src={signature.signature_data} style={{ maxWidth: '180px', display: 'block', background: '#fff' }} /> : null}</span>
               <span>
                 {signature.status === 'pending' ? <button className="action-link" onClick={() => signSignature(signature)} type="button">Sign</button> : null}
                 {signature.status === 'pending' ? <button className="action-link" onClick={() => rejectSignature(signature)} type="button">Reject</button> : null}
