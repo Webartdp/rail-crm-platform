@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import RoleGuard from '../components/RoleGuard';
 import { closeWorkOrder, getWorkOrders, type WorkOrder } from '../../lib/work-orders';
 
 const fallback = [
@@ -39,26 +40,28 @@ export default function AssignmentsPage() {
 
   return (
     <main className="page-shell">
-      <section className="hero-card">
-        <div>
-          <p className="eyebrow">Assignments</p>
-          <h1>Assignments</h1>
-          <p className="hero-text">Planned work orders with Referenznummer, planned time and status.</p>
-        </div>
-        <a className="action-link" href="/work-orders/new">Neuer Auftrag</a>
-      </section>
-
-      <section className="panel">
-        <p className="hint">{message}</p>
-        <div className="table-row"><strong>Reference</strong><strong>Work order</strong><strong>Status</strong></div>
-        {items.map((item) => (
-          <div className="table-row" key={item.id}>
-            <span>{item.reference_number || `#${item.id}`}</span>
-            <span>{item.title}</span>
-            <span>{item.status || 'planned'} {item.status !== 'closed' ? <button className="action-link" onClick={() => closeOrder(item)} type="button">Close</button> : null}</span>
+      <RoleGuard allowedRoles={['manager', 'admin']} title="Assignments access">
+        <section className="hero-card">
+          <div>
+            <p className="eyebrow">Assignments</p>
+            <h1>Assignments</h1>
+            <p className="hero-text">Planned work orders with Referenznummer, planned time and status.</p>
           </div>
-        ))}
-      </section>
+          <a className="action-link" href="/work-orders/new">Neuer Auftrag</a>
+        </section>
+
+        <section className="panel">
+          <p className="hint">{message}</p>
+          <div className="table-row"><strong>Reference</strong><strong>Work order</strong><strong>Status</strong></div>
+          {items.map((item) => (
+            <div className="table-row" key={item.id}>
+              <span>{item.reference_number || `#${item.id}`}</span>
+              <span>{item.title}</span>
+              <span>{item.status || 'planned'} {item.status !== 'closed' ? <button className="action-link" onClick={() => closeOrder(item)} type="button">Close</button> : null}</span>
+            </div>
+          ))}
+        </section>
+      </RoleGuard>
     </main>
   );
 }
