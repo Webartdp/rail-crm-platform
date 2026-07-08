@@ -11,7 +11,7 @@ export default function CostsPage() {
     getWorkEventCosts()
       .then((response) => {
         setItems(response.data);
-        setMessage(response.data.length === 0 ? 'No completed work pairs yet.' : 'Loaded from API.');
+        setMessage(response.data.length === 0 ? 'No completed event pairs yet.' : 'Loaded from API.');
       })
       .catch(() => setMessage('API not available.'));
   }, []);
@@ -24,17 +24,17 @@ export default function CostsPage() {
         <div>
           <p className="eyebrow">Costs</p>
           <h1>Work Event Costs</h1>
-          <p className="hero-text">Calculated from work duration and employee tariff settings.</p>
+          <p className="hero-text">Calculated from work and travel duration with employee tariff settings.</p>
         </div>
         <div className="status-pill">Total {total.toFixed(2)}</div>
       </section>
 
       <section className="panel">
         <p className="hint">{message}</p>
-        <div className="table-row"><strong>Employee</strong><strong>Hours</strong><strong>Amount</strong></div>
+        <div className="table-row"><strong>Type</strong><strong>Hours</strong><strong>Amount</strong></div>
         {items.map((item, index) => (
-          <div className="table-row" key={`${item.employee_id}-${item.assignment_id}-${index}`}>
-            <span>#{item.employee_id} / Auftrag #{item.assignment_id}</span>
+          <div className="table-row" key={`${item.type}-${item.employee_id}-${item.assignment_id}-${index}`}>
+            <span>{item.type} / employee #{item.employee_id} / Auftrag #{item.assignment_id}</span>
             <span>{item.hours} h × {item.hourly_rate} × {item.coefficient}</span>
             <span>{item.amount}</span>
           </div>
