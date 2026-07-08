@@ -39,6 +39,8 @@ Route::prefix('v1')->group(function () {
     Route::post('/documents', [DocumentController::class, 'store']);
     Route::get('/documents/{id}', [DocumentController::class, 'show']);
     Route::get('/documents/{id}/download', [DocumentController::class, 'download']);
+    Route::post('/documents/{id}/ocr/start', [DocumentController::class, 'startOcr']);
+    Route::post('/documents/{id}/ocr/text', [DocumentController::class, 'saveOcrText']);
     Route::get('/audit', AuditController::class);
 
     Route::post('/work-events/gasfahrt/start', [WorkEventController::class, 'startGasfahrt']);
