@@ -27,6 +27,7 @@ Route::prefix('v1')->group(function () {
     Route::put('/employee-profiles/{id}', [EmployeeProfileController::class, 'update']);
     Route::get('/work-orders', [WorkOrderController::class, 'index']);
     Route::post('/work-orders', [WorkOrderController::class, 'store']);
+    Route::post('/work-orders/{id}/close', [WorkOrderController::class, 'close']);
     Route::get('/work-events', [WorkEventController::class, 'index']);
     Route::get('/work-event-durations', WorkEventDurationController::class);
     Route::get('/work-event-costs', WorkEventCostController::class);
