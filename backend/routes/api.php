@@ -22,8 +22,8 @@ Route::prefix('v1')->group(function () {
     Route::get('/work-event-durations', WorkEventDurationController::class);
     Route::get('/work-event-costs', WorkEventCostController::class);
     Route::get('/work-event-approvals', [WorkEventApprovalController::class, 'index']);
-    Route::post('/work-event-approvals/approve', [WorkEventApprovalController::class, 'approve']);
-    Route::post('/work-event-approvals/reject', [WorkEventApprovalController::class, 'reject']);
+    Route::post('/work-event-approvals/{id}/approve', [WorkEventApprovalController::class, 'approve']);
+    Route::post('/work-event-approvals/{id}/reject', [WorkEventApprovalController::class, 'reject']);
     Route::get('/audit', AuditController::class);
 
     Route::post('/work-events/gasfahrt/start', [WorkEventController::class, 'startGasfahrt']);
