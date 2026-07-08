@@ -14,6 +14,9 @@ export type DocumentRow = {
   mime_type?: string | null;
   size_bytes?: number | null;
   uploaded_by?: number | null;
+  ocr_status?: 'not_started' | 'pending' | 'done' | string;
+  extracted_text?: string | null;
+  ocr_processed_at?: string | null;
 };
 
 export type DocumentInput = {
@@ -27,6 +30,13 @@ export type DocumentInput = {
 
 function authToken() {
   return getStoredToken();
+}
+
+function authHeaders(json = false) {
+  const token = authToken();
+  return json
+    ? { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: token ? `Bearer ${token}` : '' }
+    : { Accept: 'application/json', Authorization: token ? `Bearer ${token}` : '' };
 }
 
 export function documentDownloadUrl(id: number) {
@@ -44,14 +54,9 @@ export async function getDocuments(): Promise<{ data: DocumentRow[] }> {
 }
 
 export async function createDocument(payload: DocumentInput): Promise<{ data: DocumentRow }> {
-  const token = authToken();
   const response = await fetch(`${API_URL}/documents`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      Authorization: token ? `Bearer ${token}` : '',
-    },
+    headers: authHeaders(true),
     body: JSON.stringify(payload),
   });
 
@@ -60,7 +65,6 @@ export async function createDocument(payload: DocumentInput): Promise<{ data: Do
 }
 
 export async function uploadDocument(payload: DocumentInput, file: File): Promise<{ data: DocumentRow }> {
-  const token = authToken();
   const formData = new FormData();
   formData.append('title', payload.title);
   formData.append('type', payload.type || 'report');
@@ -71,10 +75,7 @@ export async function uploadDocument(payload: DocumentInput, file: File): Promis
 
   const response = await fetch(`${API_URL}/documents`, {
     method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      Authorization: token ? `Bearer ${token}` : '',
-    },
+    headers: authHeaders(false),
     body: formData,
   });
 
@@ -83,11 +84,32 @@ export async function uploadDocument(payload: DocumentInput, file: File): Promis
 }
 
 export async function downloadDocument(id: number): Promise<Blob> {
-  const token = authToken();
   const response = await fetch(documentDownloadUrl(id), {
-    headers: { Authorization: token ? `Bearer ${token}` : '' },
+    headers: authHeaders(false),
   });
 
   if (!response.ok) throw new Error('Could not download document');
   return response.blob();
+}
+
+export async function startDocumentOcr(id: number): Promise<{ data: DocumentRow }> {
+  const response = await fetch(`${API_URL}/documents/${id}/ocr/start`, {
+    method: 'POST',
+    headers: authHeaders(true),
+    body: JSON.stringify({}),
+  });
+
+  if (!response.ok) throw new Error('Could not start OCR');
+  return response.json();
+}
+
+export async function saveDocumentOcrText(id: number, extractedText: string): Promise<{ data: DocumentRow }> {
+  const response = await fetch(`${API_URL}/documents/${id}/ocr/text`, {
+    method: 'POST',
+    headers: authHeaders(true),
+    body: JSON.stringify({ extracted_text: extractedText }),
+  });
+
+  if (!response.ok) throw new Error('Could not save OCR text');
+  return response.json();
 }
