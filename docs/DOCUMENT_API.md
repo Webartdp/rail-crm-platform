@@ -30,6 +30,12 @@ Download stored file:
 GET /api/v1/documents/{id}/download
 ```
 
+Print/export data:
+
+```text
+GET /api/v1/documents/{id}/print-data
+```
+
 Mark document OCR as pending:
 
 ```text
@@ -44,7 +50,7 @@ POST /api/v1/documents/{id}/ocr/text
 
 ## Roles
 
-Create/upload/download/OCR actions require:
+Create/upload/download/OCR/print actions require:
 
 ```text
 manager / admin
@@ -80,6 +86,31 @@ storage/app/documents
 ```
 
 The folder is created automatically on upload.
+
+## Print data
+
+The print data endpoint returns:
+
+- document
+- work_order
+- signatures
+- printed_by
+- printed_at
+
+Frontend page:
+
+```text
+/documents/{id}/print
+```
+
+The print page shows:
+
+- document metadata
+- related work order
+- OCR/extracted text
+- typed signatures
+- canvas signatures as images
+- print button
 
 ## OCR fields
 
@@ -117,6 +148,7 @@ The UI supports:
 - protected download via API
 - inline preview for PDF files
 - inline preview for image files
+- print/export page link
 - mark OCR pending
 - save extracted OCR text
 
@@ -134,4 +166,3 @@ This keeps the document endpoint protected by Bearer token instead of exposing p
 ## Not implemented yet
 
 - automatic OCR extraction service
-- signature workflow
