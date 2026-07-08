@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Support\CurrentUser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -29,8 +30,12 @@ class EmployeeProfileController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $now = now();
+        $forbidden = $this->adminOnly($request);
+        if ($forbidden) {
+            return $forbidden;
+        }
 
+        $now = now();
         $id = DB::table('employee_profiles')->insertGetId($this->payload($request, $now));
 
         return response()->json([
@@ -41,6 +46,11 @@ class EmployeeProfileController extends Controller
 
     public function update(Request $request, int $id): JsonResponse
     {
+        $forbidden = $this->adminOnly($request);
+        if ($forbidden) {
+            return $forbidden;
+        }
+
         $profile = DB::table('employee_profiles')->where('id', $id)->first();
 
         if (!$profile) {
@@ -53,6 +63,17 @@ class EmployeeProfileController extends Controller
             'message' => 'Employee profile updated.',
             'data' => DB::table('employee_profiles')->where('id', $id)->first(),
         ]);
+    }
+
+    private function adminOnly(Request $request): ?JsonResponse
+    {
+        $user = CurrentUser::fromRequest($request);
+
+        if (!CurrentUser::hasRole($user, ['admin'])) {
+            return response()->json(['message' => 'Only admin can change employee tariff settings.'], 403);
+        }
+
+        return null;
     }
 
     private function payload(Request $request, $now, bool $create = true): array
