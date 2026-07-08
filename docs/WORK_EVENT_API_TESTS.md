@@ -37,6 +37,15 @@ curl http://localhost:8000/api/v1/auth/me \
   -H "Authorization: Bearer $TOKEN"
 ```
 
+## Manager dashboard
+
+Requires manager/admin token:
+
+```bash
+curl http://localhost:8000/api/v1/dashboard/manager \
+  -H "Authorization: Bearer $TOKEN"
+```
+
 ## Create employee profile
 
 Requires admin token:
