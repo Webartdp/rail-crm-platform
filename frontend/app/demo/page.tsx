@@ -1,14 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { me, type AuthUser } from '../../lib/auth';
 import { postWorkEvent, workEventRoutes } from '../../lib/api';
 import { getFieldState, type FieldState } from '../../lib/field-state';
 import { getWorkOrders, type WorkOrder } from '../../lib/work-orders';
 
-const employeeId = 1;
+const fallbackEmployeeId = 1;
 const leistungsartOptions = ['', 'WTU', 'WSU', 'E-WU', 'Rb', 'Azf', 'RID-Kontrolle', 'Zugbeschtreifung'];
 const fallbackOrders = [
-  { id: 1, employee_id: employeeId, title: 'WTU / ICE 204 / Gleis 12', reference_number: 'REF-2026-001', status: 'planned' },
+  { id: 1, employee_id: fallbackEmployeeId, title: 'WTU / ICE 204 / Gleis 12', reference_number: 'REF-2026-001', status: 'planned' },
 ];
 const routeByAction: Record<string, string> = {
   gasfahrt_start: workEventRoutes.gasfahrtStart,
@@ -44,6 +45,8 @@ function applyOrderTitle(title: string) {
 }
 
 export default function DemoPage() {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [employeeId, setEmployeeId] = useState(fallbackEmployeeId);
   const [log, setLog] = useState<string[]>([]);
   const [orders, setOrders] = useState<WorkOrder[]>(fallbackOrders);
   const [selectedOrderId, setSelectedOrderId] = useState(1);
@@ -63,9 +66,9 @@ export default function DemoPage() {
   const [message, setMessage] = useState('Bereit.');
   const [saving, setSaving] = useState(false);
 
-  async function refreshState(orderId = selectedOrderId) {
+  async function refreshState(orderId = selectedOrderId, nextEmployeeId = employeeId) {
     try {
-      const state = await getFieldState(employeeId, orderId);
+      const state = await getFieldState(nextEmployeeId, orderId);
       setFieldState(state);
       return state;
     } catch (error) {
@@ -75,13 +78,31 @@ export default function DemoPage() {
     }
   }
 
+  async function loadForEmployee(nextEmployeeId: number) {
+    try {
+      const response = await getWorkOrders(nextEmployeeId);
+      const nextOrders = response.data.length ? response.data : fallbackOrders;
+      setOrders(nextOrders);
+      setSelectedOrderId(nextOrders[0]?.id || 1);
+      await refreshState(nextOrders[0]?.id || 1, nextEmployeeId);
+    } catch (error) {
+      setOrders(fallbackOrders);
+      setMessage('API nicht erreichbar. Fallback-Auftrag aktiv.');
+      await refreshState(1, nextEmployeeId);
+    }
+  }
+
   useEffect(() => {
-    getWorkOrders(employeeId)
+    me()
       .then((response) => {
-        if (response.data.length > 0) setOrders(response.data);
+        const nextUser = response.data;
+        const nextEmployeeId = nextUser.employee_profile_id || fallbackEmployeeId;
+        setUser(nextUser);
+        setEmployeeId(nextEmployeeId);
+        setMessage(`Logged in as ${nextUser.name} (${nextUser.role}).`);
+        loadForEmployee(nextEmployeeId);
       })
-      .catch(() => setMessage('API nicht erreichbar. Fallback-Auftrag aktiv.'));
-    refreshState(1);
+      .catch(() => loadForEmployee(fallbackEmployeeId));
   }, []);
 
   const currentAction = fieldState?.allowed_actions?.[0] || 'gasfahrt_start';
@@ -133,6 +154,7 @@ export default function DemoPage() {
         bemerkung,
         payload: {
           source: 'demo',
+          user_id: user?.id,
           action_label: currentLabel,
           date,
           leistungsart: realLeistungsart,
@@ -166,6 +188,7 @@ export default function DemoPage() {
           <p className="eyebrow">Demo</p>
           <h1>Button Flow</h1>
           <p className="hero-text">Gasfahrt, Dienstbeginn, Stop und Dienstfahrt nach Kundenanforderung.</p>
+          <p className="hint">Employee profile: #{employeeId}{user ? ` / ${user.name}` : ' / fallback'}</p>
         </div>
         <div className="status-pill">{fieldState?.current_state || 'loading'}</div>
       </section>
