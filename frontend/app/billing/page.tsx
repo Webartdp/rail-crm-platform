@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import RoleGuard from '../components/RoleGuard';
 import { createInvoiceDraft, getInvoices, type Invoice } from '../../lib/invoices';
 
 export default function BillingPage() {
@@ -23,7 +24,7 @@ export default function BillingPage() {
       setMessage('Invoice draft created.');
       await load();
     } catch (error) {
-      setMessage('No approved uninvoiced cost items or API not available.');
+      setMessage('No approved uninvoiced cost items, API not available, or manager/admin role missing.');
     }
   }
 
@@ -33,26 +34,28 @@ export default function BillingPage() {
 
   return (
     <main className="page-shell">
-      <section className="hero-card">
-        <div>
-          <p className="eyebrow">Billing</p>
-          <h1>Billing</h1>
-          <p className="hero-text">Invoices based on approved employee time data.</p>
-        </div>
-        <button className="action-button primary" onClick={createDraft} type="button">Create invoice draft</button>
-      </section>
-
-      <section className="panel">
-        <p className="hint">{message}</p>
-        <div className="table-row"><strong>Invoice</strong><strong>Total</strong><strong>Status</strong></div>
-        {items.map((item) => (
-          <div className="table-row" key={item.id}>
-            <span>{item.number}</span>
-            <span>{item.total_amount}</span>
-            <span>{item.status}</span>
+      <RoleGuard allowedRoles={['manager', 'admin']} title="Billing access">
+        <section className="hero-card">
+          <div>
+            <p className="eyebrow">Billing</p>
+            <h1>Billing</h1>
+            <p className="hero-text">Invoices based on approved employee time data.</p>
           </div>
-        ))}
-      </section>
+          <button className="action-button primary" onClick={createDraft} type="button">Create invoice draft</button>
+        </section>
+
+        <section className="panel">
+          <p className="hint">{message}</p>
+          <div className="table-row"><strong>Invoice</strong><strong>Total</strong><strong>Status</strong></div>
+          {items.map((item) => (
+            <div className="table-row" key={item.id}>
+              <span>{item.number}</span>
+              <span>{item.total_amount}</span>
+              <span>{item.status}</span>
+            </div>
+          ))}
+        </section>
+      </RoleGuard>
     </main>
   );
 }
