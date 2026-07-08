@@ -51,6 +51,8 @@ class WorkEventApprovalController extends Controller
             'updated_at' => $now,
         ]);
 
+        $this->updateWorkOrderStatus($approval->assignment_id, $status, $now);
+
         DB::table('audit_logs')->insert([
             'user_id' => $request->input('approved_by'),
             'employee_id' => $approval->employee_id,
@@ -65,6 +67,16 @@ class WorkEventApprovalController extends Controller
         return response()->json([
             'message' => 'Work event pair '.$status.'.',
             'data' => DB::table('work_event_approvals')->where('id', $id)->first(),
+        ]);
+    }
+
+    private function updateWorkOrderStatus(int $assignmentId, string $approvalStatus, $now): void
+    {
+        $status = $approvalStatus === 'approved' ? 'approved' : 'waiting_approval';
+
+        DB::table('work_orders')->where('id', $assignmentId)->update([
+            'status' => $status,
+            'updated_at' => $now,
         ]);
     }
 
