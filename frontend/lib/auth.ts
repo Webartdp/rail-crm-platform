@@ -53,7 +53,7 @@ export async function register(payload: { name: string; email: string; password:
 
   if (!response.ok) throw new Error('Register failed');
   const data = await response.json();
-  if (data.data?.api_token) setStoredToken(data.data.api_token);
+  if (data.token) setStoredToken(data.token);
   return data;
 }
 
