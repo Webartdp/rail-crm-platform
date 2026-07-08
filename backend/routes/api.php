@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\DocumentSignatureController;
 use App\Http\Controllers\Api\V1\EmployeeFieldStateController;
 use App\Http\Controllers\Api\V1\EmployeeProfileController;
 use App\Http\Controllers\Api\V1\InvoiceController;
+use App\Http\Controllers\Api\V1\ManagerDashboardController;
 use App\Http\Controllers\Api\V1\WorkEventApprovalController;
 use App\Http\Controllers\Api\V1\WorkEventController;
 use App\Http\Controllers\Api\V1\WorkEventCostController;
@@ -19,6 +20,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/auth/login', [AuthController::class, 'login']);
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
+    Route::get('/dashboard/manager', ManagerDashboardController::class);
 
     Route::get('/employee/field-state', EmployeeFieldStateController::class);
     Route::get('/employee-profiles', [EmployeeProfileController::class, 'index']);
