@@ -8,6 +8,20 @@ Base URL:
 http://localhost:8000/api/v1
 ```
 
+## Create employee profile
+
+```bash
+curl -X POST http://localhost:8000/api/v1/employee-profiles \
+  -H "Content-Type: application/json" \
+  -d '{"first_name":"Max","last_name":"Muller","phone":"+49 000 000000","standard_hourly_rate":28,"night_coefficient":1.25,"sunday_coefficient":1.5,"holiday_coefficient":2,"home_location":"Dresden"}'
+```
+
+## List employee profiles
+
+```bash
+curl http://localhost:8000/api/v1/employee-profiles
+```
+
 ## Create work order for employee 1
 
 ```bash
