@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createDocument, downloadDocument, getDocuments, uploadDocument, type DocumentRow } from '../../lib/documents';
+import { createDocument, downloadDocument, getDocuments, saveDocumentOcrText, startDocumentOcr, uploadDocument, type DocumentRow } from '../../lib/documents';
 
 function sizeLabel(size?: number | null) {
   if (!size) return '—';
@@ -15,6 +15,7 @@ export default function DocumentsPage() {
   const [type, setType] = useState('report');
   const [workOrderId, setWorkOrderId] = useState('1');
   const [file, setFile] = useState<File | null>(null);
+  const [ocrText, setOcrText] = useState('');
   const [message, setMessage] = useState('Loading documents...');
 
   async function load() {
@@ -58,6 +59,27 @@ export default function DocumentsPage() {
     }
   }
 
+  async function markOcrPending(item: DocumentRow) {
+    try {
+      await startDocumentOcr(item.id);
+      setMessage('OCR marked as pending.');
+      await load();
+    } catch (error) {
+      setMessage('Could not start OCR. Check login/role.');
+    }
+  }
+
+  async function saveOcr(item: DocumentRow) {
+    try {
+      await saveDocumentOcrText(item.id, ocrText || `OCR text for ${item.title}`);
+      setOcrText('');
+      setMessage('OCR text saved.');
+      await load();
+    } catch (error) {
+      setMessage('Could not save OCR text. Check login/role and text.');
+    }
+  }
+
   useEffect(() => {
     load();
   }, []);
@@ -86,13 +108,23 @@ export default function DocumentsPage() {
       </section>
 
       <section className="panel">
+        <h2>OCR text</h2>
+        <textarea value={ocrText} onChange={(event) => setOcrText(event.target.value)} placeholder="Paste or edit extracted text here before saving to a document" />
+      </section>
+
+      <section className="panel">
         <p className="hint">{message}</p>
         <div className="table-row"><strong>Document</strong><strong>File</strong><strong>Status</strong></div>
         {items.map((item) => (
           <div className="table-row" key={item.id}>
             <span>{item.title}<br /><small>{item.type} / Auftrag #{item.work_order_id || '—'}</small></span>
             <span>{item.original_filename || 'No file'}<br /><small>{item.mime_type || '—'} / {sizeLabel(item.size_bytes)}</small></span>
-            <span>{item.status} {item.file_path ? <button className="action-link" onClick={() => download(item)} type="button">Download</button> : null}</span>
+            <span>
+              {item.status} / OCR: {item.ocr_status || 'not_started'}
+              {item.file_path ? <button className="action-link" onClick={() => download(item)} type="button">Download</button> : null}
+              <button className="action-link" onClick={() => markOcrPending(item)} type="button">OCR pending</button>
+              <button className="action-link" onClick={() => saveOcr(item)} type="button">Save OCR text</button>
+            </span>
           </div>
         ))}
       </section>
