@@ -1,3 +1,5 @@
+import { getStoredToken } from './auth';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 export type DocumentRow = {
@@ -30,9 +32,14 @@ export async function getDocuments(): Promise<{ data: DocumentRow[] }> {
 }
 
 export async function createDocument(payload: DocumentInput): Promise<{ data: DocumentRow }> {
+  const token = getStoredToken();
   const response = await fetch(`${API_URL}/documents`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: token ? `Bearer ${token}` : '',
+    },
     body: JSON.stringify(payload),
   });
 
