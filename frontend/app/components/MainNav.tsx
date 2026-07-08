@@ -1,5 +1,6 @@
 const navItems = [
   ['/', 'Home'],
+  ['/manager-dashboard', 'Manager Dashboard'],
   ['/admin', 'Admin'],
   ['/employees', 'Employees'],
   ['/clients', 'Clients'],
