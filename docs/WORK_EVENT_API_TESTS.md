@@ -185,6 +185,26 @@ curl -L http://localhost:8000/api/v1/documents/1/download \
   -o downloaded-document.pdf
 ```
 
+## Mark document OCR pending
+
+Requires manager/admin token.
+
+```bash
+curl -X POST http://localhost:8000/api/v1/documents/1/ocr/start \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## Save OCR text
+
+Requires manager/admin token.
+
+```bash
+curl -X POST http://localhost:8000/api/v1/documents/1/ocr/text \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"extracted_text":"Example extracted OCR text from the document."}'
+```
+
 ## List events
 
 ```bash
