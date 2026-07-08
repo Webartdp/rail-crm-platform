@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import RoleGuard from '../../../components/RoleGuard';
 import { getEmployeeProfile, updateEmployeeProfile } from '../../../../lib/employee-profiles';
 
 export default function EditEmployeePage({ params }: { params: { id: string } }) {
@@ -49,36 +50,38 @@ export default function EditEmployeePage({ params }: { params: { id: string } })
       });
       setMessage('Employee profile updated.');
     } catch (error) {
-      setMessage('API not available. Employee profile was not updated.');
+      setMessage('API not available or admin role missing. Employee profile was not updated.');
     }
   }
 
   return (
     <main className="page-shell">
-      <section className="hero-card">
-        <div>
-          <p className="eyebrow">Employee</p>
-          <h1>Edit Employee #{id}</h1>
-          <p className="hero-text">Update employee rates and coefficients.</p>
-        </div>
-        <div className="status-pill">Editable</div>
-      </section>
+      <RoleGuard allowedRoles={['admin']} title="Edit employee access">
+        <section className="hero-card">
+          <div>
+            <p className="eyebrow">Employee</p>
+            <h1>Edit Employee #{id}</h1>
+            <p className="hero-text">Update employee rates and coefficients.</p>
+          </div>
+          <div className="status-pill">Editable</div>
+        </section>
 
-      <section className="panel">
-        <div className="form-grid">
-          <label>First name<input value={firstName} onChange={(event) => setFirstName(event.target.value)} /></label>
-          <label>Last name<input value={lastName} onChange={(event) => setLastName(event.target.value)} /></label>
-          <label>Phone<input value={phone} onChange={(event) => setPhone(event.target.value)} /></label>
-          <label>Work hourly rate<input value={rate} onChange={(event) => setRate(event.target.value)} /></label>
-          <label>Travel hourly rate<input value={travelRate} onChange={(event) => setTravelRate(event.target.value)} /></label>
-          <label>Night coefficient<input value={night} onChange={(event) => setNight(event.target.value)} /></label>
-          <label>Sunday coefficient<input value={sunday} onChange={(event) => setSunday(event.target.value)} /></label>
-          <label>Holiday coefficient<input value={holiday} onChange={(event) => setHoliday(event.target.value)} /></label>
-          <label>Home location<input value={homeLocation} onChange={(event) => setHomeLocation(event.target.value)} /></label>
-        </div>
-        <button className="action-button primary" onClick={submit} type="button">Save changes</button>
-        <p className="hint">{message}</p>
-      </section>
+        <section className="panel">
+          <div className="form-grid">
+            <label>First name<input value={firstName} onChange={(event) => setFirstName(event.target.value)} /></label>
+            <label>Last name<input value={lastName} onChange={(event) => setLastName(event.target.value)} /></label>
+            <label>Phone<input value={phone} onChange={(event) => setPhone(event.target.value)} /></label>
+            <label>Work hourly rate<input value={rate} onChange={(event) => setRate(event.target.value)} /></label>
+            <label>Travel hourly rate<input value={travelRate} onChange={(event) => setTravelRate(event.target.value)} /></label>
+            <label>Night coefficient<input value={night} onChange={(event) => setNight(event.target.value)} /></label>
+            <label>Sunday coefficient<input value={sunday} onChange={(event) => setSunday(event.target.value)} /></label>
+            <label>Holiday coefficient<input value={holiday} onChange={(event) => setHoliday(event.target.value)} /></label>
+            <label>Home location<input value={homeLocation} onChange={(event) => setHomeLocation(event.target.value)} /></label>
+          </div>
+          <button className="action-button primary" onClick={submit} type="button">Save changes</button>
+          <p className="hint">{message}</p>
+        </section>
+      </RoleGuard>
     </main>
   );
 }
