@@ -115,11 +115,23 @@ The UI supports:
 - real file upload
 - file metadata display
 - protected download via API
+- inline preview for PDF files
+- inline preview for image files
 - mark OCR pending
 - save extracted OCR text
+
+## Preview implementation note
+
+Preview uses the protected download API through frontend fetch.
+
+The frontend receives a Blob, creates an object URL, then renders:
+
+- PDF in iframe
+- images in img
+
+This keeps the document endpoint protected by Bearer token instead of exposing public file URLs.
 
 ## Not implemented yet
 
 - automatic OCR extraction service
-- PDF inline preview
 - signature workflow
