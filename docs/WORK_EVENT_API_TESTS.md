@@ -205,6 +205,45 @@ curl -X POST http://localhost:8000/api/v1/documents/1/ocr/text \
   -d '{"extracted_text":"Example extracted OCR text from the document."}'
 ```
 
+## List document signatures
+
+```bash
+curl http://localhost:8000/api/v1/documents/1/signatures
+```
+
+## Request document signature
+
+Requires manager/admin token.
+
+```bash
+curl -X POST http://localhost:8000/api/v1/documents/1/signatures \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"signer_name":"Max Muller","signer_email":"max@example.com","comment":"Please sign this document."}'
+```
+
+## Sign document
+
+Requires authenticated user token. Use signature id from the request/list response.
+
+```bash
+curl -X POST http://localhost:8000/api/v1/documents/1/signatures/1/sign \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"signature_data":"Signed by Max Muller"}'
+```
+
+## Reject document signature
+
+Requires authenticated user token.
+
+```bash
+curl -X POST http://localhost:8000/api/v1/documents/1/signatures/1/reject \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"comment":"Rejected from API test."}'
+```
+
 ## List events
 
 ```bash
