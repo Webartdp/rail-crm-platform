@@ -185,6 +185,15 @@ curl -L http://localhost:8000/api/v1/documents/1/download \
   -o downloaded-document.pdf
 ```
 
+## Document print data
+
+Requires manager/admin token. Frontend page is `/documents/1/print`.
+
+```bash
+curl http://localhost:8000/api/v1/documents/1/print-data \
+  -H "Authorization: Bearer $TOKEN"
+```
+
 ## Mark document OCR pending
 
 Requires manager/admin token.
