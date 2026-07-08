@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import RoleGuard from '../components/RoleGuard';
 import { getWorkEventApprovals, setWorkEventApprovalStatus, type WorkEventApproval } from '../../lib/approvals';
 
 function minutesBetween(start: string, stop: string) {
@@ -26,7 +27,7 @@ export default function ApprovalsPage() {
       await setWorkEventApprovalStatus(action, item.id);
       await load();
     } catch (error) {
-      setMessage('Could not update approval.');
+      setMessage('Could not update approval. Manager/admin role required.');
     }
   }
 
@@ -36,29 +37,31 @@ export default function ApprovalsPage() {
 
   return (
     <main className="page-shell">
-      <section className="hero-card">
-        <div>
-          <p className="eyebrow">Approvals</p>
-          <h1>Approval Queue</h1>
-          <p className="hero-text">Review completed work and travel intervals before cost calculation.</p>
-        </div>
-        <div className="status-pill">{items.filter((item) => item.status === 'pending').length} pending</div>
-      </section>
-
-      <section className="panel">
-        <p className="hint">{message}</p>
-        <div className="table-row"><strong>Interval</strong><strong>Status</strong><strong>Action</strong></div>
-        {items.map((item) => (
-          <div className="table-row" key={item.id}>
-            <span>#{item.id} / {item.pair_type} / employee #{item.employee_id} / Auftrag #{item.assignment_id} / {minutesBetween(item.start_time, item.stop_time)} min</span>
-            <span>{item.status}</span>
-            <span>
-              <button className="action-link" onClick={() => change('approve', item)} type="button">Approve</button>
-              <button className="action-link" onClick={() => change('reject', item)} type="button">Reject</button>
-            </span>
+      <RoleGuard allowedRoles={['manager', 'admin']} title="Approval access">
+        <section className="hero-card">
+          <div>
+            <p className="eyebrow">Approvals</p>
+            <h1>Approval Queue</h1>
+            <p className="hero-text">Review completed work and travel intervals before cost calculation.</p>
           </div>
-        ))}
-      </section>
+          <div className="status-pill">{items.filter((item) => item.status === 'pending').length} pending</div>
+        </section>
+
+        <section className="panel">
+          <p className="hint">{message}</p>
+          <div className="table-row"><strong>Interval</strong><strong>Status</strong><strong>Action</strong></div>
+          {items.map((item) => (
+            <div className="table-row" key={item.id}>
+              <span>#{item.id} / {item.pair_type} / employee #{item.employee_id} / Auftrag #{item.assignment_id} / {minutesBetween(item.start_time, item.stop_time)} min</span>
+              <span>{item.status}</span>
+              <span>
+                <button className="action-link" onClick={() => change('approve', item)} type="button">Approve</button>
+                <button className="action-link" onClick={() => change('reject', item)} type="button">Reject</button>
+              </span>
+            </div>
+          ))}
+        </section>
+      </RoleGuard>
     </main>
   );
 }
