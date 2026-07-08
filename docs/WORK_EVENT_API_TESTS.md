@@ -16,6 +16,35 @@ curl -X POST http://localhost:8000/api/v1/employee-profiles \
   -d '{"first_name":"Max","last_name":"Muller","phone":"+49 000 000000","standard_hourly_rate":28,"travel_hourly_rate":0,"night_coefficient":1.25,"sunday_coefficient":1.5,"holiday_coefficient":2,"home_location":"Dresden"}'
 ```
 
+## Register admin user
+
+```bash
+curl -X POST http://localhost:8000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Admin User","email":"admin@example.com","password":"password","role":"admin","employee_profile_id":1}'
+```
+
+Copy token from the response and use it below:
+
+```bash
+TOKEN="paste-token-here"
+```
+
+## Login
+
+```bash
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@example.com","password":"password"}'
+```
+
+## Current user
+
+```bash
+curl http://localhost:8000/api/v1/auth/me \
+  -H "Authorization: Bearer $TOKEN"
+```
+
 ## Update employee travel rate
 
 ```bash
@@ -104,12 +133,13 @@ curl http://localhost:8000/api/v1/work-event-approvals
 
 ## Approve interval by ID
 
-Use the `id` from the approval list response:
+Use the `id` from the approval list response. Requires manager/admin token:
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/work-event-approvals/1/approve \
   -H "Content-Type: application/json" \
-  -d '{"approved_by":1,"comment":"Approved."}'
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"comment":"Approved."}'
 ```
 
 ## List events
@@ -134,10 +164,11 @@ curl http://localhost:8000/api/v1/work-event-costs
 
 ## Create invoice draft
 
-Only approved and not-yet-invoiced intervals are included:
+Only approved and not-yet-invoiced intervals are included. Requires manager/admin token:
 
 ```bash
-curl -X POST http://localhost:8000/api/v1/invoices
+curl -X POST http://localhost:8000/api/v1/invoices \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
 ## List invoices
