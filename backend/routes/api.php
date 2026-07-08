@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AuditController;
 use App\Http\Controllers\Api\V1\EmployeeFieldStateController;
+use App\Http\Controllers\Api\V1\EmployeeProfileController;
 use App\Http\Controllers\Api\V1\WorkEventController;
 use App\Http\Controllers\Api\V1\WorkEventDurationController;
 use App\Http\Controllers\Api\V1\WorkOrderController;
@@ -9,6 +10,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
     Route::get('/employee/field-state', EmployeeFieldStateController::class);
+    Route::get('/employee-profiles', [EmployeeProfileController::class, 'index']);
+    Route::post('/employee-profiles', [EmployeeProfileController::class, 'store']);
     Route::get('/work-orders', [WorkOrderController::class, 'index']);
     Route::post('/work-orders', [WorkOrderController::class, 'store']);
     Route::get('/work-events', [WorkEventController::class, 'index']);
