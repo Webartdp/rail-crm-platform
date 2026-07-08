@@ -42,6 +42,7 @@ class DocumentSignatureController extends Controller
             return response()->json(['message' => 'Signer name is required.'], 422);
         }
 
+        $signatureType = $this->signatureType($request->input('signature_type', 'typed'));
         $now = now();
         $id = DB::table('document_signatures')->insertGetId([
             'document_id' => $documentId,
@@ -49,7 +50,7 @@ class DocumentSignatureController extends Controller
             'signer_name' => $signerName,
             'signer_email' => $request->input('signer_email'),
             'status' => 'pending',
-            'signature_type' => $request->input('signature_type', 'typed'),
+            'signature_type' => $signatureType,
             'comment' => $request->input('comment'),
             'requested_at' => $now,
             'created_at' => $now,
@@ -59,6 +60,7 @@ class DocumentSignatureController extends Controller
         $this->audit($user->id, 'document_signature_requested', $documentId, [
             'signature_id' => $id,
             'signer_name' => $signerName,
+            'signature_type' => $signatureType,
         ]);
 
         return response()->json([
@@ -88,10 +90,12 @@ class DocumentSignatureController extends Controller
             return response()->json(['message' => 'Signature data is required.'], 422);
         }
 
+        $signatureType = $this->signatureType($request->input('signature_type', $signature->signature_type));
         $now = now();
         DB::table('document_signatures')->where('id', $signatureId)->update([
             'status' => 'signed',
             'signed_by' => $user->id,
+            'signature_type' => $signatureType,
             'signature_data' => $signatureData,
             'comment' => $request->input('comment', $signature->comment),
             'signed_at' => $now,
@@ -104,7 +108,10 @@ class DocumentSignatureController extends Controller
             'updated_at' => $now,
         ]);
 
-        $this->audit($user->id, 'document_signed', $documentId, ['signature_id' => $signatureId]);
+        $this->audit($user->id, 'document_signed', $documentId, [
+            'signature_id' => $signatureId,
+            'signature_type' => $signatureType,
+        ]);
 
         return response()->json([
             'message' => 'Document signed.',
@@ -151,6 +158,13 @@ class DocumentSignatureController extends Controller
             ->where('id', $signatureId)
             ->where('document_id', $documentId)
             ->first();
+    }
+
+    private function signatureType(mixed $value): string
+    {
+        $type = (string) $value;
+
+        return in_array($type, ['typed', 'canvas'], true) ? $type : 'typed';
     }
 
     private function audit(int $userId, string $action, int $documentId, array $payload): void
