@@ -2,7 +2,7 @@
 
 Purpose:
 
-Calculate work cost from completed work event pairs and employee tariff settings.
+Calculate work and travel cost from completed event pairs and employee tariff settings.
 
 ## API
 
@@ -12,38 +12,56 @@ GET /api/v1/work-event-costs
 
 ## Calculation source
 
-Duration source:
-
-- dienstbeginn
-- arbeit_stop
-
-Rate source:
-
-- employee_profiles.standard_hourly_rate
-
-Coefficient source:
-
-- employee_profiles.night_coefficient
-- employee_profiles.sunday_coefficient
-- employee_profiles.holiday_coefficient
-
-## Current MVP rule
-
-Cost is calculated only for completed work task pairs:
+Work duration:
 
 ```text
 dienstbeginn -> arbeit_stop
 ```
 
-Amount:
+Travel duration:
+
+```text
+gasfahrt_start -> gasfahrt_stop
+dienstfahrt_start -> dienstfahrt_stop
+```
+
+Work rate source:
+
+```text
+employee_profiles.standard_hourly_rate
+```
+
+Travel rate source:
+
+```text
+employee_profiles.travel_hourly_rate
+```
+
+Default travel rate:
+
+```text
+0
+```
+
+This means travel is included in the cost calculation, but no money is charged for travel until travel_hourly_rate is changed in the employee profile.
+
+## Amount
+
+Work:
 
 ```text
 hours * standard_hourly_rate * coefficient
 ```
 
-## Flags
+Travel:
 
-Coefficient can be selected from event payload flags:
+```text
+hours * travel_hourly_rate
+```
+
+## Coefficients
+
+Work coefficient can be selected from event payload flags:
 
 - is_night
 - is_sunday
@@ -56,9 +74,17 @@ Priority:
 3. night
 4. standard
 
+## Admin rule
+
+All employee tariff settings must be editable from employee profile/admin UI:
+
+- work hourly rate
+- travel hourly rate
+- night coefficient
+- sunday coefficient
+- holiday coefficient
+
 ## Not included yet
 
-- travel cost rules for Gasfahrt
-- travel cost rules for Dienstfahrt
 - invoice generation
 - approval requirement before billing
