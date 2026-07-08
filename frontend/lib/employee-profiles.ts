@@ -1,3 +1,5 @@
+import { getStoredToken } from './auth';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 export type EmployeeProfile = {
@@ -26,6 +28,15 @@ export type EmployeeProfileInput = {
   home_location?: string;
 };
 
+function authHeaders() {
+  const token = getStoredToken();
+  return {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+    Authorization: token ? `Bearer ${token}` : '',
+  };
+}
+
 export async function getEmployeeProfiles(): Promise<{ data: EmployeeProfile[] }> {
   const response = await fetch(`${API_URL}/employee-profiles`, {
     headers: { Accept: 'application/json' },
@@ -49,7 +60,7 @@ export async function getEmployeeProfile(id: number): Promise<{ data: EmployeePr
 export async function createEmployeeProfile(payload: EmployeeProfileInput): Promise<{ data: EmployeeProfile }> {
   const response = await fetch(`${API_URL}/employee-profiles`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    headers: authHeaders(),
     body: JSON.stringify(payload),
   });
 
@@ -60,7 +71,7 @@ export async function createEmployeeProfile(payload: EmployeeProfileInput): Prom
 export async function updateEmployeeProfile(id: number, payload: EmployeeProfileInput): Promise<{ data: EmployeeProfile }> {
   const response = await fetch(`${API_URL}/employee-profiles/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    headers: authHeaders(),
     body: JSON.stringify(payload),
   });
 
