@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Support\CurrentUser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,11 @@ class DocumentController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $user = CurrentUser::fromRequest($request);
+        if (!CurrentUser::hasRole($user, ['manager', 'admin'])) {
+            return response()->json(['message' => 'Only manager or admin can create documents.'], 403);
+        }
+
         $title = trim((string) $request->input('title', ''));
 
         if ($title === '') {
@@ -40,6 +46,7 @@ class DocumentController extends Controller
         ]);
 
         DB::table('audit_logs')->insert([
+            'user_id' => $user->id,
             'action' => 'document_created',
             'entity_type' => 'document',
             'entity_id' => $id,
