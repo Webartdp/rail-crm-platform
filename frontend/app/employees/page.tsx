@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { getEmployeeProfiles, type EmployeeProfile } from '../../lib/employee-profiles';
 
 const fallback = [
-  { id: 1, first_name: 'Max', last_name: 'Müller', standard_hourly_rate: '28.00', night_coefficient: '1.250', sunday_coefficient: '1.500', holiday_coefficient: '2.000', home_location: 'Dresden', is_active: true },
+  { id: 1, first_name: 'Max', last_name: 'Müller', standard_hourly_rate: '28.00', travel_hourly_rate: '0.00', night_coefficient: '1.250', sunday_coefficient: '1.500', holiday_coefficient: '2.000', home_location: 'Dresden', is_active: true },
 ];
 
 export default function EmployeesPage() {
@@ -33,12 +33,12 @@ export default function EmployeesPage() {
 
       <section className="panel">
         <p className="hint">{message}</p>
-        <div className="table-row"><strong>Name</strong><strong>Rate</strong><strong>Coefficients</strong></div>
+        <div className="table-row"><strong>Name</strong><strong>Rates</strong><strong>Action</strong></div>
         {items.map((item) => (
           <div className="table-row" key={item.id}>
             <span>{item.first_name} {item.last_name}</span>
-            <span>{item.standard_hourly_rate} / h</span>
-            <span>N {item.night_coefficient} / S {item.sunday_coefficient} / H {item.holiday_coefficient}</span>
+            <span>Work {item.standard_hourly_rate} / Travel {item.travel_hourly_rate}</span>
+            <a href={`/employees/${item.id}/edit`}>Edit</a>
           </div>
         ))}
       </section>
