@@ -26,13 +26,14 @@ class AuthController extends Controller
         }
 
         $now = now();
+        $token = hash('sha256', Str::random(80));
         $id = DB::table('app_users')->insertGetId([
             'employee_profile_id' => $request->input('employee_profile_id'),
             'name' => $request->input('name', $email),
             'email' => $email,
             'password_hash' => Hash::make($password),
             'role' => $request->input('role', 'employee'),
-            'api_token' => hash('sha256', Str::random(80)),
+            'api_token' => $token,
             'is_active' => true,
             'created_at' => $now,
             'updated_at' => $now,
@@ -40,6 +41,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'User registered.',
+            'token' => $token,
             'data' => $this->publicUser($id),
         ], 201);
     }
