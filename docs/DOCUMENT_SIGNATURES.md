@@ -73,15 +73,27 @@ Sign or reject:
 authenticated user
 ```
 
-## Current MVP signature type
+## Signature types
+
+Typed signature:
 
 ```text
 typed
 ```
 
-This means signature_data stores a typed text signature.
+Canvas signature:
 
-Later this can be extended to canvas/image signature data.
+```text
+canvas
+```
+
+For typed signatures, signature_data stores text.
+
+For canvas signatures, signature_data stores a PNG data URL:
+
+```text
+data:image/png;base64,...
+```
 
 ## Document status
 
@@ -106,6 +118,9 @@ signed
 The documents page supports:
 
 - open document signature panel
-- request signature
+- request typed or canvas signature
+- draw signature with mouse/finger on canvas
+- clear canvas
 - sign pending signature request
 - reject pending signature request
+- display saved canvas signature image
