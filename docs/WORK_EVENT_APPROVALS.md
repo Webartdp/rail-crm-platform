@@ -2,7 +2,7 @@
 
 Purpose:
 
-Completed work and travel intervals must be approved before they are included in cost calculation.
+Completed work and travel intervals must be approved before they are included in cost calculation and invoice drafts.
 
 ## API
 
@@ -12,21 +12,29 @@ List approval queue:
 GET /api/v1/work-event-approvals
 ```
 
-Approve interval:
+The list endpoint also syncs completed event pairs into real pending approval rows.
+
+Approve interval by ID:
 
 ```text
-POST /api/v1/work-event-approvals/approve
+POST /api/v1/work-event-approvals/{id}/approve
 ```
 
-Reject interval:
+Reject interval by ID:
 
 ```text
-POST /api/v1/work-event-approvals/reject
+POST /api/v1/work-event-approvals/{id}/reject
 ```
+
+## Stable approval ID
+
+Each completed pair receives a real approval row with an `id`.
+
+Frontend should approve/reject by this ID instead of sending employee_id/start_time/stop_time manually.
 
 ## Pair identity
 
-Approval is matched by:
+Internally an approval is matched by:
 
 - employee_id
 - assignment_id
@@ -50,4 +58,4 @@ Approval is matched by:
 
 GET /api/v1/work-event-costs includes only approved intervals.
 
-Pending and rejected intervals are not included in costs.
+Pending and rejected intervals are not included in costs or invoices.
