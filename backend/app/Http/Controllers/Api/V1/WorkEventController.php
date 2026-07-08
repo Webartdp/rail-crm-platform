@@ -109,6 +109,8 @@ class WorkEventController extends Controller
             'updated_at' => $now,
         ]);
 
+        $this->updateWorkOrderStatus($request, $eventType, $now);
+
         DB::table('audit_logs')->insert([
             'employee_id' => $request->input('employee_id'),
             'action' => $eventType,
@@ -127,6 +129,30 @@ class WorkEventController extends Controller
                 'stored' => true,
                 'event_time' => $now->toISOString(),
             ],
+        ]);
+    }
+
+    private function updateWorkOrderStatus(Request $request, string $eventType, $now): void
+    {
+        $assignmentId = $request->input('assignment_id');
+
+        if (!$assignmentId) {
+            return;
+        }
+
+        $status = match ($eventType) {
+            'gasfahrt_start', 'gasfahrt_stop', 'dienstbeginn', 'dienstfahrt_start', 'dienstfahrt_stop' => 'in_progress',
+            'arbeit_stop' => 'waiting_approval',
+            default => null,
+        };
+
+        if (!$status) {
+            return;
+        }
+
+        DB::table('work_orders')->where('id', $assignmentId)->update([
+            'status' => $status,
+            'updated_at' => $now,
         ]);
     }
 
