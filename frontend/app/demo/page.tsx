@@ -56,6 +56,9 @@ export default function DemoPage() {
   const [einsatzort, setEinsatzort] = useState('Gleis 12');
   const [plannedStart, setPlannedStart] = useState('07:30');
   const [plannedStop, setPlannedStop] = useState('15:30');
+  const [isNight, setIsNight] = useState(false);
+  const [isSunday, setIsSunday] = useState(false);
+  const [isHoliday, setIsHoliday] = useState(false);
   const [bemerkung, setBemerkung] = useState('');
   const [message, setMessage] = useState('Bereit.');
   const [saving, setSaving] = useState(false);
@@ -138,6 +141,9 @@ export default function DemoPage() {
           einsatzort,
           planned_start: plannedStart,
           planned_stop: plannedStop,
+          is_night: isNight,
+          is_sunday: isSunday,
+          is_holiday: isHoliday,
           client_time: timeNow(),
         },
       });
@@ -186,6 +192,9 @@ export default function DemoPage() {
             <label>Einsatzort<input value={einsatzort} onChange={(event) => setEinsatzort(event.target.value)} /></label>
             <label>Geplanter Start<input value={plannedStart} onChange={(event) => setPlannedStart(event.target.value)} type="time" /></label>
             <label>Geplanter Stop<input value={plannedStop} onChange={(event) => setPlannedStop(event.target.value)} type="time" /></label>
+            <label><input checked={isNight} onChange={(event) => setIsNight(event.target.checked)} type="checkbox" /> Nacht</label>
+            <label><input checked={isSunday} onChange={(event) => setIsSunday(event.target.checked)} type="checkbox" /> Sonntag</label>
+            <label><input checked={isHoliday} onChange={(event) => setIsHoliday(event.target.checked)} type="checkbox" /> Feiertag</label>
             <label className="wide-field">Bemerkung<textarea value={bemerkung} onChange={(event) => setBemerkung(event.target.value)} placeholder="Pflicht, wenn Zeit überschritten ist" /></label>
           </div>
         </div>
