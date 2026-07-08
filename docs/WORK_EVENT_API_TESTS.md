@@ -68,12 +68,12 @@ curl -X POST http://localhost:8000/api/v1/work-events/gasfahrt/start \
   -d '{"employee_id":1,"assignment_id":1,"latitude":48.137154,"longitude":11.576124}'
 ```
 
-## Dienstbeginn
+## Dienstbeginn with tariff flags
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/work-events/dienstbeginn \
   -H "Content-Type: application/json" \
-  -d '{"employee_id":1,"assignment_id":1,"payload":{"date":"2026-07-06","leistungsart":"WTU","referenznummer":"REF-2026-001","zugnummer":"ICE 204","einsatzort":"Gleis 12"}}'
+  -d '{"employee_id":1,"assignment_id":1,"payload":{"date":"2026-07-06","leistungsart":"WTU","referenznummer":"REF-2026-001","zugnummer":"ICE 204","einsatzort":"Gleis 12","is_night":true,"is_sunday":false,"is_holiday":false}}'
 ```
 
 ## Stop blocked without Bemerkung
@@ -86,12 +86,12 @@ curl -X POST http://localhost:8000/api/v1/work-events/arbeit/stop \
   -d '{"employee_id":1,"assignment_id":1,"planned_exceeded":true,"bemerkung":""}'
 ```
 
-## Stop with Bemerkung
+## Stop with Bemerkung and tariff flags
 
 ```bash
 curl -X POST http://localhost:8000/api/v1/work-events/arbeit/stop \
   -H "Content-Type: application/json" \
-  -d '{"employee_id":1,"assignment_id":1,"planned_exceeded":true,"bemerkung":"Task took longer than planned."}'
+  -d '{"employee_id":1,"assignment_id":1,"planned_exceeded":true,"bemerkung":"Task took longer than planned.","payload":{"is_night":true,"is_sunday":false,"is_holiday":false}}'
 ```
 
 ## List events
