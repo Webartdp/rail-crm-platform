@@ -1,3 +1,5 @@
+import { getStoredToken } from './auth';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 export type WorkEventApproval = {
@@ -24,10 +26,15 @@ export async function getWorkEventApprovals(): Promise<{ data: WorkEventApproval
 }
 
 export async function setWorkEventApprovalStatus(action: 'approve' | 'reject', approvalId: number): Promise<void> {
+  const token = getStoredToken();
   const response = await fetch(`${API_URL}/work-event-approvals/${approvalId}/${action}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({ approved_by: 1 }),
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Authorization: token ? `Bearer ${token}` : '',
+    },
+    body: JSON.stringify({}),
   });
 
   if (!response.ok) throw new Error('Could not update approval');
