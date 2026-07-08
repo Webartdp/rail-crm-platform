@@ -1,25 +1,40 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getWorkOrders, type WorkOrder } from '../../lib/work-orders';
+import { closeWorkOrder, getWorkOrders, type WorkOrder } from '../../lib/work-orders';
 
 const fallback = [
-  { id: 1, reference_number: 'REF-2026-001', title: 'WTU / ICE 204 / Gleis 12', status: 'Planned' },
-  { id: 2, reference_number: 'REF-2026-002', title: 'WSU / RE 88 / Bahnhof Nord', status: 'In progress' },
-  { id: 3, reference_number: 'REF-2026-003', title: 'RID-Kontrolle / Cargo 17 / Depot West', status: 'Waiting' },
+  { id: 1, reference_number: 'REF-2026-001', title: 'WTU / ICE 204 / Gleis 12', status: 'planned' },
+  { id: 2, reference_number: 'REF-2026-002', title: 'WSU / RE 88 / Bahnhof Nord', status: 'in_progress' },
+  { id: 3, reference_number: 'REF-2026-003', title: 'RID-Kontrolle / Cargo 17 / Depot West', status: 'waiting_approval' },
 ];
 
 export default function AssignmentsPage() {
   const [items, setItems] = useState<WorkOrder[]>(fallback);
   const [message, setMessage] = useState('Demo fallback data.');
 
+  async function load() {
+    try {
+      const response = await getWorkOrders();
+      setItems(response.data.length ? response.data : fallback);
+      setMessage(response.data.length ? 'Loaded from API.' : 'No API work orders yet. Showing demo fallback.');
+    } catch (error) {
+      setMessage('API not available. Showing demo fallback.');
+    }
+  }
+
+  async function closeOrder(item: WorkOrder) {
+    try {
+      await closeWorkOrder(item.id, 'assignments_page');
+      setMessage(`Auftrag ${item.reference_number || item.id} closed.`);
+      await load();
+    } catch (error) {
+      setMessage('Could not close work order. Manager/admin token required.');
+    }
+  }
+
   useEffect(() => {
-    getWorkOrders()
-      .then((response) => {
-        setItems(response.data.length ? response.data : fallback);
-        setMessage(response.data.length ? 'Loaded from API.' : 'No API work orders yet. Showing demo fallback.');
-      })
-      .catch(() => setMessage('API not available. Showing demo fallback.'));
+    load();
   }, []);
 
   return (
@@ -40,7 +55,7 @@ export default function AssignmentsPage() {
           <div className="table-row" key={item.id}>
             <span>{item.reference_number || `#${item.id}`}</span>
             <span>{item.title}</span>
-            <span>{item.status || 'planned'}</span>
+            <span>{item.status || 'planned'} {item.status !== 'closed' ? <button className="action-link" onClick={() => closeOrder(item)} type="button">Close</button> : null}</span>
           </div>
         ))}
       </section>
