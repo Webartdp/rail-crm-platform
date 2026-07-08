@@ -76,6 +76,17 @@ curl -X POST http://localhost:8000/api/v1/work-orders \
   -d '{"employee_id":1,"title":"WTU / ICE 204 / Gleis 12","reference_number":"REF-2026-001","leistungsart":"WTU","zugnummer":"ICE 204","einsatzort":"Gleis 12","planned_start_at":"2026-07-06T07:30","planned_end_at":"2026-07-06T15:30"}'
 ```
 
+## Close work order
+
+Requires manager/admin token:
+
+```bash
+curl -X POST http://localhost:8000/api/v1/work-orders/1/close \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"source":"api_test"}'
+```
+
 ## List employee 1 work orders
 
 ```bash
