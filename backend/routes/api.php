@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AuditController;
+use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DocumentController;
 use App\Http\Controllers\Api\V1\EmployeeFieldStateController;
 use App\Http\Controllers\Api\V1\EmployeeProfileController;
@@ -13,6 +14,11 @@ use App\Http\Controllers\Api\V1\WorkOrderController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
+    Route::post('/auth/register', [AuthController::class, 'register']);
+    Route::post('/auth/login', [AuthController::class, 'login']);
+    Route::get('/auth/me', [AuthController::class, 'me']);
+    Route::post('/auth/logout', [AuthController::class, 'logout']);
+
     Route::get('/employee/field-state', EmployeeFieldStateController::class);
     Route::get('/employee-profiles', [EmployeeProfileController::class, 'index']);
     Route::post('/employee-profiles', [EmployeeProfileController::class, 'store']);
