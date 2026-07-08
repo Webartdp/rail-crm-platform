@@ -1,3 +1,5 @@
+import { getStoredToken } from './auth';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 export type Invoice = {
@@ -32,9 +34,13 @@ export async function getInvoices(): Promise<{ data: Invoice[] }> {
 }
 
 export async function createInvoiceDraft(): Promise<{ data: Invoice; items: InvoiceItem[] }> {
+  const token = getStoredToken();
   const response = await fetch(`${API_URL}/invoices`, {
     method: 'POST',
-    headers: { Accept: 'application/json' },
+    headers: {
+      Accept: 'application/json',
+      Authorization: token ? `Bearer ${token}` : '',
+    },
   });
 
   if (!response.ok) throw new Error('Could not create invoice draft');
