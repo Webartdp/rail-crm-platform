@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\AuditController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DocumentController;
+use App\Http\Controllers\Api\V1\DocumentSignatureController;
 use App\Http\Controllers\Api\V1\EmployeeFieldStateController;
 use App\Http\Controllers\Api\V1\EmployeeProfileController;
 use App\Http\Controllers\Api\V1\InvoiceController;
@@ -41,6 +42,10 @@ Route::prefix('v1')->group(function () {
     Route::get('/documents/{id}/download', [DocumentController::class, 'download']);
     Route::post('/documents/{id}/ocr/start', [DocumentController::class, 'startOcr']);
     Route::post('/documents/{id}/ocr/text', [DocumentController::class, 'saveOcrText']);
+    Route::get('/documents/{documentId}/signatures', [DocumentSignatureController::class, 'index']);
+    Route::post('/documents/{documentId}/signatures', [DocumentSignatureController::class, 'requestSignature']);
+    Route::post('/documents/{documentId}/signatures/{signatureId}/sign', [DocumentSignatureController::class, 'sign']);
+    Route::post('/documents/{documentId}/signatures/{signatureId}/reject', [DocumentSignatureController::class, 'reject']);
     Route::get('/audit', AuditController::class);
 
     Route::post('/work-events/gasfahrt/start', [WorkEventController::class, 'startGasfahrt']);
