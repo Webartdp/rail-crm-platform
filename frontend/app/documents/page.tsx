@@ -336,6 +336,7 @@ export default function DocumentsPage() {
               {item.status} / OCR: {item.ocr_status || 'not_started'}
               {item.file_path && canPreview(item) ? <button className="action-link" onClick={() => preview(item)} type="button">Preview</button> : null}
               {item.file_path ? <button className="action-link" onClick={() => download(item)} type="button">Download</button> : null}
+              <a className="action-link" href={`/documents/${item.id}/print`}>Print</a>
               <button className="action-link" onClick={() => markOcrPending(item)} type="button">OCR pending</button>
               <button className="action-link" onClick={() => saveOcr(item)} type="button">Save OCR text</button>
               <button className="action-link" onClick={() => openSignatures(item)} type="button">Signatures</button>
