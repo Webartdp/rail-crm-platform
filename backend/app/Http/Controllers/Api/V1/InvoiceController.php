@@ -64,6 +64,13 @@ class InvoiceController extends Controller
             ]));
         }
 
+        foreach (array_unique(array_column($items, 'assignment_id')) as $assignmentId) {
+            DB::table('work_orders')->where('id', $assignmentId)->update([
+                'status' => 'invoiced',
+                'updated_at' => $now,
+            ]);
+        }
+
         DB::table('audit_logs')->insert([
             'action' => 'invoice_created',
             'entity_type' => 'invoice',
