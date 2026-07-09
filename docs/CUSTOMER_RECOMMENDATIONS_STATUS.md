@@ -74,6 +74,21 @@ Done:
 - frontend route guards
 - role-aware navigation
 
+### Backend automated tests
+
+Done:
+
+- PHPUnit config
+- Laravel base TestCase
+- auth/register/login/me tests
+- logout token invalidation test
+- role access tests
+- admin-only tariff tests
+- work order create/close tests
+- document/signature tests
+- field workflow order test
+- approval/cost/invoice tests
+
 ### Documents / Belege
 
 Done:
@@ -167,10 +182,11 @@ Partially done:
 - Sanctum tokens
 - role middleware
 - frontend guards
+- backend feature tests
 
 Not done yet:
 
-- automated feature tests for all roles
+- full policy classes for all entities
 - rate limiting / lockout
 - password reset
 - invitation-based user creation
@@ -179,8 +195,8 @@ Not done yet:
 
 Recommended next steps:
 
-1. Laravel feature tests for role access and main workflows.
-2. Replace remaining duplicate controller role checks with tested policies where useful.
+1. Run backend feature tests locally and fix environment-specific failures.
+2. Add more route/policy tests for every endpoint.
 3. Real OCR integration.
 4. Signed PDF generation/stamping.
 5. Work order edit page.
@@ -192,6 +208,6 @@ Recommended next steps:
 
 ## Current answer
 
-Yes: the main customer recommendations are implemented as MVP.
+Yes: the main customer recommendations are implemented as MVP and now have basic backend feature test coverage.
 
 No: it is not yet a full production clone of Online-Planer or a fully certified document/signature/OCR system.
