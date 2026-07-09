@@ -1,3 +1,5 @@
+import { getStoredToken } from './auth';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 export type WorkEventDuration = {
@@ -10,8 +12,9 @@ export type WorkEventDuration = {
 };
 
 export async function getWorkEventDurations(): Promise<{ data: WorkEventDuration[] }> {
+  const token = getStoredToken();
   const response = await fetch(`${API_URL}/work-event-durations`, {
-    headers: { Accept: 'application/json' },
+    headers: { Accept: 'application/json', Authorization: token ? `Bearer ${token}` : '' },
     cache: 'no-store',
   });
 
