@@ -3,11 +3,12 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\AppUser;
+use App\Support\CurrentUser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -20,29 +21,28 @@ class AuthController extends Controller
             return response()->json(['message' => 'Email and password are required.'], 422);
         }
 
-        $exists = DB::table('app_users')->where('email', $email)->exists();
+        $exists = AppUser::query()->where('email', $email)->exists();
         if ($exists) {
             return response()->json(['message' => 'User already exists.'], 409);
         }
 
-        $now = now();
-        $token = hash('sha256', Str::random(80));
-        $id = DB::table('app_users')->insertGetId([
+        $user = AppUser::query()->create([
             'employee_profile_id' => $request->input('employee_profile_id'),
             'name' => $request->input('name', $email),
             'email' => $email,
             'password_hash' => Hash::make($password),
             'role' => $request->input('role', 'employee'),
-            'api_token' => $token,
+            'api_token' => null,
             'is_active' => true,
-            'created_at' => $now,
-            'updated_at' => $now,
         ]);
+
+        $token = $user->createToken('crm-api', [$user->role])->plainTextToken;
 
         return response()->json([
             'message' => 'User registered.',
             'token' => $token,
-            'data' => $this->publicUser($id),
+            'token_type' => 'sanctum',
+            'data' => $this->publicUser($user->id),
         ], 201);
     }
 
@@ -50,28 +50,26 @@ class AuthController extends Controller
     {
         $email = trim((string) $request->input('email'));
         $password = (string) $request->input('password');
-        $user = DB::table('app_users')->where('email', $email)->first();
+        $user = AppUser::query()->where('email', $email)->first();
 
         if (!$user || !$user->is_active || !Hash::check($password, $user->password_hash)) {
             return response()->json(['message' => 'Invalid credentials.'], 401);
         }
 
-        $token = hash('sha256', Str::random(80));
-        DB::table('app_users')->where('id', $user->id)->update([
-            'api_token' => $token,
-            'updated_at' => now(),
-        ]);
+        $user->tokens()->delete();
+        $token = $user->createToken('crm-api', [$user->role])->plainTextToken;
 
         return response()->json([
             'message' => 'Logged in.',
             'token' => $token,
+            'token_type' => 'sanctum',
             'data' => $this->publicUser($user->id),
         ]);
     }
 
     public function me(Request $request): JsonResponse
     {
-        $user = $this->userFromToken($request);
+        $user = CurrentUser::fromRequest($request);
 
         if (!$user) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
@@ -82,9 +80,12 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
-        $user = $this->userFromToken($request);
+        $user = CurrentUser::fromRequest($request);
+        $token = $request->user()?->currentAccessToken();
 
-        if ($user) {
+        if ($token) {
+            $token->delete();
+        } elseif ($user) {
             DB::table('app_users')->where('id', $user->id)->update([
                 'api_token' => null,
                 'updated_at' => now(),
@@ -92,21 +93,6 @@ class AuthController extends Controller
         }
 
         return response()->json(['message' => 'Logged out.']);
-    }
-
-    private function userFromToken(Request $request): ?object
-    {
-        $header = (string) $request->header('Authorization', '');
-        $token = str_starts_with($header, 'Bearer ') ? substr($header, 7) : (string) $request->header('X-CRM-Token', '');
-
-        if ($token === '') {
-            return null;
-        }
-
-        return DB::table('app_users')
-            ->where('api_token', $token)
-            ->where('is_active', true)
-            ->first();
     }
 
     private function publicUser(int $id): ?object
