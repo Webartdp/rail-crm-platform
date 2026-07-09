@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthController extends Controller
 {
@@ -81,10 +82,11 @@ class AuthController extends Controller
     public function logout(Request $request): JsonResponse
     {
         $user = CurrentUser::fromRequest($request);
-        $token = $request->user()?->currentAccessToken();
+        $plainToken = $this->tokenFromRequest($request);
+        $sanctumToken = $plainToken !== '' ? PersonalAccessToken::findToken($plainToken) : null;
 
-        if ($token) {
-            $token->delete();
+        if ($sanctumToken) {
+            $sanctumToken->delete();
         } elseif ($user) {
             DB::table('app_users')->where('id', $user->id)->update([
                 'api_token' => null,
@@ -101,5 +103,14 @@ class AuthController extends Controller
             ->select('id', 'employee_profile_id', 'name', 'email', 'role', 'is_active', 'created_at', 'updated_at')
             ->where('id', $id)
             ->first();
+    }
+
+    private function tokenFromRequest(Request $request): string
+    {
+        $header = (string) $request->header('Authorization', '');
+
+        return str_starts_with($header, 'Bearer ')
+            ? substr($header, 7)
+            : (string) $request->header('X-CRM-Token', '');
     }
 }
