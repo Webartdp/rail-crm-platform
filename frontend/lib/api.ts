@@ -1,3 +1,5 @@
+import { getStoredToken } from './auth';
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 export type WorkEventPayload = {
@@ -23,13 +25,17 @@ export type WorkEvent = {
   payload?: string;
 };
 
+function authHeaders(json = false) {
+  const token = getStoredToken();
+  return json
+    ? { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: token ? `Bearer ${token}` : '' }
+    : { Accept: 'application/json', Authorization: token ? `Bearer ${token}` : '' };
+}
+
 export async function postWorkEvent(path: string, payload: WorkEventPayload) {
   const response = await fetch(`${API_URL}${path}`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
+    headers: authHeaders(true),
     body: JSON.stringify(payload),
   });
 
@@ -43,7 +49,7 @@ export async function postWorkEvent(path: string, payload: WorkEventPayload) {
 
 export async function getWorkEvents(): Promise<{ data: WorkEvent[] }> {
   const response = await fetch(`${API_URL}/work-events`, {
-    headers: { Accept: 'application/json' },
+    headers: authHeaders(false),
     cache: 'no-store',
   });
 
