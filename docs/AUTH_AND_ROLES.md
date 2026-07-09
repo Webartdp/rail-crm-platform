@@ -2,22 +2,30 @@
 
 Purpose:
 
-MVP authentication and role model for the CRM.
+Authentication and role model for the CRM.
 
-## Table
+## Tables
+
+CRM users:
 
 ```text
 app_users
 ```
 
-Fields:
+Sanctum tokens:
+
+```text
+personal_access_tokens
+```
+
+## User fields
 
 - employee_profile_id
 - name
 - email
 - password_hash
 - role
-- api_token
+- api_token legacy fallback
 - is_active
 
 ## Roles
@@ -54,7 +62,14 @@ POST /api/v1/auth/logout
 
 ## Token
 
-Login/register returns a token.
+Login/register returns a Sanctum token:
+
+```json
+{
+  "token_type": "sanctum",
+  "token": "..."
+}
+```
 
 Frontend stores it in localStorage and sends it as:
 
@@ -62,27 +77,40 @@ Frontend stores it in localStorage and sends it as:
 Authorization: Bearer <token>
 ```
 
-## Current role checks
+## Backend route-level role checks
+
+Most protected API routes now use route middleware:
+
+```text
+role:employee,manager,admin
+role:manager,admin
+role:admin
+```
 
 Only admin can:
 
 - create employee profiles
 - update employee profiles and tariff settings
+- view employee tariff admin pages
 
 Only manager/admin can:
 
 - create work orders
 - close work orders
+- view manager dashboard
+- view approvals
+- approve or reject work event intervals
+- view durations/costs
+- create invoice drafts
 - create documents
 - download/print documents
 - create OCR actions
 - request signatures
-- approve or reject work event intervals
-- create invoice drafts
-- view manager dashboard
+- view audit
 
-Authenticated users can:
+Employee/manager/admin can:
 
+- send field workflow button events
 - sign pending document signatures
 - reject pending document signatures
 
@@ -90,7 +118,7 @@ Authenticated users can:
 
 The demo workflow uses the logged-in user's employee_profile_id as employee_id.
 
-If no logged-in user exists, it falls back to employee #1 for demo compatibility.
+If no logged-in user exists, it falls back to employee #1 for demo compatibility, but protected API writes now require a token.
 
 ## Frontend protected writes
 
@@ -98,6 +126,8 @@ The following helpers send Bearer token:
 
 - employee-profiles create/update
 - work-orders create/close
+- work-events button actions
+- durations/costs reads
 - documents create/upload/download/print/OCR
 - document signatures request/sign/reject
 - approvals approve/reject
@@ -113,6 +143,14 @@ docs/FRONTEND_ROUTE_GUARDS.md
 
 They hide manager/admin pages from ordinary employees and show access denied panels for direct URLs.
 
+## Sanctum details
+
+Sanctum migration details are documented in:
+
+```text
+docs/SANCTUM_AUTH.md
+```
+
 ## MVP note
 
-This is a lightweight MVP token system. It can be replaced later with Laravel Sanctum middleware or session auth.
+The legacy `app_users.api_token` fallback still exists temporarily for development migration compatibility. New login/register responses use Sanctum tokens.
