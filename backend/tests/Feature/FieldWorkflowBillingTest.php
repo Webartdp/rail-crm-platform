@@ -70,7 +70,7 @@ class FieldWorkflowBillingTest extends TestCase
         $this->withHeader('Authorization', 'Bearer '.$managerToken)
             ->postJson('/api/v1/invoices')
             ->assertCreated()
-            ->assertJsonStructure(['data' => ['invoice', 'items']]);
+            ->assertJsonStructure(['data' => ['id', 'number', 'status'], 'items']);
 
         $this->assertDatabaseHas('work_orders', [
             'id' => $workOrderId,
