@@ -34,6 +34,19 @@ class AuthAndRoleTest extends TestCase
             ->assertJsonPath('data.email', 'admin@example.com');
     }
 
+    public function test_logout_deletes_sanctum_token(): void
+    {
+        $token = $this->tokenForRole('employee');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/v1/auth/logout')
+            ->assertOk();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/v1/auth/me')
+            ->assertUnauthorized();
+    }
+
     public function test_employee_cannot_access_manager_dashboard(): void
     {
         $token = $this->tokenForRole('employee');
