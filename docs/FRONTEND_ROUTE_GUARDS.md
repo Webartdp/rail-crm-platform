@@ -44,6 +44,8 @@ Manager/admin:
 - /documents/{id}/print
 - /work-orders/new
 - /work-events
+- /durations
+- /costs
 
 Admin only:
 
@@ -69,5 +71,6 @@ Security still lives on the backend:
 - document upload/download/OCR/print checks manager/admin
 - employee tariff writes check admin
 - work order creation/close checks manager/admin
+- costs/durations reads check manager/admin
 
 Do not rely on frontend-only checks for real authorization.
