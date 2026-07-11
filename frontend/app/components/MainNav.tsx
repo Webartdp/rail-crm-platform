@@ -9,21 +9,27 @@ type NavItem = {
   roles?: string[];
 };
 
+const roleLabel: Record<string, string> = {
+  employee: 'сотрудник',
+  manager: 'менеджер',
+  admin: 'администратор',
+};
+
 const navItems: NavItem[] = [
-  { href: '/', label: 'Home' },
-  { href: '/login', label: 'Login' },
-  { href: '/manager-dashboard', label: 'Manager Dashboard', roles: ['manager', 'admin'] },
-  { href: '/admin', label: 'Admin', roles: ['admin'] },
-  { href: '/employees', label: 'Employees', roles: ['admin'] },
-  { href: '/clients', label: 'Clients', roles: ['manager', 'admin'] },
-  { href: '/objects', label: 'Objects', roles: ['manager', 'admin'] },
-  { href: '/assignments', label: 'Assignments', roles: ['manager', 'admin'] },
-  { href: '/approvals', label: 'Approvals', roles: ['manager', 'admin'] },
-  { href: '/documents', label: 'Documents', roles: ['manager', 'admin'] },
-  { href: '/billing', label: 'Billing', roles: ['manager', 'admin'] },
-  { href: '/employee', label: 'Employee' },
-  { href: '/demo', label: 'Demo' },
-  { href: '/work-events', label: 'Work Events', roles: ['manager', 'admin'] },
+  { href: '/', label: 'Главная' },
+  { href: '/login', label: 'Вход' },
+  { href: '/manager-dashboard', label: 'Панель менеджера', roles: ['manager', 'admin'] },
+  { href: '/admin', label: 'Админка', roles: ['admin'] },
+  { href: '/employees', label: 'Сотрудники', roles: ['admin'] },
+  { href: '/clients', label: 'Клиенты', roles: ['manager', 'admin'] },
+  { href: '/objects', label: 'Объекты', roles: ['manager', 'admin'] },
+  { href: '/assignments', label: 'Задания', roles: ['manager', 'admin'] },
+  { href: '/approvals', label: 'Согласование', roles: ['manager', 'admin'] },
+  { href: '/documents', label: 'Документы', roles: ['manager', 'admin'] },
+  { href: '/billing', label: 'Счета', roles: ['manager', 'admin'] },
+  { href: '/employee', label: 'Кабинет сотрудника' },
+  { href: '/demo', label: 'Демо workflow' },
+  { href: '/work-events', label: 'События смены', roles: ['manager', 'admin'] },
 ];
 
 export default function MainNav() {
@@ -43,12 +49,12 @@ export default function MainNav() {
 
   return (
     <nav className="main-nav">
-      <strong>Rail CRM</strong>
+      <strong>Rail CRM · режим разработки</strong>
       <div>
         {visibleItems.map((item) => (
           <a href={item.href} key={item.href}>{item.label}</a>
         ))}
-        {user ? <button className="nav-button" onClick={signOut} type="button">Logout {user.role}</button> : null}
+        {user ? <button className="nav-button" onClick={signOut} type="button">Выйти · {roleLabel[user.role] || user.role}</button> : null}
       </div>
     </nav>
   );
