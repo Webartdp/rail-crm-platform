@@ -38,7 +38,7 @@ class FieldWorkflowBillingTest extends TestCase
                 'latitude' => 48.137154,
                 'longitude' => 11.576124,
             ])
-            ->assertCreated()
+            ->assertOk()
             ->assertJsonPath('data.event_type', 'gasfahrt_start');
     }
 
