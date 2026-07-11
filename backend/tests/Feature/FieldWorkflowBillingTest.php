@@ -39,7 +39,8 @@ class FieldWorkflowBillingTest extends TestCase
                 'longitude' => 11.576124,
             ])
             ->assertOk()
-            ->assertJsonPath('data.event_type', 'gasfahrt_start');
+            ->assertJsonPath('event.type', 'gasfahrt_start')
+            ->assertJsonPath('event.stored', true);
     }
 
     public function test_manager_can_approve_interval_and_create_invoice_draft(): void
