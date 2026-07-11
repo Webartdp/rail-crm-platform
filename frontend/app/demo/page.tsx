@@ -20,12 +20,21 @@ const routeByAction: Record<string, string> = {
   dienstfahrt_stop: workEventRoutes.dienstfahrtStop,
 };
 
+const actionLabels: Record<string, string> = {
+  gasfahrt_start: 'Начать дорогу из дома / Gasfahrt',
+  gasfahrt_stop: 'Завершить дорогу / Gasfahrt beendet',
+  dienstbeginn: 'Начать работу / Dienstbeginn',
+  arbeit_stop: 'Завершить работу / Stop',
+  dienstfahrt_start: 'Начать служебный переезд / Start Dienstfahrt',
+  dienstfahrt_stop: 'Завершить служебный переезд / Stop Dienstfahrt',
+};
+
 function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
 function timeNow() {
-  return new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' }).format(new Date());
+  return new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit' }).format(new Date());
 }
 
 function getPosition(): Promise<{ latitude?: number; longitude?: number; location_accuracy?: number }> {
@@ -63,7 +72,7 @@ export default function DemoPage() {
   const [isSunday, setIsSunday] = useState(false);
   const [isHoliday, setIsHoliday] = useState(false);
   const [bemerkung, setBemerkung] = useState('');
-  const [message, setMessage] = useState('Bereit.');
+  const [message, setMessage] = useState('Готово.');
   const [saving, setSaving] = useState(false);
 
   async function refreshState(orderId = selectedOrderId, nextEmployeeId = employeeId) {
@@ -73,7 +82,7 @@ export default function DemoPage() {
       return state;
     } catch (error) {
       setFieldState(null);
-      setMessage('Field State API nicht erreichbar.');
+      setMessage('API состояния сотрудника недоступен. Проверь backend.');
       return null;
     }
   }
@@ -87,7 +96,7 @@ export default function DemoPage() {
       await refreshState(nextOrders[0]?.id || 1, nextEmployeeId);
     } catch (error) {
       setOrders(fallbackOrders);
-      setMessage('API nicht erreichbar. Fallback-Auftrag aktiv.');
+      setMessage('API заданий недоступен. Включён тестовый fallback-заказ.');
       await refreshState(1, nextEmployeeId);
     }
   }
@@ -99,18 +108,19 @@ export default function DemoPage() {
         const nextEmployeeId = nextUser.employee_profile_id || fallbackEmployeeId;
         setUser(nextUser);
         setEmployeeId(nextEmployeeId);
-        setMessage(`Logged in as ${nextUser.name} (${nextUser.role}).`);
+        setMessage(`Вход выполнен: ${nextUser.name} (${nextUser.role}).`);
         loadForEmployee(nextEmployeeId);
       })
       .catch(() => loadForEmployee(fallbackEmployeeId));
   }, []);
 
   const currentAction = fieldState?.allowed_actions?.[0] || 'gasfahrt_start';
-  const currentLabel = fieldState?.next_button || 'Gasfahrt';
+  const backendButtonLabel = fieldState?.next_button || 'Gasfahrt';
+  const currentLabel = actionLabels[currentAction] || backendButtonLabel;
   const realLeistungsart = leistungsart === '' ? leistungsartCustom.trim() : leistungsart;
   const plannedExceeded = Boolean(fieldState?.planned_exceeded);
   const stopBlocked = Boolean(fieldState?.requires_bemerkung) && bemerkung.trim() === '';
-  const dienstbeginnBlocked = currentLabel === 'Dienstbeginn' && (!date || !realLeistungsart || !referenznummer.trim() || !zugnummer.trim() || !einsatzort.trim());
+  const dienstbeginnBlocked = backendButtonLabel === 'Dienstbeginn' && (!date || !realLeistungsart || !referenznummer.trim() || !zugnummer.trim() || !einsatzort.trim());
   const disabled = saving || stopBlocked || dienstbeginnBlocked;
 
   function selectOrder(id: number) {
@@ -127,18 +137,18 @@ export default function DemoPage() {
 
   async function next() {
     if (stopBlocked) {
-      setMessage('Stop ist blockiert: geplante Zeit überschritten, Bemerkung ist Pflicht.');
+      setMessage('Stop заблокирован: плановое время превышено, комментарий / Bemerkung обязателен.');
       return;
     }
 
     if (dienstbeginnBlocked) {
-      setMessage('Dienstbeginn ist blockiert: Datum, Leistungsart, Referenznummer, Zugnummer und Einsatzort sind Pflicht.');
+      setMessage('Начало работы заблокировано: дата, тип услуги, референс, номер поезда и место работы обязательны.');
       return;
     }
 
     const route = routeByAction[currentAction];
     if (!route) {
-      setMessage('Keine API Route für nächste Aktion gefunden.');
+      setMessage('Не найдена API route для следующего действия.');
       return;
     }
 
@@ -155,7 +165,7 @@ export default function DemoPage() {
         payload: {
           source: 'demo',
           user_id: user?.id,
-          action_label: currentLabel,
+          action_label: backendButtonLabel,
           date,
           leistungsart: realLeistungsart,
           referenznummer,
@@ -169,13 +179,13 @@ export default function DemoPage() {
           client_time: timeNow(),
         },
       });
-      setLog((items) => [...items, `${timeNow()} — ${currentLabel} gespeichert in API`]);
-      setMessage(`${currentLabel} gespeichert.`);
+      setLog((items) => [...items, `${timeNow()} — ${currentLabel} сохранено в API`]);
+      setMessage(`${currentLabel} сохранено.`);
       await refreshState(selectedOrderId);
     } catch (error) {
       const state = await refreshState(selectedOrderId);
-      setLog((items) => [...items, `${timeNow()} — ${currentLabel} nicht gespeichert`]);
-      setMessage(state ? `Aktion abgelehnt. Nächste erlaubte Aktion: ${state.next_button}.` : 'Aktion nicht gespeichert. API oder Field State nicht erreichbar.');
+      setLog((items) => [...items, `${timeNow()} — ${currentLabel} не сохранено`]);
+      setMessage(state ? `Действие отклонено. Следующее разрешённое действие: ${actionLabels[state.allowed_actions?.[0]] || state.next_button}.` : 'Действие не сохранено. API или состояние сотрудника недоступны.');
     } finally {
       setSaving(false);
     }
@@ -185,47 +195,47 @@ export default function DemoPage() {
     <main className="page-shell">
       <section className="hero-card">
         <div>
-          <p className="eyebrow">Demo</p>
-          <h1>Button Flow</h1>
-          <p className="hero-text">Gasfahrt, Dienstbeginn, Stop und Dienstfahrt nach Kundenanforderung.</p>
-          <p className="hint">Employee profile: #{employeeId}{user ? ` / ${user.name}` : ' / fallback'}</p>
+          <p className="eyebrow">Демо</p>
+          <h1>Workflow кнопок сотрудника</h1>
+          <p className="hero-text">Порядок действий по требованиям заказчика: Gasfahrt → Dienstbeginn → Stop → Dienstfahrt.</p>
+          <p className="hint">Профиль сотрудника: #{employeeId}{user ? ` / ${user.name}` : ' / fallback'}</p>
         </div>
-        <div className="status-pill">{fieldState?.current_state || 'loading'}</div>
+        <div className="status-pill">{fieldState?.current_state || 'загрузка'}</div>
       </section>
 
       <section className="grid">
         <div className="panel action-panel">
-          <button className="action-button primary" onClick={next} type="button" disabled={disabled}>{saving ? 'Speichern...' : currentLabel}</button>
-          <p className="hint">Allowed action: {currentAction}</p>
-          <p className="hint">Last event: {fieldState?.last_event_type || 'none'}</p>
-          <p className="hint">Planned end: {fieldState?.planned_end_at || plannedStop}</p>
+          <button className="action-button primary" onClick={next} type="button" disabled={disabled}>{saving ? 'Сохраняем...' : currentLabel}</button>
+          <p className="hint">Разрешённое действие backend: {currentAction}</p>
+          <p className="hint">Последнее событие: {fieldState?.last_event_type || 'нет'}</p>
+          <p className="hint">Плановое завершение: {fieldState?.planned_end_at || plannedStop}</p>
           <p className="hint">{message}</p>
-          {currentLabel === 'Stop' ? <p className="hint">Backend planned exceeded: {plannedExceeded ? 'Ja' : 'Nein'}.</p> : null}
+          {backendButtonLabel === 'Stop' ? <p className="hint">Backend считает план превышенным: {plannedExceeded ? 'да' : 'нет'}.</p> : null}
         </div>
 
         <div className="panel">
-          <h2>Auftragsdaten</h2>
+          <h2>Данные задания</h2>
           <div className="form-grid">
-            <label>Auftrag<select value={selectedOrderId} onChange={(event) => selectOrder(Number(event.target.value))}>{orders.map((order) => <option key={order.id} value={order.id}>{order.reference_number || `#${order.id}`} — {order.title}</option>)}</select></label>
-            <label>Datum<input value={date} onChange={(event) => setDate(event.target.value)} type="date" /></label>
-            <label>Leistungsart<select value={leistungsart} onChange={(event) => setLeistungsart(event.target.value)}>{leistungsartOptions.map((item) => <option key={item} value={item}>{item === '' ? 'Eigene Eingabe' : item}</option>)}</select></label>
-            {leistungsart === '' ? <label>Eigene Leistungsart<input value={leistungsartCustom} onChange={(event) => setLeistungsartCustom(event.target.value)} placeholder="Leistungsart eingeben" /></label> : null}
-            <label>Referenznummer<input value={referenznummer} onChange={(event) => setReferenznummer(event.target.value)} /></label>
-            <label>Zugnummer<input value={zugnummer} onChange={(event) => setZugnummer(event.target.value)} /></label>
-            <label>Einsatzort<input value={einsatzort} onChange={(event) => setEinsatzort(event.target.value)} /></label>
-            <label>Geplanter Start<input value={plannedStart} onChange={(event) => setPlannedStart(event.target.value)} type="time" /></label>
-            <label>Geplanter Stop<input value={plannedStop} onChange={(event) => setPlannedStop(event.target.value)} type="time" /></label>
-            <label><input checked={isNight} onChange={(event) => setIsNight(event.target.checked)} type="checkbox" /> Nacht</label>
-            <label><input checked={isSunday} onChange={(event) => setIsSunday(event.target.checked)} type="checkbox" /> Sonntag</label>
-            <label><input checked={isHoliday} onChange={(event) => setIsHoliday(event.target.checked)} type="checkbox" /> Feiertag</label>
-            <label className="wide-field">Bemerkung<textarea value={bemerkung} onChange={(event) => setBemerkung(event.target.value)} placeholder="Pflicht, wenn Zeit überschritten ist" /></label>
+            <label>Задание<select value={selectedOrderId} onChange={(event) => selectOrder(Number(event.target.value))}>{orders.map((order) => <option key={order.id} value={order.id}>{order.reference_number || `#${order.id}`} — {order.title}</option>)}</select></label>
+            <label>Дата<input value={date} onChange={(event) => setDate(event.target.value)} type="date" /></label>
+            <label>Тип услуги / Leistungsart<select value={leistungsart} onChange={(event) => setLeistungsart(event.target.value)}>{leistungsartOptions.map((item) => <option key={item} value={item}>{item === '' ? 'Своя услуга' : item}</option>)}</select></label>
+            {leistungsart === '' ? <label>Своя услуга<input value={leistungsartCustom} onChange={(event) => setLeistungsartCustom(event.target.value)} placeholder="Введите тип услуги" /></label> : null}
+            <label>Референс / Referenznummer<input value={referenznummer} onChange={(event) => setReferenznummer(event.target.value)} /></label>
+            <label>Номер поезда / Zugnummer<input value={zugnummer} onChange={(event) => setZugnummer(event.target.value)} /></label>
+            <label>Место работы / Einsatzort<input value={einsatzort} onChange={(event) => setEinsatzort(event.target.value)} /></label>
+            <label>Плановый старт<input value={plannedStart} onChange={(event) => setPlannedStart(event.target.value)} type="time" /></label>
+            <label>Плановый стоп<input value={plannedStop} onChange={(event) => setPlannedStop(event.target.value)} type="time" /></label>
+            <label><input checked={isNight} onChange={(event) => setIsNight(event.target.checked)} type="checkbox" /> Ночь / Nacht</label>
+            <label><input checked={isSunday} onChange={(event) => setIsSunday(event.target.checked)} type="checkbox" /> Воскресенье / Sonntag</label>
+            <label><input checked={isHoliday} onChange={(event) => setIsHoliday(event.target.checked)} type="checkbox" /> Праздник / Feiertag</label>
+            <label className="wide-field">Комментарий / Bemerkung<textarea value={bemerkung} onChange={(event) => setBemerkung(event.target.value)} placeholder="Обязательно, если время превышено" /></label>
           </div>
         </div>
       </section>
 
       <section className="panel">
-        <h2>Log</h2>
-        {log.length === 0 ? <p className="hint">No actions yet.</p> : null}
+        <h2>Лог действий</h2>
+        {log.length === 0 ? <p className="hint">Пока действий нет.</p> : null}
         {log.map((item, index) => <p key={`${item}-${index}`}>{index + 1}. {item}</p>)}
       </section>
     </main>
