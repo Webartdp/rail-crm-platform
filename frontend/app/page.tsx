@@ -6,14 +6,14 @@ const leistungsarten = [
   'Azf',
   'RID-Kontrolle',
   'Zugbeschtreifung',
-  'Eigene Eingabe',
+  'Своя услуга',
 ];
 
 const timeline = [
-  { time: '06:40', title: 'Gasfahrt gestartet', place: 'Zuhause', status: 'done' },
-  { time: '07:18', title: 'Gasfahrt beendet', place: 'Einsatzort Gleis 12', status: 'done' },
-  { time: '07:25', title: 'Dienstbeginn', place: 'Einsatzort Gleis 12', status: 'active' },
-  { time: '--:--', title: 'Stop', place: 'Wartet auf Abschluss', status: 'pending' },
+  { time: '06:40', title: 'Дорога из дома начата / Gasfahrt', place: 'Дом сотрудника', status: 'done' },
+  { time: '07:18', title: 'Дорога завершена', place: 'Место работы: путь 12', status: 'done' },
+  { time: '07:25', title: 'Начало работы / Dienstbeginn', place: 'Место работы: путь 12', status: 'active' },
+  { time: '--:--', title: 'Завершить работу / Stop', place: 'Ожидает действия сотрудника', status: 'pending' },
 ];
 
 export default function HomePage() {
@@ -22,37 +22,37 @@ export default function HomePage() {
       <section className="hero-card">
         <div>
           <p className="eyebrow">Rail CRM Platform</p>
-          <h1>Employee Field Screen</h1>
+          <h1>Экран сотрудника в поле</h1>
           <p className="hero-text">
-            First visual prototype for Gasfahrt, Dienstbeginn, Stop and Dienstfahrt workflow.
+            Первый рабочий прототип: дорога из дома, начало работы, стоп и служебная поездка между объектами.
           </p>
         </div>
-        <div className="status-pill">Status: Dienst aktiv</div>
+        <div className="status-pill">Статус: смена активна</div>
       </section>
 
       <section className="grid">
         <div className="panel action-panel">
-          <h2>Aktionen</h2>
-          <button className="action-button secondary">Gasfahrt</button>
-          <button className="action-button secondary">Gasfahrt beendet</button>
-          <button className="action-button primary">Dienstbeginn</button>
-          <button className="action-button warning">Stop</button>
-          <button className="action-button secondary">Start Dienstfahrt</button>
-          <button className="action-button secondary">Stop Dienstfahrt</button>
+          <h2>Действия</h2>
+          <button className="action-button secondary">Gasfahrt — выезд из дома</button>
+          <button className="action-button secondary">Gasfahrt beendet — прибыл</button>
+          <button className="action-button primary">Dienstbeginn — начало работы</button>
+          <button className="action-button warning">Stop — завершить работу</button>
+          <button className="action-button secondary">Start Dienstfahrt — переезд</button>
+          <button className="action-button secondary">Stop Dienstfahrt — прибыл на следующий объект</button>
           <p className="hint">
-            If planned time is exceeded, Stop requires Bemerkung before submission.
+            Если фактическое время больше планового, кнопка Stop требует заполнить комментарий / Bemerkung.
           </p>
         </div>
 
         <div className="panel">
-          <h2>Auftragsdaten</h2>
+          <h2>Данные задания</h2>
           <div className="form-grid">
             <label>
-              Datum
+              Дата
               <input value="2026-07-06" readOnly />
             </label>
             <label>
-              Leistungsart
+              Тип услуги / Leistungsart
               <select defaultValue="WTU">
                 {leistungsarten.map((item) => (
                   <option key={item}>{item}</option>
@@ -60,20 +60,20 @@ export default function HomePage() {
               </select>
             </label>
             <label>
-              Referenznummer
-              <input placeholder="z.B. REF-2026-001" />
+              Референс / Referenznummer
+              <input placeholder="например REF-2026-001" />
             </label>
             <label>
-              Zugnummer
-              <input placeholder="z.B. ICE 204" />
+              Номер поезда / Zugnummer
+              <input placeholder="например ICE 204" />
             </label>
             <label>
-              Einsatzort
-              <input placeholder="Ort oder Bahnhof" />
+              Место работы / Einsatzort
+              <input placeholder="место, станция или путь" />
             </label>
             <label>
-              Bemerkung
-              <textarea placeholder="Pflichtfeld, wenn Zeit überschritten ist" />
+              Комментарий / Bemerkung
+              <textarea placeholder="обязательно, если время превышено" />
             </label>
           </div>
         </div>
@@ -81,7 +81,7 @@ export default function HomePage() {
 
       <section className="grid lower-grid">
         <div className="panel">
-          <h2>Zeitlinie</h2>
+          <h2>Лента событий</h2>
           <div className="timeline">
             {timeline.map((item) => (
               <div className={`timeline-item ${item.status}`} key={item.title}>
@@ -96,11 +96,11 @@ export default function HomePage() {
         </div>
 
         <div className="panel map-placeholder">
-          <h2>Google Maps Position</h2>
+          <h2>Позиция Google Maps</h2>
           <div className="map-box">
-            <span>Map placeholder</span>
+            <span>Здесь будет карта</span>
           </div>
-          <p className="hint">Coordinates will be stored by backend and displayed on the map.</p>
+          <p className="hint">Координаты сохраняются backend-ом и потом отображаются на карте.</p>
         </div>
       </section>
     </main>
