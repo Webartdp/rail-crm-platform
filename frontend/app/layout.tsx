@@ -4,13 +4,13 @@ import './styles.css';
 import './navigation.css';
 
 export const metadata: Metadata = {
-  title: 'Rail CRM Platform',
-  description: 'Field service CRM platform',
+  title: 'Rail CRM — разработка',
+  description: 'CRM-платформа для полевых сотрудников и менеджеров',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="de">
+    <html lang="ru">
       <body>
         <MainNav />
         {children}
