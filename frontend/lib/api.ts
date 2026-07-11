@@ -25,11 +25,22 @@ export type WorkEvent = {
   payload?: string;
 };
 
-function authHeaders(json = false) {
+function authHeaders(json = false): HeadersInit {
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+  };
+
+  if (json) {
+    headers['Content-Type'] = 'application/json';
+  }
+
   const token = getStoredToken();
-  return json
-    ? { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: token ? `Bearer ${token}` : '' }
-    : { Accept: 'application/json', Authorization: token ? `Bearer ${token}` : '' };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  return headers;
 }
 
 export async function postWorkEvent(path: string, payload: WorkEventPayload) {
