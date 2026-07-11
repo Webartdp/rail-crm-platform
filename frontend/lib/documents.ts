@@ -32,11 +32,21 @@ function authToken() {
   return getStoredToken();
 }
 
-function authHeaders(json = false) {
+function authHeaders(json = false): Record<string, string> {
   const token = authToken();
-  return json
-    ? { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: token ? `Bearer ${token}` : '' }
-    : { Accept: 'application/json', Authorization: token ? `Bearer ${token}` : '' };
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+  };
+
+  if (json) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  return headers;
 }
 
 export function documentDownloadUrl(id: number) {
