@@ -11,10 +11,16 @@ type RoleGuardProps = {
   title?: string;
 };
 
-export default function RoleGuard({ allowedRoles, children, title = 'Access restricted' }: RoleGuardProps) {
+const roleLabels: Record<string, string> = {
+  employee: 'сотрудник',
+  manager: 'менеджер',
+  admin: 'администратор',
+};
+
+export default function RoleGuard({ allowedRoles, children, title = 'Доступ ограничен' }: RoleGuardProps) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState('Checking access...');
+  const [message, setMessage] = useState('Проверяем доступ...');
 
   useEffect(() => {
     me()
@@ -24,22 +30,22 @@ export default function RoleGuard({ allowedRoles, children, title = 'Access rest
       })
       .catch(() => {
         setUser(null);
-        setMessage('Login is required.');
+        setMessage('Нужно войти в систему.');
       })
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) {
-    return <section className="panel"><p className="hint">Checking access...</p></section>;
+    return <section className="panel"><p className="hint">Проверяем доступ...</p></section>;
   }
 
   if (!user) {
     return (
       <section className="panel">
-        <p className="eyebrow">Auth</p>
+        <p className="eyebrow">Авторизация</p>
         <h1>{title}</h1>
         <p className="hint">{message}</p>
-        <a className="action-link" href="/login">Go to login</a>
+        <a className="action-link" href="/login">Перейти ко входу</a>
       </section>
     );
   }
@@ -47,10 +53,10 @@ export default function RoleGuard({ allowedRoles, children, title = 'Access rest
   if (!allowedRoles.includes(user.role)) {
     return (
       <section className="panel">
-        <p className="eyebrow">Forbidden</p>
+        <p className="eyebrow">Нет доступа</p>
         <h1>{title}</h1>
-        <p className="hint">Your role is <strong>{user.role}</strong>. Required role: {allowedRoles.join(' / ')}.</p>
-        <a className="action-link" href="/employee">Go to employee area</a>
+        <p className="hint">Ваша роль: <strong>{roleLabels[user.role] || user.role}</strong>. Нужная роль: {allowedRoles.map((role) => roleLabels[role] || role).join(' / ')}.</p>
+        <a className="action-link" href="/employee">Перейти в кабинет сотрудника</a>
       </section>
     );
   }
