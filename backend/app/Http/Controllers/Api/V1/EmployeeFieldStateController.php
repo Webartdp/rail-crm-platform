@@ -15,16 +15,14 @@ class EmployeeFieldStateController extends Controller
         $employeeId = (int) $request->input('employee_id', 1);
         $assignmentId = $request->input('assignment_id');
 
-        $query = DB::table('work_events')
+        // Workflow is employee-wide: one work day has one event chain.
+        // The selected assignment/work order is still used for planned time and payload data.
+        $lastEvent = DB::table('work_events')
             ->where('employee_id', $employeeId)
             ->orderByDesc('event_time')
-            ->orderByDesc('id');
+            ->orderByDesc('id')
+            ->first();
 
-        if ($assignmentId) {
-            $query->where('assignment_id', $assignmentId);
-        }
-
-        $lastEvent = $query->first();
         $state = $this->stateFromEvent($lastEvent?->event_type);
         $planned = $this->plannedStatus($assignmentId);
         $requiresBemerkung = $state['action'] === 'arbeit_stop' && $planned['planned_exceeded'];
@@ -32,6 +30,7 @@ class EmployeeFieldStateController extends Controller
         return response()->json([
             'employee_id' => $employeeId,
             'assignment_id' => $assignmentId,
+            'last_assignment_id' => $lastEvent?->assignment_id,
             'last_event_type' => $lastEvent?->event_type,
             'current_state' => $state['state'],
             'allowed_actions' => [$state['action']],
