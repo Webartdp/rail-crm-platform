@@ -20,9 +20,31 @@ export type WorkEvent = {
   event_time: string;
   employee_id?: number;
   assignment_id?: number;
-  latitude?: string;
-  longitude?: string;
-  payload?: string;
+  latitude?: string | number | null;
+  longitude?: string | number | null;
+  location_accuracy?: string | number | null;
+  address_text?: string | null;
+  payload?: string | Record<string, unknown> | null;
+};
+
+export type DemoWorkOrder = {
+  id: number;
+  employee_id?: number;
+  title: string;
+  reference_number?: string;
+  status?: string;
+  planned_start_at?: string;
+  planned_end_at?: string;
+  details?: string | Record<string, unknown> | null;
+};
+
+export type DemoSeedResponse = {
+  message: string;
+  object: {
+    name: string;
+    address: string;
+  };
+  orders: DemoWorkOrder[];
 };
 
 function authHeaders(json = false): HeadersInit {
@@ -59,6 +81,21 @@ export async function postWorkEvent(path: string, payload: WorkEventPayload) {
   return response.json();
 }
 
+export async function seedFieldDemo(employeeId = 1): Promise<DemoSeedResponse> {
+  const response = await fetch(`${API_URL}/dev/field-demo-seed`, {
+    method: 'POST',
+    headers: authHeaders(true),
+    body: JSON.stringify({ employee_id: employeeId }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Field demo seed failed');
+  }
+
+  return response.json();
+}
+
 export async function resetDemoWorkEvents(employeeId = 1): Promise<{ message: string; employee_id: number; deleted: number }> {
   const response = await fetch(`${API_URL}/dev/reset-work-events`, {
     method: 'POST',
@@ -74,8 +111,14 @@ export async function resetDemoWorkEvents(employeeId = 1): Promise<{ message: st
   return response.json();
 }
 
-export async function getWorkEvents(): Promise<{ data: WorkEvent[] }> {
-  const response = await fetch(`${API_URL}/work-events`, {
+export async function getWorkEvents(filters: { employeeId?: number; assignmentId?: number } = {}): Promise<{ data: WorkEvent[] }> {
+  const params = new URLSearchParams();
+
+  if (filters.employeeId) params.set('employee_id', String(filters.employeeId));
+  if (filters.assignmentId) params.set('assignment_id', String(filters.assignmentId));
+
+  const query = params.toString() ? `?${params.toString()}` : '';
+  const response = await fetch(`${API_URL}/work-events${query}`, {
     headers: authHeaders(false),
     cache: 'no-store',
   });
