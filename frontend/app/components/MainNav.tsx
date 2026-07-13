@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { me, logout, type AuthUser } from '../../lib/auth';
-
-type Locale = 'ru' | 'de';
+import { useI18n } from '../i18n';
 
 type NavItem = {
   href: string;
@@ -16,69 +15,6 @@ type NavItem = {
 type NavGroup = {
   titleKey: string;
   items: NavItem[];
-};
-
-type Dictionary = Record<string, string>;
-
-const localeStorageKey = 'rail-crm-locale';
-
-const dictionaries: Record<Locale, Dictionary> = {
-  ru: {
-    brandSubtitle: 'режим разработки',
-    groupWork: 'Работа',
-    groupOperations: 'Операции',
-    groupDirectories: 'Справочники',
-    home: 'Главная',
-    fieldDay: 'Рабочий день',
-    employeeCabinet: 'Кабинет сотрудника',
-    gpsMap: 'Карта GPS',
-    time: 'Время',
-    managerDashboard: 'Панель менеджера',
-    workEvents: 'События смены',
-    approvals: 'Согласование',
-    assignments: 'Задания',
-    billing: 'Счета',
-    employees: 'Сотрудники',
-    clients: 'Клиенты',
-    objects: 'Объекты',
-    documents: 'Документы',
-    audit: 'Аудит',
-    admin: 'Админка',
-    login: 'Вход',
-    logout: 'Выйти',
-    language: 'Язык',
-    employee: 'сотрудник',
-    manager: 'менеджер',
-    adminRole: 'администратор',
-  },
-  de: {
-    brandSubtitle: 'Entwicklungsmodus',
-    groupWork: 'Arbeit',
-    groupOperations: 'Operationen',
-    groupDirectories: 'Stammdaten',
-    home: 'Startseite',
-    fieldDay: 'Arbeitstag',
-    employeeCabinet: 'Mitarbeiterbereich',
-    gpsMap: 'GPS-Karte',
-    time: 'Zeit',
-    managerDashboard: 'Manager-Dashboard',
-    workEvents: 'Schichtereignisse',
-    approvals: 'Freigabe',
-    assignments: 'Aufträge',
-    billing: 'Rechnungen',
-    employees: 'Mitarbeiter',
-    clients: 'Kunden',
-    objects: 'Objekte',
-    documents: 'Dokumente',
-    audit: 'Audit',
-    admin: 'Adminbereich',
-    login: 'Anmelden',
-    logout: 'Abmelden',
-    language: 'Sprache',
-    employee: 'Mitarbeiter',
-    manager: 'Manager',
-    adminRole: 'Administrator',
-  },
 };
 
 const navGroups: NavGroup[] = [
@@ -115,11 +51,6 @@ const navGroups: NavGroup[] = [
   },
 ];
 
-function getInitialLocale(): Locale {
-  if (typeof window === 'undefined') return 'ru';
-  return window.localStorage.getItem(localeStorageKey) === 'de' ? 'de' : 'ru';
-}
-
 function canSee(item: NavItem, user: AuthUser | null) {
   return !item.roles || (user && item.roles.includes(user.role));
 }
@@ -131,19 +62,12 @@ function isActive(pathname: string, href: string) {
 
 export default function MainNav() {
   const pathname = usePathname();
+  const { locale, setLocale, t } = useI18n();
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [locale, setLocaleState] = useState<Locale>('ru');
 
   useEffect(() => {
-    setLocaleState(getInitialLocale());
     me().then((response) => setUser(response.data)).catch(() => setUser(null));
   }, []);
-
-  useEffect(() => {
-    document.documentElement.lang = locale;
-    window.localStorage.setItem(localeStorageKey, locale);
-    window.dispatchEvent(new CustomEvent('rail-crm-locale-change', { detail: { locale } }));
-  }, [locale]);
 
   async function signOut() {
     await logout();
@@ -151,15 +75,10 @@ export default function MainNav() {
     window.location.href = '/login';
   }
 
-  function setLocale(nextLocale: Locale) {
-    setLocaleState(nextLocale);
-  }
-
-  const t = dictionaries[locale];
   const roleLabel: Record<string, string> = {
-    employee: t.employee,
-    manager: t.manager,
-    admin: t.adminRole,
+    employee: t('employeeRole'),
+    manager: t('managerRole'),
+    admin: t('adminRole'),
   };
 
   return (
@@ -168,7 +87,7 @@ export default function MainNav() {
         <span className="nav-logo">CRM</span>
         <span>
           <strong>Rail CRM</strong>
-          <small>{t.brandSubtitle}</small>
+          <small>{t('brandSubtitle')}</small>
         </span>
       </a>
 
@@ -180,11 +99,11 @@ export default function MainNav() {
 
           return (
             <section className="nav-group" key={group.titleKey}>
-              <p>{t[group.titleKey]}</p>
+              <p>{t(group.titleKey)}</p>
               {items.map((item) => (
                 <a className={`nav-item ${isActive(pathname, item.href) ? 'active' : ''}`} href={item.href} key={item.href}>
                   <span className="nav-icon">{item.code}</span>
-                  <span>{t[item.labelKey]}</span>
+                  <span>{t(item.labelKey)}</span>
                 </a>
               ))}
             </section>
@@ -193,8 +112,8 @@ export default function MainNav() {
       </nav>
 
       <div className="nav-footer">
-        <div className="language-switcher" aria-label={t.language}>
-          <span>{t.language}</span>
+        <div className="language-switcher" aria-label={t('language')}>
+          <span>{t('language')}</span>
           <div>
             <button className={locale === 'ru' ? 'active' : ''} onClick={() => setLocale('ru')} type="button">RU</button>
             <button className={locale === 'de' ? 'active' : ''} onClick={() => setLocale('de')} type="button">DE</button>
@@ -207,12 +126,12 @@ export default function MainNav() {
               <span>{user.name || user.email}</span>
               <small>{roleLabel[user.role] || user.role}</small>
             </div>
-            <button className="nav-button" onClick={signOut} type="button">{t.logout}</button>
+            <button className="nav-button" onClick={signOut} type="button">{t('logout')}</button>
           </>
         ) : (
           <a className={`nav-item login-item ${isActive(pathname, '/login') ? 'active' : ''}`} href="/login">
             <span className="nav-icon">IN</span>
-            <span>{t.login}</span>
+            <span>{t('login')}</span>
           </a>
         )}
       </div>
