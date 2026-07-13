@@ -35,11 +35,129 @@ Route::prefix('v1')->group(function () {
 
         $employeeId = (int) $request->integer('employee_id', 1);
         $deleted = DB::table('work_events')->where('employee_id', $employeeId)->delete();
+        DB::table('work_orders')->where('employee_id', $employeeId)->where('reference_number', 'like', 'BER-HBF-%')->update([
+            'status' => 'planned',
+            'updated_at' => now(),
+        ]);
 
         return response()->json([
             'message' => 'Demo work events reset.',
             'employee_id' => $employeeId,
             'deleted' => $deleted,
+        ]);
+    });
+
+    Route::post('/dev/field-demo-seed', function (Request $request) {
+        abort_unless(
+            app()->environment(['local', 'testing']) && $request->header('X-Local-Dev-Bypass') === 'rail-crm-dev',
+            404
+        );
+
+        $employeeId = (int) $request->integer('employee_id', 1);
+        $now = now();
+        $objectName = 'Berlin Hauptbahnhof';
+        $objectAddress = 'Europaplatz 1, 10557 Berlin';
+
+        $orders = [
+            [
+                'reference_number' => 'BER-HBF-K1-WTU-001',
+                'customer_name' => 'Kunde 1 — DB Station Service',
+                'work_title' => 'Gleis 12 Sicherheitskontrolle',
+                'leistungsart' => 'WTU',
+                'zugnummer' => 'ICE 204',
+                'einsatzort' => 'Berlin Hbf / Gleis 12',
+                'planned_start_at' => '2026-07-13 07:30:00',
+                'planned_end_at' => '2026-07-13 09:30:00',
+            ],
+            [
+                'reference_number' => 'BER-HBF-K2-WSU-001',
+                'customer_name' => 'Kunde 2 — Rail Cargo GmbH',
+                'work_title' => 'Wagenprüfung Eingang Nord',
+                'leistungsart' => 'WSU',
+                'zugnummer' => 'RC 8812',
+                'einsatzort' => 'Berlin Hbf / Eingang Nord',
+                'planned_start_at' => '2026-07-13 10:00:00',
+                'planned_end_at' => '2026-07-13 11:30:00',
+            ],
+            [
+                'reference_number' => 'BER-HBF-K2-EWU-002',
+                'customer_name' => 'Kunde 2 — Rail Cargo GmbH',
+                'work_title' => 'E-WU Dokumentation',
+                'leistungsart' => 'E-WU',
+                'zugnummer' => 'RC 8812',
+                'einsatzort' => 'Berlin Hbf / Eingang Nord',
+                'planned_start_at' => '2026-07-13 11:45:00',
+                'planned_end_at' => '2026-07-13 12:30:00',
+            ],
+            [
+                'reference_number' => 'BER-HBF-K2-RB-003',
+                'customer_name' => 'Kunde 2 — Rail Cargo GmbH',
+                'work_title' => 'Rb Kontrolle Rangierbereich',
+                'leistungsart' => 'Rb',
+                'zugnummer' => 'RB 4410',
+                'einsatzort' => 'Berlin Hbf / Rangierbereich B',
+                'planned_start_at' => '2026-07-13 13:00:00',
+                'planned_end_at' => '2026-07-13 14:00:00',
+            ],
+            [
+                'reference_number' => 'BER-HBF-K2-RID-004',
+                'customer_name' => 'Kunde 2 — Rail Cargo GmbH',
+                'work_title' => 'RID-Kontrolle Gefahrgut',
+                'leistungsart' => 'RID-Kontrolle',
+                'zugnummer' => 'RID 19',
+                'einsatzort' => 'Berlin Hbf / Gleis 5',
+                'planned_start_at' => '2026-07-13 14:15:00',
+                'planned_end_at' => '2026-07-13 15:30:00',
+            ],
+            [
+                'reference_number' => 'BER-HBF-K2-ZB-005',
+                'customer_name' => 'Kunde 2 — Rail Cargo GmbH',
+                'work_title' => 'Zugbeschtreifung Abschluss',
+                'leistungsart' => 'Zugbeschtreifung',
+                'zugnummer' => 'ICE 907',
+                'einsatzort' => 'Berlin Hbf / Gleis 7',
+                'planned_start_at' => '2026-07-13 16:00:00',
+                'planned_end_at' => '2026-07-13 17:00:00',
+            ],
+        ];
+
+        foreach ($orders as $order) {
+            $details = [
+                'object_name' => $objectName,
+                'object_address' => $objectAddress,
+                'customer_name' => $order['customer_name'],
+                'work_title' => $order['work_title'],
+                'leistungsart' => $order['leistungsart'],
+                'zugnummer' => $order['zugnummer'],
+                'einsatzort' => $order['einsatzort'],
+            ];
+
+            DB::table('work_orders')->updateOrInsert(
+                ['reference_number' => $order['reference_number']],
+                [
+                    'employee_id' => $employeeId,
+                    'title' => $order['work_title'],
+                    'status' => 'planned',
+                    'planned_start_at' => $order['planned_start_at'],
+                    'planned_end_at' => $order['planned_end_at'],
+                    'details' => json_encode($details),
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]
+            );
+        }
+
+        return response()->json([
+            'message' => 'Field demo data ready.',
+            'object' => [
+                'name' => $objectName,
+                'address' => $objectAddress,
+            ],
+            'orders' => DB::table('work_orders')
+                ->where('employee_id', $employeeId)
+                ->where('reference_number', 'like', 'BER-HBF-%')
+                ->orderBy('planned_start_at')
+                ->get(),
         ]);
     });
 
