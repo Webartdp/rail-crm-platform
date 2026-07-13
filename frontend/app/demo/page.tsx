@@ -1,12 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { postWorkEvent, resetDemoWorkEvents, workEventRoutes } from '../../lib/api';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  getWorkEvents,
+  postWorkEvent,
+  resetDemoWorkEvents,
+  seedFieldDemo,
+  type DemoWorkOrder,
+  type WorkEvent,
+  workEventRoutes,
+} from '../../lib/api';
 import { getFieldState, type FieldState } from '../../lib/field-state';
 
-const fallbackEmployeeId = 1;
-const fallbackOrderId = 1;
-
+const employeeId = 1;
 const leistungsartOptions = ['', 'WTU', 'WSU', 'E-WU', 'Rb', 'Azf', 'RID-Kontrolle', 'Zugbeschtreifung'];
 
 const routeByAction: Record<string, string> = {
@@ -19,12 +25,38 @@ const routeByAction: Record<string, string> = {
 };
 
 const actionLabels: Record<string, string> = {
-  gasfahrt_start: 'Начать дорогу из дома / Gasfahrt',
-  gasfahrt_stop: 'Завершить дорогу / Gasfahrt beendet',
-  dienstbeginn: 'Начать работу / Dienstbeginn',
-  arbeit_stop: 'Завершить работу / Stop',
-  dienstfahrt_start: 'Начать служебный переезд / Start Dienstfahrt',
-  dienstfahrt_stop: 'Завершить служебный переезд / Stop Dienstfahrt',
+  gasfahrt_start: 'Gasfahrt — выезд из дома',
+  gasfahrt_stop: 'Gasfahrt beendet — прибыл на объект',
+  dienstbeginn: 'Dienstbeginn — начало работы',
+  arbeit_stop: 'Stop — окончание работы',
+  dienstfahrt_start: 'Start Dienstfahrt — выезд на следующее место',
+  dienstfahrt_stop: 'Stop Dienstfahrt — прибыл на следующее место',
+};
+
+const stateLabels: Record<string, string> = {
+  idle: 'Готов к выезду из дома',
+  gasfahrt_active: 'В дороге на работу',
+  arrived: 'Прибыл на объект',
+  work_active: 'Работа выполняется',
+  work_finished: 'Работа завершена',
+  dienstfahrt_active: 'Служебный переезд',
+  dienstfahrt_finished: 'Прибыл на следующее место',
+};
+
+type WorkDetails = {
+  object_name?: string;
+  object_address?: string;
+  customer_name?: string;
+  work_title?: string;
+  leistungsart?: string;
+  zugnummer?: string;
+  einsatzort?: string;
+};
+
+type PositionPayload = {
+  latitude?: number;
+  longitude?: number;
+  location_accuracy?: number;
 };
 
 function today() {
@@ -35,58 +67,223 @@ function timeNow() {
   return new Intl.DateTimeFormat('ru-RU', { hour: '2-digit', minute: '2-digit' }).format(new Date());
 }
 
+function formatDateTime(value?: string | null) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
+
+function parseDetails(order?: DemoWorkOrder | null): WorkDetails {
+  if (!order?.details) return {};
+  if (typeof order.details === 'object') return order.details as WorkDetails;
+
+  try {
+    return JSON.parse(order.details) as WorkDetails;
+  } catch {
+    return {};
+  }
+}
+
+function eventLabel(type: string) {
+  return actionLabels[type] || type;
+}
+
+function eventPayload(event: WorkEvent): Record<string, unknown> {
+  if (!event.payload) return {};
+  if (typeof event.payload === 'object') return event.payload;
+
+  try {
+    return JSON.parse(event.payload) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
+
+function getPosition(): Promise<PositionPayload> {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) return resolve({});
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => resolve({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        location_accuracy: Math.round(position.coords.accuracy),
+      }),
+      () => resolve({}),
+      { enableHighAccuracy: true, timeout: 7000, maximumAge: 30000 }
+    );
+  });
+}
+
+function buildGoogleMapsUrl(event?: WorkEvent) {
+  if (!event?.latitude || !event?.longitude) return null;
+  return `https://www.google.com/maps?q=${event.latitude},${event.longitude}`;
+}
+
+function minutesBetween(start?: string, stop?: string) {
+  if (!start || !stop) return null;
+  const startTime = new Date(start).getTime();
+  const stopTime = new Date(stop).getTime();
+  if (Number.isNaN(startTime) || Number.isNaN(stopTime) || stopTime < startTime) return null;
+  return Math.round((stopTime - startTime) / 60000);
+}
+
+function durationLabel(minutes: number | null) {
+  if (minutes === null) return '—';
+  if (minutes < 60) return `${minutes} мин`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest ? `${hours} ч ${rest} мин` : `${hours} ч`;
+}
+
 export default function DemoPage() {
-  const [employeeId] = useState(fallbackEmployeeId);
-  const [selectedOrderId] = useState(fallbackOrderId);
+  const [orders, setOrders] = useState<DemoWorkOrder[]>([]);
+  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [fieldState, setFieldState] = useState<FieldState | null>(null);
+  const [events, setEvents] = useState<WorkEvent[]>([]);
   const [log, setLog] = useState<string[]>([]);
   const [date, setDate] = useState(today());
   const [leistungsart, setLeistungsart] = useState('WTU');
   const [leistungsartCustom, setLeistungsartCustom] = useState('');
-  const [referenznummer, setReferenznummer] = useState('REF-2026-001');
-  const [zugnummer, setZugnummer] = useState('ICE 204');
-  const [einsatzort, setEinsatzort] = useState('Gleis 12');
-  const [plannedStart, setPlannedStart] = useState('07:30');
-  const [plannedStop, setPlannedStop] = useState('15:30');
+  const [referenznummer, setReferenznummer] = useState('');
+  const [zugnummer, setZugnummer] = useState('');
+  const [einsatzort, setEinsatzort] = useState('');
+  const [plannedStart, setPlannedStart] = useState('');
+  const [plannedStop, setPlannedStop] = useState('');
   const [isNight, setIsNight] = useState(false);
   const [isSunday, setIsSunday] = useState(false);
   const [isHoliday, setIsHoliday] = useState(false);
   const [bemerkung, setBemerkung] = useState('');
-  const [message, setMessage] = useState('Готово. Нажми рабочую кнопку.');
+  const [message, setMessage] = useState('Загружаю рабочие задания...');
   const [saving, setSaving] = useState(false);
+  const [geoStatus, setGeoStatus] = useState('Геопозиция будет запрошена при нажатии рабочей кнопки.');
+
+  const selectedOrder = useMemo(
+    () => orders.find((order) => order.id === selectedOrderId) || null,
+    [orders, selectedOrderId]
+  );
+
+  const selectedDetails = useMemo(() => parseDetails(selectedOrder), [selectedOrder]);
+  const currentAction = fieldState?.allowed_actions?.[0] || 'gasfahrt_start';
+  const backendButtonLabel = fieldState?.next_button || 'Gasfahrt';
+  const currentLabel = actionLabels[currentAction] || backendButtonLabel;
+  const currentStateLabel = stateLabels[fieldState?.current_state || 'idle'] || fieldState?.current_state || '—';
+  const realLeistungsart = leistungsart === '' ? leistungsartCustom.trim() : leistungsart;
+  const plannedExceeded = Boolean(fieldState?.planned_exceeded);
+  const stopBlocked = Boolean(fieldState?.requires_bemerkung) && bemerkung.trim() === '';
+  const dienstbeginnBlocked = currentAction === 'dienstbeginn' && (!date || !realLeistungsart || !referenznummer.trim() || !zugnummer.trim() || !einsatzort.trim() || !selectedOrderId);
+  const disabled = saving || stopBlocked || dienstbeginnBlocked || !selectedOrderId;
+
+  const groupedOrders = useMemo(() => {
+    return orders.reduce<Record<string, DemoWorkOrder[]>>((groups, order) => {
+      const details = parseDetails(order);
+      const customer = details.customer_name || 'Без заказчика';
+      groups[customer] = groups[customer] || [];
+      groups[customer].push(order);
+      return groups;
+    }, {});
+  }, [orders]);
+
+  const latestLocatedEvent = useMemo(
+    () => events.find((event) => event.latitude && event.longitude),
+    [events]
+  );
+
+  const completedOrderIds = useMemo(() => {
+    return new Set(events
+      .filter((event) => event.event_type === 'arbeit_stop' && event.assignment_id)
+      .map((event) => Number(event.assignment_id)));
+  }, [events]);
+
+  const workDurationMinutes = useMemo(() => {
+    if (!selectedOrderId) return null;
+    const chronological = [...events].reverse();
+    let start: string | undefined;
+
+    for (const event of chronological) {
+      if (Number(event.assignment_id) !== selectedOrderId) continue;
+      if (event.event_type === 'dienstbeginn') start = event.event_time;
+      if (event.event_type === 'arbeit_stop' && start) return minutesBetween(start, event.event_time);
+    }
+
+    return null;
+  }, [events, selectedOrderId]);
 
   function addLog(text: string) {
-    setLog((items) => [...items, `${timeNow()} — ${text}`]);
+    setLog((items) => [`${timeNow()} — ${text}`, ...items].slice(0, 12));
   }
 
-  async function refreshState() {
+  function applyOrder(order: DemoWorkOrder) {
+    const details = parseDetails(order);
+    setSelectedOrderId(order.id);
+    setReferenznummer(order.reference_number || '');
+    setLeistungsart(details.leistungsart || 'WTU');
+    setLeistungsartCustom('');
+    setZugnummer(details.zugnummer || '');
+    setEinsatzort(details.einsatzort || '');
+    setPlannedStart(order.planned_start_at ? order.planned_start_at.slice(11, 16) : '');
+    setPlannedStop(order.planned_end_at ? order.planned_end_at.slice(11, 16) : '');
+    setBemerkung('');
+    refreshState(order.id);
+  }
+
+  async function refreshState(orderId = selectedOrderId) {
     try {
-      const state = await getFieldState(employeeId, selectedOrderId);
+      const state = await getFieldState(employeeId, orderId || undefined);
       setFieldState(state);
       return state;
     } catch (error) {
       setFieldState(null);
-      setMessage('Не могу получить состояние сотрудника. Проверь, что backend запущен на http://127.0.0.1:8000.');
+      setMessage('Не могу получить состояние сотрудника. Проверь backend на http://localhost:8000.');
       return null;
     }
   }
 
-  useEffect(() => {
-    refreshState();
-  }, []);
+  async function refreshEvents() {
+    try {
+      const response = await getWorkEvents({ employeeId });
+      setEvents(response.data);
+    } catch {
+      setEvents([]);
+    }
+  }
 
-  const currentAction = fieldState?.allowed_actions?.[0] || 'gasfahrt_start';
-  const backendButtonLabel = fieldState?.next_button || 'Gasfahrt';
-  const currentLabel = actionLabels[currentAction] || backendButtonLabel;
-  const realLeistungsart = leistungsart === '' ? leistungsartCustom.trim() : leistungsart;
-  const plannedExceeded = Boolean(fieldState?.planned_exceeded);
-  const stopBlocked = Boolean(fieldState?.requires_bemerkung) && bemerkung.trim() === '';
-  const dienstbeginnBlocked = backendButtonLabel === 'Dienstbeginn' && (!date || !realLeistungsart || !referenznummer.trim() || !zugnummer.trim() || !einsatzort.trim());
-  const disabled = saving || stopBlocked || dienstbeginnBlocked;
+  async function loadDemo() {
+    setSaving(true);
+    setMessage('Готовлю объект, заказчиков и работы...');
+
+    try {
+      const seeded = await seedFieldDemo(employeeId);
+      setOrders(seeded.orders);
+      const first = seeded.orders[0];
+
+      if (first) {
+        applyOrder(first);
+      }
+
+      await refreshEvents();
+      setMessage('Рабочие задания загружены. Выбери работу и нажми кнопку workflow.');
+    } catch (error) {
+      const errorText = error instanceof Error ? error.message : 'неизвестная ошибка';
+      setMessage(`Не удалось подготовить задания: ${errorText}`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  useEffect(() => {
+    loadDemo();
+  }, []);
 
   async function next() {
     if (disabled) {
-      setMessage('Кнопка заблокирована: проверь обязательные поля или комментарий / Bemerkung.');
+      setMessage('Кнопка заблокирована: проверь выбранную работу, обязательные поля или Bemerkung.');
       return;
     }
 
@@ -101,16 +298,30 @@ export default function DemoPage() {
     setMessage(`Отправляю: ${currentLabel}...`);
     addLog(`отправка: ${currentLabel}`);
 
+    const needsLocation = ['gasfahrt_start', 'gasfahrt_stop', 'dienstbeginn', 'arbeit_stop', 'dienstfahrt_start', 'dienstfahrt_stop'].includes(currentAction);
+    const position = needsLocation ? await getPosition() : {};
+
+    if (needsLocation && position.latitude && position.longitude) {
+      setGeoStatus(`Координаты получены: ${position.latitude.toFixed(5)}, ${position.longitude.toFixed(5)} ±${position.location_accuracy || '?'} м`);
+    } else if (needsLocation) {
+      setGeoStatus('Браузер не дал координаты. Событие сохранится без точки на карте.');
+    }
+
     try {
       await postWorkEvent(route, {
         employee_id: employeeId,
-        assignment_id: selectedOrderId,
+        assignment_id: selectedOrderId || undefined,
+        ...position,
         planned_exceeded: plannedExceeded,
         bemerkung,
         payload: {
-          source: 'demo',
+          source: 'field-screen',
           action_label: backendButtonLabel,
           date,
+          object_name: selectedDetails.object_name,
+          object_address: selectedDetails.object_address,
+          customer_name: selectedDetails.customer_name,
+          work_title: selectedDetails.work_title || selectedOrder?.title,
           leistungsart: realLeistungsart,
           referenznummer,
           zugnummer,
@@ -120,12 +331,14 @@ export default function DemoPage() {
           is_night: isNight,
           is_sunday: isSunday,
           is_holiday: isHoliday,
+          bemerkung,
           client_time: timeNow(),
         },
       });
 
       addLog(`${currentLabel} сохранено в API`);
       setMessage(`${currentLabel} сохранено.`);
+      await refreshEvents();
       await refreshState();
     } catch (error) {
       const errorText = error instanceof Error ? error.message : 'неизвестная ошибка';
@@ -145,8 +358,9 @@ export default function DemoPage() {
       const result = await resetDemoWorkEvents(employeeId);
       setLog([]);
       addLog(`demo workflow сброшен, удалено событий: ${result.deleted}`);
-      setMessage('Demo workflow сброшен. Можно начинать с Gasfahrt.');
+      await refreshEvents();
       await refreshState();
+      setMessage('Demo workflow сброшен. Можно начинать с Gasfahrt.');
     } catch (error) {
       const errorText = error instanceof Error ? error.message : 'неизвестная ошибка';
       addLog(`сброс не выполнен: ${errorText}`);
@@ -157,57 +371,140 @@ export default function DemoPage() {
   }
 
   return (
-    <main className="page-shell">
-      <section className="hero-card">
+    <main className="page-shell field-crm-page">
+      <section className="hero-card field-hero">
         <div>
-          <p className="eyebrow">Демо</p>
-          <h1>Workflow кнопок сотрудника</h1>
-          <p className="hero-text">Рабочая проверка цепочки: Gasfahrt → Dienstbeginn → Stop → Dienstfahrt.</p>
-          <p className="hint">Сотрудник #{employeeId}, тестовое задание #{selectedOrderId}</p>
+          <p className="eyebrow">Field CRM / русский dev-режим</p>
+          <h1>Рабочий день сотрудника</h1>
+          <p className="hero-text">Gasfahrt → Gasfahrt beendet → Dienstbeginn → Stop → Dienstfahrt. Объект может содержать несколько заказчиков и несколько работ.</p>
         </div>
-        <div className="status-pill">{fieldState?.current_state || 'загрузка'}</div>
+        <div className="field-status-stack">
+          <div className="status-pill">{currentStateLabel}</div>
+          <span>{selectedDetails.object_name || 'Объект не выбран'}</span>
+        </div>
       </section>
 
-      <section className="grid">
-        <div className="panel action-panel">
-          <button className="action-button primary" onClick={next} type="button" disabled={disabled}>
-            {saving ? 'Сохраняю...' : currentLabel}
-          </button>
-          <button className="action-button secondary" onClick={resetWorkflow} type="button" disabled={saving}>
-            Сбросить demo workflow
-          </button>
-          <p className="hint">Следующее backend-действие: {currentAction}</p>
-          <p className="hint">Последнее событие: {fieldState?.last_event_type || 'нет'}</p>
-          <p className="hint">Плановое завершение: {fieldState?.planned_end_at || plannedStop}</p>
-          <p className="hint">{message}</p>
-          {stopBlocked ? <p className="hint"><strong>Нужен комментарий / Bemerkung:</strong> плановое время превышено.</p> : null}
-          {dienstbeginnBlocked ? <p className="hint"><strong>Заполни поля:</strong> дата, тип услуги, референс, номер поезда и место работы.</p> : null}
-        </div>
-
-        <div className="panel">
-          <h2>Данные задания</h2>
-          <div className="form-grid">
-            <label>Задание<input value="REF-2026-001 — WTU / ICE 204 / Gleis 12" readOnly /></label>
-            <label>Дата<input value={date} onChange={(event) => setDate(event.target.value)} type="date" /></label>
-            <label>Тип услуги / Leistungsart<select value={leistungsart} onChange={(event) => setLeistungsart(event.target.value)}>{leistungsartOptions.map((item) => <option key={item} value={item}>{item === '' ? 'Своя услуга' : item}</option>)}</select></label>
-            {leistungsart === '' ? <label>Своя услуга<input value={leistungsartCustom} onChange={(event) => setLeistungsartCustom(event.target.value)} placeholder="Введите тип услуги" /></label> : null}
-            <label>Референс / Referenznummer<input value={referenznummer} onChange={(event) => setReferenznummer(event.target.value)} /></label>
-            <label>Номер поезда / Zugnummer<input value={zugnummer} onChange={(event) => setZugnummer(event.target.value)} /></label>
-            <label>Место работы / Einsatzort<input value={einsatzort} onChange={(event) => setEinsatzort(event.target.value)} /></label>
-            <label>Плановый старт<input value={plannedStart} onChange={(event) => setPlannedStart(event.target.value)} type="time" /></label>
-            <label>Плановый стоп<input value={plannedStop} onChange={(event) => setPlannedStop(event.target.value)} type="time" /></label>
-            <label><input checked={isNight} onChange={(event) => setIsNight(event.target.checked)} type="checkbox" /> Ночь / Nacht</label>
-            <label><input checked={isSunday} onChange={(event) => setIsSunday(event.target.checked)} type="checkbox" /> Воскресенье / Sonntag</label>
-            <label><input checked={isHoliday} onChange={(event) => setIsHoliday(event.target.checked)} type="checkbox" /> Праздник / Feiertag</label>
-            <label className="wide-field">Комментарий / Bemerkung<textarea value={bemerkung} onChange={(event) => setBemerkung(event.target.value)} placeholder="Обязательно, если время превышено" /></label>
+      <section className="field-layout">
+        <aside className="panel field-sidebar">
+          <div className="field-panel-head">
+            <p className="eyebrow">Объект</p>
+            <h2>{selectedDetails.object_name || 'Berlin Hauptbahnhof'}</h2>
+            <p className="hint">{selectedDetails.object_address || 'Europaplatz 1, 10557 Berlin'}</p>
           </div>
-        </div>
-      </section>
 
-      <section className="panel">
-        <h2>Лог действий</h2>
-        {log.length === 0 ? <p className="hint">Пока действий нет.</p> : null}
-        {log.map((item, index) => <p key={`${item}-${index}`}>{index + 1}. {item}</p>)}
+          {Object.entries(groupedOrders).map(([customer, customerOrders]) => (
+            <div className="customer-block" key={customer}>
+              <h3>{customer}</h3>
+              <div className="work-list">
+                {customerOrders.map((order) => {
+                  const details = parseDetails(order);
+                  const active = order.id === selectedOrderId;
+                  const done = completedOrderIds.has(order.id);
+
+                  return (
+                    <button className={`work-card ${active ? 'active' : ''}`} key={order.id} onClick={() => applyOrder(order)} type="button">
+                      <span className="work-card-title">{details.work_title || order.title}</span>
+                      <span>{order.reference_number}</span>
+                      <small>{details.leistungsart} · {details.zugnummer} · {details.einsatzort}</small>
+                      <strong className={done ? 'done-badge' : 'planned-badge'}>{done ? 'выполнено' : order.status || 'planned'}</strong>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </aside>
+
+        <section className="field-main">
+          <div className="panel action-panel field-action-panel">
+            <div>
+              <p className="eyebrow">Следующее действие</p>
+              <h2>{currentLabel}</h2>
+              <p className="hint">Backend action: {currentAction}</p>
+            </div>
+
+            <button className="action-button primary giant-action" onClick={next} type="button" disabled={disabled}>
+              {saving ? 'Сохраняю...' : currentLabel}
+            </button>
+            <button className="action-button secondary" onClick={resetWorkflow} type="button" disabled={saving}>Сбросить demo workflow</button>
+
+            <div className="field-alerts">
+              <p className="hint">{message}</p>
+              <p className="hint">{geoStatus}</p>
+              {stopBlocked ? <p className="hint danger-text"><strong>Stop заблокирован:</strong> плановое время превышено, заполни Bemerkung.</p> : null}
+              {dienstbeginnBlocked ? <p className="hint danger-text"><strong>Dienstbeginn заблокирован:</strong> дата, Leistungsart, Referenznummer, Zugnummer и Einsatzort обязательны.</p> : null}
+            </div>
+          </div>
+
+          <div className="panel">
+            <div className="field-panel-head split-head">
+              <div>
+                <p className="eyebrow">Выбранная работа</p>
+                <h2>{selectedDetails.work_title || selectedOrder?.title || 'Работа не выбрана'}</h2>
+                <p className="hint">{selectedDetails.customer_name || 'Заказчик не выбран'}</p>
+              </div>
+              <div className="metric-card compact">
+                <span>Факт по работе</span>
+                <strong>{durationLabel(workDurationMinutes)}</strong>
+              </div>
+            </div>
+
+            <div className="form-grid">
+              <label>Дата<input value={date} onChange={(event) => setDate(event.target.value)} type="date" /></label>
+              <label>Тип работы / Leistungsart<select value={leistungsart} onChange={(event) => setLeistungsart(event.target.value)}>{leistungsartOptions.map((item) => <option key={item || 'custom'} value={item}>{item === '' ? 'Пустая строка — внести вручную' : item}</option>)}</select></label>
+              {leistungsart === '' ? <label>Своя Leistungsart<input value={leistungsartCustom} onChange={(event) => setLeistungsartCustom(event.target.value)} placeholder="Например Sonderkontrolle" /></label> : null}
+              <label>Referenznummer<input value={referenznummer} onChange={(event) => setReferenznummer(event.target.value)} /></label>
+              <label>Zugnummer<input value={zugnummer} onChange={(event) => setZugnummer(event.target.value)} /></label>
+              <label>Einsatzort<input value={einsatzort} onChange={(event) => setEinsatzort(event.target.value)} /></label>
+              <label>Плановый Start<input value={plannedStart} onChange={(event) => setPlannedStart(event.target.value)} type="time" /></label>
+              <label>Плановый Stop<input value={plannedStop} onChange={(event) => setPlannedStop(event.target.value)} type="time" /></label>
+              <label><input checked={isNight} onChange={(event) => setIsNight(event.target.checked)} type="checkbox" /> Nacht / ночная работа</label>
+              <label><input checked={isSunday} onChange={(event) => setIsSunday(event.target.checked)} type="checkbox" /> Sonntag / воскресенье</label>
+              <label><input checked={isHoliday} onChange={(event) => setIsHoliday(event.target.checked)} type="checkbox" /> Feiertag / праздник</label>
+              <label className="wide-field">Bemerkung<textarea value={bemerkung} onChange={(event) => setBemerkung(event.target.value)} placeholder="Описание особенностей, обязательно при превышении планового времени" /></label>
+            </div>
+          </div>
+
+          <section className="grid lower-grid field-lower-grid">
+            <div className="panel">
+              <h2>Лог действий</h2>
+              {log.length === 0 ? <p className="hint">Пока действий нет.</p> : null}
+              {log.map((item, index) => <p className="log-line" key={`${item}-${index}`}>{item}</p>)}
+            </div>
+
+            <div className="panel">
+              <h2>Google Maps позиция</h2>
+              <div className="map-box">
+                {latestLocatedEvent ? (
+                  <a className="action-link" href={buildGoogleMapsUrl(latestLocatedEvent) || '#'} target="_blank" rel="noreferrer">Открыть последнюю точку на Google Maps</a>
+                ) : (
+                  <span>Координаты появятся после разрешения геолокации</span>
+                )}
+              </div>
+              <p className="hint">Последнее событие с координатами: {latestLocatedEvent ? `${eventLabel(latestLocatedEvent.event_type)} · ${formatDateTime(latestLocatedEvent.event_time)}` : 'нет'}</p>
+            </div>
+          </section>
+
+          <div className="panel">
+            <h2>Лента событий рабочего дня</h2>
+            <div className="timeline">
+              {events.length === 0 ? <p className="hint">Событий пока нет.</p> : null}
+              {events.map((event) => {
+                const payload = eventPayload(event);
+                return (
+                  <div className="timeline-item done" key={event.id}>
+                    <strong>{formatDateTime(event.event_time)}</strong>
+                    <div>
+                      <p>{eventLabel(event.event_type)}</p>
+                      <span>{String(payload.customer_name || '')} {payload.work_title ? `— ${String(payload.work_title)}` : ''}</span>
+                      {event.latitude && event.longitude ? <span> · GPS: {event.latitude}, {event.longitude}</span> : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
       </section>
     </main>
   );
