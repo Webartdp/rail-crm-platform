@@ -92,6 +92,44 @@ class FieldWorkflowBillingTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_local_dev_reset_work_events_clears_only_requested_employee(): void
+    {
+        $workOrderId = $this->createWorkOrder();
+
+        DB::table('work_events')->insert([
+            [
+                'employee_id' => 1,
+                'assignment_id' => $workOrderId,
+                'event_type' => 'gasfahrt_start',
+                'event_time' => '2026-07-06 07:00:00',
+                'payload' => json_encode([]),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'employee_id' => 2,
+                'assignment_id' => $workOrderId,
+                'event_type' => 'gasfahrt_start',
+                'event_time' => '2026-07-06 07:10:00',
+                'payload' => json_encode([]),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        $this->postJson('/api/v1/dev/reset-work-events', ['employee_id' => 1])
+            ->assertNotFound();
+
+        $this->withHeader('X-Local-Dev-Bypass', 'rail-crm-dev')
+            ->postJson('/api/v1/dev/reset-work-events', ['employee_id' => 1])
+            ->assertOk()
+            ->assertJsonPath('employee_id', 1)
+            ->assertJsonPath('deleted', 1);
+
+        $this->assertDatabaseMissing('work_events', ['employee_id' => 1]);
+        $this->assertDatabaseHas('work_events', ['employee_id' => 2]);
+    }
+
     private function createEmployeeProfile(): void
     {
         DB::table('employee_profiles')->insert([
