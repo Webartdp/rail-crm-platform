@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { me, type AuthUser } from '../../lib/auth';
+import { login, me, register, type AuthUser } from '../../lib/auth';
 import { postWorkEvent, workEventRoutes } from '../../lib/api';
 import { getFieldState, type FieldState } from '../../lib/field-state';
 import { getWorkOrders, type WorkOrder } from '../../lib/work-orders';
 
 const fallbackEmployeeId = 1;
+const devEmail = 'admin@example.com';
+const devPassword = 'password';
 const leistungsartOptions = ['', 'WTU', 'WSU', 'E-WU', 'Rb', 'Azf', 'RID-Kontrolle', 'Zugbeschtreifung'];
 const fallbackOrders = [
   { id: 1, employee_id: fallbackEmployeeId, title: 'WTU / ICE 204 / Gleis 12', reference_number: 'REF-2026-001', status: 'planned' },
@@ -97,8 +99,48 @@ export default function DemoPage() {
       await refreshState(nextOrders[0]?.id || 1, nextEmployeeId);
     } catch (error) {
       setOrders(fallbackOrders);
-      setMessage('API заданий недоступен или нет входа. Включён тестовый fallback-заказ. Для сохранения событий нужно войти.');
+      setMessage('API заданий недоступен или нет входа. Включён тестовый fallback-заказ. Для сохранения событий нужен вход.');
       await refreshState(1, nextEmployeeId);
+    }
+  }
+
+  async function devLogin(): Promise<AuthUser | null> {
+    setSaving(true);
+    setMessage(`Выполняю dev-вход: ${devEmail} / ${devPassword}...`);
+    setLog((items) => [...items, `${timeNow()} — dev-вход начат`]);
+
+    try {
+      let response;
+
+      try {
+        response = await login(devEmail, devPassword);
+      } catch (loginError) {
+        response = await register({
+          name: 'Admin User',
+          email: devEmail,
+          password: devPassword,
+          role: 'admin',
+        });
+      }
+
+      const nextUser = response.data;
+      const nextEmployeeId = nextUser.employee_profile_id || fallbackEmployeeId;
+
+      setUser(nextUser);
+      setEmployeeId(nextEmployeeId);
+      setAuthChecked(true);
+      setMessage(`Dev-вход выполнен: ${nextUser.name} (${nextUser.role}).`);
+      setLog((items) => [...items, `${timeNow()} — dev-вход выполнен: ${nextUser.email}`]);
+      await loadForEmployee(nextEmployeeId);
+
+      return nextUser;
+    } catch (error) {
+      const errorText = error instanceof Error ? error.message : 'неизвестная ошибка';
+      setMessage(`Не удалось выполнить dev-вход. Ошибка: ${errorText}`);
+      setLog((items) => [...items, `${timeNow()} — dev-вход не выполнен: ${errorText}`]);
+      return null;
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -114,7 +156,7 @@ export default function DemoPage() {
       })
       .catch(() => {
         setUser(null);
-        setMessage('Вы не вошли. Состояние кнопки можно смотреть, но отправка событий в backend не сработает без входа.');
+        setMessage('Вы не вошли. Нажми рабочую кнопку — демо само попробует выполнить dev-вход.');
         loadForEmployee(fallbackEmployeeId);
       })
       .finally(() => setAuthChecked(true));
@@ -142,10 +184,16 @@ export default function DemoPage() {
   }
 
   async function next() {
-    if (!user) {
-      setMessage('Кнопка не отправлена: сначала зайди на страницу «Вход» и создай/выполни вход под пользователем. Для теста можно создать admin@example.com / password с ролью admin.');
-      setLog((items) => [...items, `${timeNow()} — действие не отправлено: нет входа`]);
-      return;
+    setLog((items) => [...items, `${timeNow()} — нажата кнопка: ${currentLabel}`]);
+
+    let activeUser = user;
+    let activeEmployeeId = employeeId;
+
+    if (!activeUser) {
+      const loggedUser = await devLogin();
+      if (!loggedUser) return;
+      activeUser = loggedUser;
+      activeEmployeeId = loggedUser.employee_profile_id || fallbackEmployeeId;
     }
 
     if (stopBlocked) {
@@ -165,18 +213,20 @@ export default function DemoPage() {
     }
 
     setSaving(true);
+    setMessage('Кнопка нажата. Получаю геопозицию и отправляю событие в backend...');
+    setLog((items) => [...items, `${timeNow()} — отправка в backend: ${route}`]);
     const position = await getPosition();
 
     try {
       await postWorkEvent(route, {
-        employee_id: employeeId,
+        employee_id: activeEmployeeId,
         assignment_id: selectedOrderId,
         ...position,
         planned_exceeded: plannedExceeded,
         bemerkung,
         payload: {
           source: 'demo',
-          user_id: user?.id,
+          user_id: activeUser.id,
           action_label: backendButtonLabel,
           date,
           leistungsart: realLeistungsart,
@@ -192,12 +242,13 @@ export default function DemoPage() {
         },
       });
       setLog((items) => [...items, `${timeNow()} — ${currentLabel} сохранено в API`]);
-      setMessage(`${currentLabel} сохранено.`);
-      await refreshState(selectedOrderId);
+      setMessage(`${currentLabel} сохранено. Следующая кнопка должна измениться после обновления состояния.`);
+      await refreshState(selectedOrderId, activeEmployeeId);
     } catch (error) {
-      const state = await refreshState(selectedOrderId);
-      setLog((items) => [...items, `${timeNow()} — ${currentLabel} не сохранено`]);
-      setMessage(state ? `Действие отклонено backend-ом. Следующее разрешённое действие: ${actionLabels[state.allowed_actions?.[0]] || state.next_button}. Проверь вход и роль пользователя.` : 'Действие не сохранено. API или состояние сотрудника недоступны.');
+      const errorText = error instanceof Error ? error.message : 'неизвестная ошибка';
+      const state = await refreshState(selectedOrderId, activeEmployeeId);
+      setLog((items) => [...items, `${timeNow()} — ${currentLabel} не сохранено: ${errorText}`]);
+      setMessage(state ? `Действие отклонено backend-ом. Следующее разрешённое действие: ${actionLabels[state.allowed_actions?.[0]] || state.next_button}. Ошибка: ${errorText}` : `Действие не сохранено. Ошибка: ${errorText}`);
     } finally {
       setSaving(false);
     }
@@ -211,7 +262,7 @@ export default function DemoPage() {
           <h1>Workflow кнопок сотрудника</h1>
           <p className="hero-text">Порядок действий по требованиям заказчика: Gasfahrt → Dienstbeginn → Stop → Dienstfahrt.</p>
           <p className="hint">Профиль сотрудника: #{employeeId}{user ? ` / ${user.name}` : ' / нет входа'}</p>
-          {authChecked && !user ? <p className="hint"><strong>Важно:</strong> без входа кнопка показывает состояние, но не сохраняет событие. <a className="action-link" href="/login">Перейти ко входу</a></p> : null}
+          {authChecked && !user ? <p className="hint"><strong>Dev-режим:</strong> нажми рабочую кнопку, и демо само попробует войти как {devEmail} / {devPassword}.</p> : null}
         </div>
         <div className="status-pill">{fieldState?.current_state || 'загрузка'}</div>
       </section>
@@ -219,6 +270,7 @@ export default function DemoPage() {
       <section className="grid">
         <div className="panel action-panel">
           <button className="action-button primary" onClick={next} type="button" disabled={disabled}>{saving ? 'Сохраняем...' : currentLabel}</button>
+          <button className="action-link" onClick={devLogin} type="button" disabled={saving}>Dev-вход</button>
           <p className="hint">Разрешённое действие backend: {currentAction}</p>
           <p className="hint">Последнее событие: {fieldState?.last_event_type || 'нет'}</p>
           <p className="hint">Плановое завершение: {fieldState?.planned_end_at || plannedStop}</p>
