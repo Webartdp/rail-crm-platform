@@ -3,29 +3,46 @@
 import { useEffect, useState } from 'react';
 import { getWorkEvents, type WorkEvent } from '../../lib/api';
 
-function mapsUrl(latitude?: string, longitude?: string) {
-  if (!latitude || !longitude) return null;
-  return `https://www.google.com/maps?q=${latitude},${longitude}`;
+type Coordinate = string | number | null | undefined;
+
+function coordinateValue(value: Coordinate) {
+  if (value === null || value === undefined || value === '') return null;
+  return String(value);
 }
 
-function embedUrl(latitude?: string, longitude?: string) {
-  if (!latitude || !longitude) return null;
-  return `https://www.google.com/maps?q=${latitude},${longitude}&output=embed`;
+function mapsUrl(latitude: Coordinate, longitude: Coordinate) {
+  const lat = coordinateValue(latitude);
+  const lng = coordinateValue(longitude);
+
+  if (!lat || !lng) return null;
+  return `https://www.google.com/maps?q=${lat},${lng}`;
+}
+
+function embedUrl(latitude: Coordinate, longitude: Coordinate) {
+  const lat = coordinateValue(latitude);
+  const lng = coordinateValue(longitude);
+
+  if (!lat || !lng) return null;
+  return `https://www.google.com/maps?q=${lat},${lng}&output=embed`;
+}
+
+function hasCoordinates(event: WorkEvent) {
+  return Boolean(mapsUrl(event.latitude, event.longitude));
 }
 
 export default function MapsPage() {
   const [events, setEvents] = useState<WorkEvent[]>([]);
   const [selected, setSelected] = useState<WorkEvent | null>(null);
-  const [message, setMessage] = useState('Loading map positions...');
+  const [message, setMessage] = useState('Загружаю координаты...');
 
   useEffect(() => {
     getWorkEvents()
       .then((response) => {
         setEvents(response.data);
-        setSelected(response.data.find((event) => event.latitude && event.longitude) || null);
-        setMessage(response.data.length === 0 ? 'No events stored yet.' : '');
+        setSelected(response.data.find((event) => hasCoordinates(event)) || null);
+        setMessage(response.data.length === 0 ? 'Событий пока нет.' : '');
       })
-      .catch(() => setMessage('API not available.'));
+      .catch(() => setMessage('API недоступен. Проверь backend.'));
   }, []);
 
   const selectedEmbed = selected ? embedUrl(selected.latitude, selected.longitude) : null;
@@ -35,10 +52,10 @@ export default function MapsPage() {
       <section className="hero-card">
         <div>
           <p className="eyebrow">Google Maps</p>
-          <h1>Event Positions</h1>
-          <p className="hero-text">Embedded Google Maps view and links for stored employee workflow positions.</p>
+          <h1>Карта событий</h1>
+          <p className="hero-text">Координаты, сохранённые при Gasfahrt, Dienstbeginn, Stop и Dienstfahrt.</p>
         </div>
-        <div className="status-pill">Coordinates</div>
+        <div className="status-pill">GPS</div>
       </section>
 
       {selectedEmbed ? (
@@ -50,14 +67,15 @@ export default function MapsPage() {
 
       <section className="panel">
         {message ? <p className="hint">{message}</p> : null}
-        <div className="table-row"><strong>Event</strong><strong>Time</strong><strong>Map</strong></div>
+        <div className="table-row"><strong>Событие</strong><strong>Время</strong><strong>Карта</strong></div>
         {events.map((event) => {
           const url = mapsUrl(event.latitude, event.longitude);
+
           return (
             <div className="table-row" key={event.id}>
               <span>{event.event_type}</span>
               <span>{event.event_time}</span>
-              <span>{url ? <button className="action-link" onClick={() => setSelected(event)} type="button">Show map</button> : 'No coordinates'} {url ? <a href={url} target="_blank">Open</a> : null}</span>
+              <span>{url ? <button className="action-link" onClick={() => setSelected(event)} type="button">Показать</button> : 'Нет координат'} {url ? <a href={url} target="_blank" rel="noreferrer">Открыть</a> : null}</span>
             </div>
           );
         })}
