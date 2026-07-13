@@ -24,21 +24,25 @@ export default function HomePage() {
           <p className="eyebrow">Rail CRM Platform</p>
           <h1>Экран сотрудника в поле</h1>
           <p className="hero-text">
-            Первый рабочий прототип: дорога из дома, начало работы, стоп и служебная поездка между объектами.
+            Главная страница сейчас показывает понятный макет. Рабочая кнопка, которая реально отправляет событие в backend, находится на странице демо.
           </p>
+          <a className="action-link" href="/demo">Открыть рабочий demo-flow</a>
         </div>
-        <div className="status-pill">Статус: смена активна</div>
+        <div className="status-pill">Статус: макет</div>
       </section>
 
       <section className="grid">
         <div className="panel action-panel">
           <h2>Действия</h2>
-          <button className="action-button secondary">Gasfahrt — выезд из дома</button>
-          <button className="action-button secondary">Gasfahrt beendet — прибыл</button>
-          <button className="action-button primary">Dienstbeginn — начало работы</button>
-          <button className="action-button warning">Stop — завершить работу</button>
-          <button className="action-button secondary">Start Dienstfahrt — переезд</button>
-          <button className="action-button secondary">Stop Dienstfahrt — прибыл на следующий объект</button>
+          <a className="action-button secondary" href="/demo">Gasfahrt — выезд из дома</a>
+          <a className="action-button secondary" href="/demo">Gasfahrt beendet — прибыл</a>
+          <a className="action-button primary" href="/demo">Dienstbeginn — начало работы</a>
+          <a className="action-button warning" href="/demo">Stop — завершить работу</a>
+          <a className="action-button secondary" href="/demo">Start Dienstfahrt — переезд</a>
+          <a className="action-button secondary" href="/demo">Stop Dienstfahrt — прибыл на следующий объект</a>
+          <p className="hint">
+            Это ссылки на рабочий экран /demo. На самом demo backend сам решает, какая следующая кнопка разрешена.
+          </p>
           <p className="hint">
             Если фактическое время больше планового, кнопка Stop требует заполнить комментарий / Bemerkung.
           </p>
