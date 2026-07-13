@@ -28,6 +28,7 @@ export type WorkEvent = {
 function authHeaders(json = false): HeadersInit {
   const headers: Record<string, string> = {
     Accept: 'application/json',
+    'X-Local-Dev-Bypass': 'rail-crm-dev',
   };
 
   if (json) {
