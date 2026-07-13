@@ -59,6 +59,7 @@ export default function DemoPage() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [employeeId, setEmployeeId] = useState(fallbackEmployeeId);
+  const [clickCount, setClickCount] = useState(0);
   const [log, setLog] = useState<string[]>([]);
   const [orders, setOrders] = useState<WorkOrder[]>(fallbackOrders);
   const [selectedOrderId, setSelectedOrderId] = useState(1);
@@ -77,6 +78,16 @@ export default function DemoPage() {
   const [bemerkung, setBemerkung] = useState('');
   const [message, setMessage] = useState('Готово.');
   const [saving, setSaving] = useState(false);
+
+  function addLog(text: string) {
+    setLog((items) => [...items, `${timeNow()} — ${text}`]);
+  }
+
+  function markButtonTouch(source: string) {
+    setClickCount((count) => count + 1);
+    setMessage(`Фронт увидел нажатие кнопки (${source}). Если счётчик растёт — React работает.`);
+    addLog(`браузер поймал нажатие кнопки (${source})`);
+  }
 
   async function refreshState(orderId = selectedOrderId, nextEmployeeId = employeeId) {
     try {
@@ -107,7 +118,7 @@ export default function DemoPage() {
   async function devLogin(): Promise<AuthUser | null> {
     setSaving(true);
     setMessage(`Выполняю dev-вход: ${devEmail} / ${devPassword}...`);
-    setLog((items) => [...items, `${timeNow()} — dev-вход начат`]);
+    addLog('dev-вход начат');
 
     try {
       let response;
@@ -130,14 +141,14 @@ export default function DemoPage() {
       setEmployeeId(nextEmployeeId);
       setAuthChecked(true);
       setMessage(`Dev-вход выполнен: ${nextUser.name} (${nextUser.role}).`);
-      setLog((items) => [...items, `${timeNow()} — dev-вход выполнен: ${nextUser.email}`]);
+      addLog(`dev-вход выполнен: ${nextUser.email}`);
       await loadForEmployee(nextEmployeeId);
 
       return nextUser;
     } catch (error) {
       const errorText = error instanceof Error ? error.message : 'неизвестная ошибка';
       setMessage(`Не удалось выполнить dev-вход. Ошибка: ${errorText}`);
-      setLog((items) => [...items, `${timeNow()} — dev-вход не выполнен: ${errorText}`]);
+      addLog(`dev-вход не выполнен: ${errorText}`);
       return null;
     } finally {
       setSaving(false);
@@ -169,7 +180,7 @@ export default function DemoPage() {
   const plannedExceeded = Boolean(fieldState?.planned_exceeded);
   const stopBlocked = Boolean(fieldState?.requires_bemerkung) && bemerkung.trim() === '';
   const dienstbeginnBlocked = backendButtonLabel === 'Dienstbeginn' && (!date || !realLeistungsart || !referenznummer.trim() || !zugnummer.trim() || !einsatzort.trim());
-  const disabled = saving || stopBlocked || dienstbeginnBlocked;
+  const buttonBlocked = stopBlocked || dienstbeginnBlocked;
 
   function selectOrder(id: number) {
     const order = orders.find((item) => item.id === id);
@@ -184,7 +195,7 @@ export default function DemoPage() {
   }
 
   async function next() {
-    setLog((items) => [...items, `${timeNow()} — нажата кнопка: ${currentLabel}`]);
+    addLog(`onClick запущен: ${currentLabel}`);
 
     let activeUser = user;
     let activeEmployeeId = employeeId;
@@ -198,23 +209,26 @@ export default function DemoPage() {
 
     if (stopBlocked) {
       setMessage('Stop заблокирован: плановое время превышено, комментарий / Bemerkung обязателен.');
+      addLog('отправка остановлена: нужен комментарий / Bemerkung');
       return;
     }
 
     if (dienstbeginnBlocked) {
       setMessage('Начало работы заблокировано: дата, тип услуги, референс, номер поезда и место работы обязательны.');
+      addLog('отправка остановлена: не заполнены обязательные поля');
       return;
     }
 
     const route = routeByAction[currentAction];
     if (!route) {
       setMessage('Не найдена API route для следующего действия.');
+      addLog('отправка остановлена: нет API route');
       return;
     }
 
     setSaving(true);
     setMessage('Кнопка нажата. Получаю геопозицию и отправляю событие в backend...');
-    setLog((items) => [...items, `${timeNow()} — отправка в backend: ${route}`]);
+    addLog(`отправка в backend: ${route}`);
     const position = await getPosition();
 
     try {
@@ -241,13 +255,13 @@ export default function DemoPage() {
           client_time: timeNow(),
         },
       });
-      setLog((items) => [...items, `${timeNow()} — ${currentLabel} сохранено в API`]);
+      addLog(`${currentLabel} сохранено в API`);
       setMessage(`${currentLabel} сохранено. Следующая кнопка должна измениться после обновления состояния.`);
       await refreshState(selectedOrderId, activeEmployeeId);
     } catch (error) {
       const errorText = error instanceof Error ? error.message : 'неизвестная ошибка';
       const state = await refreshState(selectedOrderId, activeEmployeeId);
-      setLog((items) => [...items, `${timeNow()} — ${currentLabel} не сохранено: ${errorText}`]);
+      addLog(`${currentLabel} не сохранено: ${errorText}`);
       setMessage(state ? `Действие отклонено backend-ом. Следующее разрешённое действие: ${actionLabels[state.allowed_actions?.[0]] || state.next_button}. Ошибка: ${errorText}` : `Действие не сохранено. Ошибка: ${errorText}`);
     } finally {
       setSaving(false);
@@ -269,8 +283,18 @@ export default function DemoPage() {
 
       <section className="grid">
         <div className="panel action-panel">
-          <button className="action-button primary" onClick={next} type="button" disabled={disabled}>{saving ? 'Сохраняем...' : currentLabel}</button>
+          <button
+            className="action-button primary"
+            onClick={next}
+            onPointerDown={() => markButtonTouch('pointerdown')}
+            type="button"
+            disabled={saving}
+          >
+            {saving ? 'Сохраняем...' : currentLabel}
+          </button>
           <button className="action-link" onClick={devLogin} type="button" disabled={saving}>Dev-вход</button>
+          <p className="hint"><strong>Кликов по рабочей кнопке:</strong> {clickCount}</p>
+          {buttonBlocked ? <p className="hint"><strong>Кнопка может быть заблокирована логикой:</strong> проверь обязательные поля или комментарий / Bemerkung.</p> : null}
           <p className="hint">Разрешённое действие backend: {currentAction}</p>
           <p className="hint">Последнее событие: {fieldState?.last_event_type || 'нет'}</p>
           <p className="hint">Плановое завершение: {fieldState?.planned_end_at || plannedStop}</p>
