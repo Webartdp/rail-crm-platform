@@ -55,8 +55,23 @@ Route::prefix('v1')->group(function () {
 
         $employeeId = (int) $request->integer('employee_id', 1);
         $now = now();
+        $base = now()->copy()->addMinutes(15);
         $objectName = 'Berlin Hauptbahnhof';
         $objectAddress = 'Europaplatz 1, 10557 Berlin';
+
+        $slot = function (int $startMinutes, int $durationMinutes) use ($base): array {
+            $start = $base->copy()->addMinutes($startMinutes);
+            $end = $start->copy()->addMinutes($durationMinutes);
+
+            return [$start->toDateTimeString(), $end->toDateTimeString()];
+        };
+
+        [$start1, $end1] = $slot(0, 120);
+        [$start2, $end2] = $slot(150, 90);
+        [$start3, $end3] = $slot(255, 45);
+        [$start4, $end4] = $slot(330, 60);
+        [$start5, $end5] = $slot(405, 75);
+        [$start6, $end6] = $slot(510, 60);
 
         $orders = [
             [
@@ -66,8 +81,8 @@ Route::prefix('v1')->group(function () {
                 'leistungsart' => 'WTU',
                 'zugnummer' => 'ICE 204',
                 'einsatzort' => 'Berlin Hbf / Gleis 12',
-                'planned_start_at' => '2026-07-13 07:30:00',
-                'planned_end_at' => '2026-07-13 09:30:00',
+                'planned_start_at' => $start1,
+                'planned_end_at' => $end1,
             ],
             [
                 'reference_number' => 'BER-HBF-K2-WSU-001',
@@ -76,8 +91,8 @@ Route::prefix('v1')->group(function () {
                 'leistungsart' => 'WSU',
                 'zugnummer' => 'RC 8812',
                 'einsatzort' => 'Berlin Hbf / Eingang Nord',
-                'planned_start_at' => '2026-07-13 10:00:00',
-                'planned_end_at' => '2026-07-13 11:30:00',
+                'planned_start_at' => $start2,
+                'planned_end_at' => $end2,
             ],
             [
                 'reference_number' => 'BER-HBF-K2-EWU-002',
@@ -86,8 +101,8 @@ Route::prefix('v1')->group(function () {
                 'leistungsart' => 'E-WU',
                 'zugnummer' => 'RC 8812',
                 'einsatzort' => 'Berlin Hbf / Eingang Nord',
-                'planned_start_at' => '2026-07-13 11:45:00',
-                'planned_end_at' => '2026-07-13 12:30:00',
+                'planned_start_at' => $start3,
+                'planned_end_at' => $end3,
             ],
             [
                 'reference_number' => 'BER-HBF-K2-RB-003',
@@ -96,8 +111,8 @@ Route::prefix('v1')->group(function () {
                 'leistungsart' => 'Rb',
                 'zugnummer' => 'RB 4410',
                 'einsatzort' => 'Berlin Hbf / Rangierbereich B',
-                'planned_start_at' => '2026-07-13 13:00:00',
-                'planned_end_at' => '2026-07-13 14:00:00',
+                'planned_start_at' => $start4,
+                'planned_end_at' => $end4,
             ],
             [
                 'reference_number' => 'BER-HBF-K2-RID-004',
@@ -106,8 +121,8 @@ Route::prefix('v1')->group(function () {
                 'leistungsart' => 'RID-Kontrolle',
                 'zugnummer' => 'RID 19',
                 'einsatzort' => 'Berlin Hbf / Gleis 5',
-                'planned_start_at' => '2026-07-13 14:15:00',
-                'planned_end_at' => '2026-07-13 15:30:00',
+                'planned_start_at' => $start5,
+                'planned_end_at' => $end5,
             ],
             [
                 'reference_number' => 'BER-HBF-K2-ZB-005',
@@ -116,8 +131,8 @@ Route::prefix('v1')->group(function () {
                 'leistungsart' => 'Zugbeschtreifung',
                 'zugnummer' => 'ICE 907',
                 'einsatzort' => 'Berlin Hbf / Gleis 7',
-                'planned_start_at' => '2026-07-13 16:00:00',
-                'planned_end_at' => '2026-07-13 17:00:00',
+                'planned_start_at' => $start6,
+                'planned_end_at' => $end6,
             ],
         ];
 
