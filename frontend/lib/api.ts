@@ -59,6 +59,21 @@ export async function postWorkEvent(path: string, payload: WorkEventPayload) {
   return response.json();
 }
 
+export async function resetDemoWorkEvents(employeeId = 1): Promise<{ message: string; employee_id: number; deleted: number }> {
+  const response = await fetch(`${API_URL}/dev/reset-work-events`, {
+    method: 'POST',
+    headers: authHeaders(true),
+    body: JSON.stringify({ employee_id: employeeId }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Reset failed');
+  }
+
+  return response.json();
+}
+
 export async function getWorkEvents(): Promise<{ data: WorkEvent[] }> {
   const response = await fetch(`${API_URL}/work-events`, {
     headers: authHeaders(false),
