@@ -55,6 +55,7 @@ function applyOrderTitle(title: string) {
 
 export default function DemoPage() {
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [employeeId, setEmployeeId] = useState(fallbackEmployeeId);
   const [log, setLog] = useState<string[]>([]);
   const [orders, setOrders] = useState<WorkOrder[]>(fallbackOrders);
@@ -96,7 +97,7 @@ export default function DemoPage() {
       await refreshState(nextOrders[0]?.id || 1, nextEmployeeId);
     } catch (error) {
       setOrders(fallbackOrders);
-      setMessage('API заданий недоступен. Включён тестовый fallback-заказ.');
+      setMessage('API заданий недоступен или нет входа. Включён тестовый fallback-заказ. Для сохранения событий нужно войти.');
       await refreshState(1, nextEmployeeId);
     }
   }
@@ -111,7 +112,12 @@ export default function DemoPage() {
         setMessage(`Вход выполнен: ${nextUser.name} (${nextUser.role}).`);
         loadForEmployee(nextEmployeeId);
       })
-      .catch(() => loadForEmployee(fallbackEmployeeId));
+      .catch(() => {
+        setUser(null);
+        setMessage('Вы не вошли. Состояние кнопки можно смотреть, но отправка событий в backend не сработает без входа.');
+        loadForEmployee(fallbackEmployeeId);
+      })
+      .finally(() => setAuthChecked(true));
   }, []);
 
   const currentAction = fieldState?.allowed_actions?.[0] || 'gasfahrt_start';
@@ -136,6 +142,12 @@ export default function DemoPage() {
   }
 
   async function next() {
+    if (!user) {
+      setMessage('Кнопка не отправлена: сначала зайди на страницу «Вход» и создай/выполни вход под пользователем. Для теста можно создать admin@example.com / password с ролью admin.');
+      setLog((items) => [...items, `${timeNow()} — действие не отправлено: нет входа`]);
+      return;
+    }
+
     if (stopBlocked) {
       setMessage('Stop заблокирован: плановое время превышено, комментарий / Bemerkung обязателен.');
       return;
@@ -185,7 +197,7 @@ export default function DemoPage() {
     } catch (error) {
       const state = await refreshState(selectedOrderId);
       setLog((items) => [...items, `${timeNow()} — ${currentLabel} не сохранено`]);
-      setMessage(state ? `Действие отклонено. Следующее разрешённое действие: ${actionLabels[state.allowed_actions?.[0]] || state.next_button}.` : 'Действие не сохранено. API или состояние сотрудника недоступны.');
+      setMessage(state ? `Действие отклонено backend-ом. Следующее разрешённое действие: ${actionLabels[state.allowed_actions?.[0]] || state.next_button}. Проверь вход и роль пользователя.` : 'Действие не сохранено. API или состояние сотрудника недоступны.');
     } finally {
       setSaving(false);
     }
@@ -198,7 +210,8 @@ export default function DemoPage() {
           <p className="eyebrow">Демо</p>
           <h1>Workflow кнопок сотрудника</h1>
           <p className="hero-text">Порядок действий по требованиям заказчика: Gasfahrt → Dienstbeginn → Stop → Dienstfahrt.</p>
-          <p className="hint">Профиль сотрудника: #{employeeId}{user ? ` / ${user.name}` : ' / fallback'}</p>
+          <p className="hint">Профиль сотрудника: #{employeeId}{user ? ` / ${user.name}` : ' / нет входа'}</p>
+          {authChecked && !user ? <p className="hint"><strong>Важно:</strong> без входа кнопка показывает состояние, но не сохраняет событие. <a className="action-link" href="/login">Перейти ко входу</a></p> : null}
         </div>
         <div className="status-pill">{fieldState?.current_state || 'загрузка'}</div>
       </section>
