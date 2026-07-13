@@ -10,14 +10,22 @@ use Illuminate\Support\Facades\DB;
 
 class WorkEventController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $events = DB::table('work_events')
+        $query = DB::table('work_events')
             ->orderByDesc('event_time')
-            ->limit(50)
-            ->get();
+            ->orderByDesc('id')
+            ->limit(100);
 
-        return response()->json(['data' => $events]);
+        if ($request->filled('employee_id')) {
+            $query->where('employee_id', $request->input('employee_id'));
+        }
+
+        if ($request->filled('assignment_id')) {
+            $query->where('assignment_id', $request->input('assignment_id'));
+        }
+
+        return response()->json(['data' => $query->get()]);
     }
 
     public function startGasfahrt(Request $request): JsonResponse
@@ -40,6 +48,10 @@ class WorkEventController extends Controller
             if (trim((string) ($payload[$field] ?? '')) === '') {
                 $errors[$field] = [ucfirst($field).' is required.'];
             }
+        }
+
+        if (!$request->input('assignment_id')) {
+            $errors['assignment_id'] = ['Work order is required.'];
         }
 
         if ($errors !== []) {
@@ -128,6 +140,11 @@ class WorkEventController extends Controller
                 'type' => $eventType,
                 'stored' => true,
                 'event_time' => $now->toISOString(),
+                'employee_id' => $request->input('employee_id'),
+                'assignment_id' => $request->input('assignment_id'),
+                'latitude' => $request->input('latitude'),
+                'longitude' => $request->input('longitude'),
+                'location_accuracy' => $request->input('location_accuracy'),
             ],
         ]);
     }
@@ -171,9 +188,9 @@ class WorkEventController extends Controller
 
     private function allowedAction(Request $request): string
     {
+        // Workflow is employee-wide. Assignment/work order can change after Dienstfahrt stop.
         $last = DB::table('work_events')
             ->where('employee_id', $request->input('employee_id'))
-            ->where('assignment_id', $request->input('assignment_id'))
             ->orderByDesc('event_time')
             ->orderByDesc('id')
             ->first();
