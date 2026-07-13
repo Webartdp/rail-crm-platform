@@ -38,7 +38,8 @@ body {
 
 .nav-brand small,
 .nav-user small,
-.nav-group p {
+.nav-group p,
+.language-switcher span {
   color: #94a3b8;
 }
 
@@ -136,6 +137,48 @@ body {
   border-top: 1px solid rgba(255, 255, 255, .08);
 }
 
+.language-switcher {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, .05);
+}
+
+.language-switcher span {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.language-switcher div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.language-switcher button {
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 12px;
+  padding: 9px 10px;
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, .06);
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.language-switcher button:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, .1);
+}
+
+.language-switcher button.active {
+  color: #fff;
+  background: linear-gradient(135deg, #2563eb, #06b6d4);
+  box-shadow: 0 10px 22px rgba(37, 99, 235, .28);
+}
+
 .nav-user {
   display: grid;
   gap: 3px;
@@ -197,7 +240,8 @@ body {
 
   .nav-brand small,
   .nav-group p,
-  .nav-user {
+  .nav-user,
+  .language-switcher span {
     display: none;
   }
 
@@ -219,8 +263,24 @@ body {
   }
 
   .nav-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     padding: 0;
     border-top: 0;
+  }
+
+  .language-switcher {
+    padding: 0;
+    background: transparent;
+  }
+
+  .language-switcher div {
+    display: flex;
+  }
+
+  .language-switcher button {
+    min-width: 44px;
   }
 
   .nav-button {
@@ -240,6 +300,6 @@ body {
   }
 
   .nav-footer {
-    display: none;
+    display: flex;
   }
 }
