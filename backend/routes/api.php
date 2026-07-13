@@ -13,6 +13,8 @@ use App\Http\Controllers\Api\V1\WorkEventController;
 use App\Http\Controllers\Api\V1\WorkEventCostController;
 use App\Http\Controllers\Api\V1\WorkEventDurationController;
 use App\Http\Controllers\Api\V1\WorkOrderController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -24,6 +26,22 @@ Route::prefix('v1')->group(function () {
     Route::get('/dashboard/manager', ManagerDashboardController::class)->middleware('role:manager,admin');
 
     Route::get('/employee/field-state', EmployeeFieldStateController::class);
+
+    Route::post('/dev/reset-work-events', function (Request $request) {
+        abort_unless(
+            app()->environment(['local', 'testing']) && $request->header('X-Local-Dev-Bypass') === 'rail-crm-dev',
+            404
+        );
+
+        $employeeId = (int) $request->integer('employee_id', 1);
+        $deleted = DB::table('work_events')->where('employee_id', $employeeId)->delete();
+
+        return response()->json([
+            'message' => 'Demo work events reset.',
+            'employee_id' => $employeeId,
+            'deleted' => $deleted,
+        ]);
+    });
 
     Route::get('/employee-profiles', [EmployeeProfileController::class, 'index'])->middleware('role:admin');
     Route::post('/employee-profiles', [EmployeeProfileController::class, 'store'])->middleware('role:admin');
