@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { postWorkEvent, workEventRoutes } from '../../lib/api';
+import { postWorkEvent, resetDemoWorkEvents, workEventRoutes } from '../../lib/api';
 import { getFieldState, type FieldState } from '../../lib/field-state';
 
 const fallbackEmployeeId = 1;
@@ -137,6 +137,25 @@ export default function DemoPage() {
     }
   }
 
+  async function resetWorkflow() {
+    setSaving(true);
+    setMessage('Сбрасываю demo workflow...');
+
+    try {
+      const result = await resetDemoWorkEvents(employeeId);
+      setLog([]);
+      addLog(`demo workflow сброшен, удалено событий: ${result.deleted}`);
+      setMessage('Demo workflow сброшен. Можно начинать с Gasfahrt.');
+      await refreshState();
+    } catch (error) {
+      const errorText = error instanceof Error ? error.message : 'неизвестная ошибка';
+      addLog(`сброс не выполнен: ${errorText}`);
+      setMessage(`Не удалось сбросить workflow: ${errorText}`);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <main className="page-shell">
       <section className="hero-card">
@@ -153,6 +172,9 @@ export default function DemoPage() {
         <div className="panel action-panel">
           <button className="action-button primary" onClick={next} type="button" disabled={disabled}>
             {saving ? 'Сохраняю...' : currentLabel}
+          </button>
+          <button className="action-button secondary" onClick={resetWorkflow} type="button" disabled={saving}>
+            Сбросить demo workflow
           </button>
           <p className="hint">Следующее backend-действие: {currentAction}</p>
           <p className="hint">Последнее событие: {fieldState?.last_event_type || 'нет'}</p>
