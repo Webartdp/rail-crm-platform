@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import RoleGuard from '../../../components/RoleGuard';
 import { getDocumentPrintData, type DocumentPrintData } from '../../../../lib/document-print';
 import { closeWorkOrder } from '../../../../lib/work-orders';
 
 type PageProps = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
 function formatValue(value?: string | number | null) {
@@ -14,7 +14,8 @@ function formatValue(value?: string | number | null) {
 }
 
 export default function DocumentPrintPage({ params }: PageProps) {
-  const documentId = Number(params.id);
+  const resolvedParams = use(params);
+  const documentId = Number(resolvedParams.id);
   const [data, setData] = useState<DocumentPrintData | null>(null);
   const [message, setMessage] = useState('Loading document print data...');
 
