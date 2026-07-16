@@ -1,6 +1,8 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 const TOKEN_KEY = 'rail_crm_token';
 
+export const AUTH_CHANGED_EVENT = 'rail-crm-auth-changed';
+
 export type AuthUser = {
   id: number;
   employee_profile_id?: number | null;
@@ -16,7 +18,12 @@ export type AuthResponse = {
   data: AuthUser;
 };
 
-export function getStoredToken() {
+function emitAuthChanged() {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
+}
+
+export function getStoredToken(): string | null {
   if (typeof window === 'undefined') return null;
   return window.localStorage.getItem(TOKEN_KEY);
 }
@@ -24,11 +31,18 @@ export function getStoredToken() {
 export function setStoredToken(token: string) {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(TOKEN_KEY, token);
+  emitAuthChanged();
 }
 
 export function clearStoredToken() {
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem(TOKEN_KEY);
+  emitAuthChanged();
+}
+
+async function readErrorMessage(response: Response, fallback: string) {
+  const data = await response.json().catch(() => null);
+  return typeof data?.message === 'string' ? data.message : fallback;
 }
 
 export async function login(email: string, password: string): Promise<AuthResponse> {
@@ -38,7 +52,10 @@ export async function login(email: string, password: string): Promise<AuthRespon
     body: JSON.stringify({ email, password }),
   });
 
-  if (!response.ok) throw new Error('Login failed');
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, 'Login failed'));
+  }
+
   const data = await response.json();
   if (data.token) setStoredToken(data.token);
   return data;
@@ -51,7 +68,10 @@ export async function register(payload: { name: string; email: string; password:
     body: JSON.stringify(payload),
   });
 
-  if (!response.ok) throw new Error('Register failed');
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, 'Register failed'));
+  }
+
   const data = await response.json();
   if (data.token) setStoredToken(data.token);
   return data;
@@ -64,15 +84,19 @@ export async function me(): Promise<{ data: AuthUser }> {
     cache: 'no-store',
   });
 
-  if (!response.ok) throw new Error('Me failed');
+  if (!response.ok) throw new Error(await readErrorMessage(response, 'Me failed'));
   return response.json();
 }
 
 export async function logout(): Promise<void> {
   const token = getStoredToken();
-  await fetch(`${API_URL}/auth/logout`, {
-    method: 'POST',
-    headers: { Accept: 'application/json', Authorization: token ? `Bearer ${token}` : '' },
-  });
-  clearStoredToken();
+
+  try {
+    await fetch(`${API_URL}/auth/logout`, {
+      method: 'POST',
+      headers: { Accept: 'application/json', Authorization: token ? `Bearer ${token}` : '' },
+    });
+  } finally {
+    clearStoredToken();
+  }
 }
