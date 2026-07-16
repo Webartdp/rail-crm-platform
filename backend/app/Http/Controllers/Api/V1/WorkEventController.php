@@ -40,7 +40,7 @@ class WorkEventController extends Controller
 
     public function dienstbeginn(Request $request): JsonResponse
     {
-        $payload = $request->input('payload', []);
+        $payload = $this->payload($request);
         $required = ['date', 'leistungsart', 'referenznummer', 'zugnummer', 'einsatzort'];
         $errors = [];
 
@@ -50,7 +50,7 @@ class WorkEventController extends Controller
             }
         }
 
-        if (!$request->input('assignment_id')) {
+        if (!$this->assignmentId($request)) {
             $errors['assignment_id'] = ['Work order is required.'];
         }
 
@@ -66,6 +66,13 @@ class WorkEventController extends Controller
 
     public function stopArbeit(Request $request): JsonResponse
     {
+        if (!$this->assignmentId($request)) {
+            return response()->json([
+                'message' => 'Work order is required before stopping work.',
+                'errors' => ['assignment_id' => ['Work order is required.']],
+            ], 422);
+        }
+
         $plannedExceeded = $this->plannedTimeExceeded($request);
         $bemerkung = trim((string) $request->input('bemerkung', ''));
 
@@ -92,7 +99,9 @@ class WorkEventController extends Controller
 
     private function storeEvent(Request $request, string $eventType, string $message, ?bool $plannedExceeded = null): JsonResponse
     {
-        $allowed = $this->allowedAction($request);
+        $employeeId = $this->employeeId($request);
+        $assignmentId = $this->assignmentId($request);
+        $allowed = $this->allowedAction($employeeId);
 
         if ($allowed !== $eventType) {
             return response()->json([
@@ -103,32 +112,32 @@ class WorkEventController extends Controller
         }
 
         $now = now();
-        $payload = $request->input('payload', []);
+        $payload = $this->payload($request);
         $payload['planned_exceeded'] = $plannedExceeded ?? $request->boolean('planned_exceeded');
         $payload['bemerkung'] = $request->input('bemerkung');
 
         $id = DB::table('work_events')->insertGetId([
-            'employee_id' => $request->input('employee_id'),
-            'assignment_id' => $request->input('assignment_id'),
+            'employee_id' => $employeeId,
+            'assignment_id' => $assignmentId,
             'event_type' => $eventType,
             'event_time' => $now,
             'latitude' => $request->input('latitude'),
             'longitude' => $request->input('longitude'),
             'location_accuracy' => $request->input('location_accuracy'),
             'address_text' => $request->input('address_text'),
-            'payload' => json_encode($payload),
+            'payload' => json_encode($payload, JSON_UNESCAPED_UNICODE),
             'created_at' => $now,
             'updated_at' => $now,
         ]);
 
-        $this->updateWorkOrderStatus($request, $eventType, $now);
+        $this->updateWorkOrderStatus($assignmentId, $eventType, $now);
 
         DB::table('audit_logs')->insert([
-            'employee_id' => $request->input('employee_id'),
+            'employee_id' => $employeeId,
             'action' => $eventType,
             'entity_type' => 'work_event',
             'entity_id' => $id,
-            'payload' => json_encode($payload),
+            'payload' => json_encode($payload, JSON_UNESCAPED_UNICODE),
             'created_at' => $now,
             'updated_at' => $now,
         ]);
@@ -140,8 +149,8 @@ class WorkEventController extends Controller
                 'type' => $eventType,
                 'stored' => true,
                 'event_time' => $now->toISOString(),
-                'employee_id' => $request->input('employee_id'),
-                'assignment_id' => $request->input('assignment_id'),
+                'employee_id' => $employeeId,
+                'assignment_id' => $assignmentId,
                 'latitude' => $request->input('latitude'),
                 'longitude' => $request->input('longitude'),
                 'location_accuracy' => $request->input('location_accuracy'),
@@ -149,16 +158,17 @@ class WorkEventController extends Controller
         ]);
     }
 
-    private function updateWorkOrderStatus(Request $request, string $eventType, $now): void
+    private function updateWorkOrderStatus(?int $assignmentId, string $eventType, $now): void
     {
-        $assignmentId = $request->input('assignment_id');
-
         if (!$assignmentId) {
             return;
         }
 
+        // Important:
+        // Gasfahrt/Dienstfahrt are employee route events, not work-order execution.
+        // They must not move a finished work order back to in_progress.
         $status = match ($eventType) {
-            'gasfahrt_start', 'gasfahrt_stop', 'dienstbeginn', 'dienstfahrt_start', 'dienstfahrt_stop' => 'in_progress',
+            'dienstbeginn' => 'in_progress',
             'arbeit_stop' => 'waiting_approval',
             default => null,
         };
@@ -176,7 +186,7 @@ class WorkEventController extends Controller
     private function plannedTimeExceeded(Request $request): bool
     {
         $workOrder = DB::table('work_orders')
-            ->where('id', $request->input('assignment_id'))
+            ->where('id', $this->assignmentId($request))
             ->first();
 
         if (!$workOrder?->planned_end_at) {
@@ -186,11 +196,11 @@ class WorkEventController extends Controller
         return now()->greaterThan(Carbon::parse($workOrder->planned_end_at));
     }
 
-    private function allowedAction(Request $request): string
+    private function allowedAction(int $employeeId): string
     {
         // Workflow is employee-wide. Assignment/work order can change after Dienstfahrt stop.
         $last = DB::table('work_events')
-            ->where('employee_id', $request->input('employee_id'))
+            ->where('employee_id', $employeeId)
             ->orderByDesc('event_time')
             ->orderByDesc('id')
             ->first();
@@ -205,5 +215,28 @@ class WorkEventController extends Controller
             'dienstfahrt_stop' => 'dienstbeginn',
             default => 'gasfahrt_start',
         };
+    }
+
+    private function employeeId(Request $request): int
+    {
+        return (int) $request->input('employee_id', 1);
+    }
+
+    private function assignmentId(Request $request): ?int
+    {
+        $assignmentId = $request->input('assignment_id');
+
+        if ($assignmentId === null || $assignmentId === '') {
+            return null;
+        }
+
+        return (int) $assignmentId;
+    }
+
+    private function payload(Request $request): array
+    {
+        $payload = $request->input('payload', []);
+
+        return is_array($payload) ? $payload : [];
     }
 }
