@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { FormEvent, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { login, register } from '../../lib/auth';
 
 const roleLabels: Record<string, string> = {
@@ -9,22 +10,43 @@ const roleLabels: Record<string, string> = {
   admin: 'Администратор',
 };
 
+function homeForRole(role: string) {
+  if (role === 'admin') return '/admin';
+  if (role === 'manager') return '/manager-dashboard';
+  return '/employee';
+}
+
 export default function LoginPage() {
+  const router = useRouter();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [name, setName] = useState('Admin User');
   const [email, setEmail] = useState('admin@example.com');
-  const [password, setPassword] = useState('password');
+  const [password, setPassword] = useState('Admin12345!');
   const [role, setRole] = useState('admin');
   const [message, setMessage] = useState('Готово.');
+  const [saving, setSaving] = useState(false);
 
-  async function submit() {
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (saving) return;
+
+    setSaving(true);
+    setMessage(mode === 'login' ? 'Входим...' : 'Создаём пользователя...');
+
     try {
       const response = mode === 'login'
         ? await login(email, password)
         : await register({ name, email, password, role });
-      setMessage(`${response.data.name} вошёл как ${roleLabels[response.data.role] || response.data.role}.`);
+
+      const target = homeForRole(response.data.role);
+      setMessage(`${response.data.name} вошёл как ${roleLabels[response.data.role] || response.data.role}. Открываю кабинет...`);
+      router.replace(target);
+      router.refresh();
     } catch (error) {
-      setMessage(mode === 'login' ? 'Не удалось войти.' : 'Не удалось создать пользователя.');
+      const fallback = mode === 'login' ? 'Не удалось войти.' : 'Не удалось создать пользователя.';
+      setMessage(error instanceof Error && error.message ? `${fallback} ${error.message}` : fallback);
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -34,16 +56,20 @@ export default function LoginPage() {
         <p className="eyebrow">Rail CRM Platform</p>
         <h1>{mode === 'login' ? 'Вход' : 'Создать пользователя'}</h1>
         <p className="hero-text">Временный экран входа для разработки: администратор, менеджер или сотрудник.</p>
-        {mode === 'register' ? <label>Имя<input value={name} onChange={(event) => setName(event.target.value)} /></label> : null}
-        <label>Email<input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" /></label>
-        <label>Пароль<input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Пароль" type="password" /></label>
-        {mode === 'register' ? (
-          <label>Роль<select value={role} onChange={(event) => setRole(event.target.value)}><option value="employee">Сотрудник</option><option value="manager">Менеджер</option><option value="admin">Администратор</option></select></label>
-        ) : null}
-        <button className="action-button primary" onClick={submit} type="button">{mode === 'login' ? 'Войти' : 'Создать'}</button>
-        <button className="action-link" onClick={() => setMode(mode === 'login' ? 'register' : 'login')} type="button">{mode === 'login' ? 'Создать аккаунт' : 'Вернуться ко входу'}</button>
+
+        <form onSubmit={submit}>
+          {mode === 'register' ? <label>Имя<input value={name} onChange={(event) => setName(event.target.value)} /></label> : null}
+          <label>Email<input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" /></label>
+          <label>Пароль<input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Пароль" type="password" /></label>
+          {mode === 'register' ? (
+            <label>Роль<select value={role} onChange={(event) => setRole(event.target.value)}><option value="employee">Сотрудник</option><option value="manager">Менеджер</option><option value="admin">Администратор</option></select></label>
+          ) : null}
+          <button className="action-button primary" type="submit" disabled={saving}>{saving ? 'Подождите...' : mode === 'login' ? 'Войти' : 'Создать'}</button>
+        </form>
+
+        <button className="action-link" onClick={() => setMode(mode === 'login' ? 'register' : 'login')} type="button" disabled={saving}>{mode === 'login' ? 'Создать аккаунт' : 'Вернуться ко входу'}</button>
         <p className="hint">{message}</p>
-        <p className="hint">Для разработки можно создать admin / manager / employee и сразу проверить доступы.</p>
+        <p className="hint">После входа меню и защищённые разделы обновляются сразу, без ручного обновления страницы.</p>
       </section>
     </main>
   );
