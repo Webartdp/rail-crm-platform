@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
-import { me, type AuthUser } from '../../lib/auth';
+import { AUTH_CHANGED_EVENT, me, type AuthUser } from '../../lib/auth';
 
 export type RoleName = 'employee' | 'manager' | 'admin' | string;
 
@@ -23,16 +23,38 @@ export default function RoleGuard({ allowedRoles, children, title = 'Досту�
   const [message, setMessage] = useState('Проверяем доступ...');
 
   useEffect(() => {
-    me()
-      .then((response) => {
+    let mounted = true;
+
+    async function loadUser() {
+      setLoading(true);
+
+      try {
+        const response = await me();
+        if (!mounted) return;
         setUser(response.data);
         setMessage('');
-      })
-      .catch(() => {
+      } catch {
+        if (!mounted) return;
         setUser(null);
         setMessage('Нужно войти в систему.');
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    function onStorage(event: StorageEvent) {
+      if (event.key === 'rail_crm_token') loadUser();
+    }
+
+    loadUser();
+    window.addEventListener(AUTH_CHANGED_EVENT, loadUser);
+    window.addEventListener('storage', onStorage);
+
+    return () => {
+      mounted = false;
+      window.removeEventListener(AUTH_CHANGED_EVENT, loadUser);
+      window.removeEventListener('storage', onStorage);
+    };
   }, []);
 
   if (loading) {
