@@ -27,11 +27,11 @@ Route::prefix('v1')->group(function () {
 
     Route::get('/employee/field-state', EmployeeFieldStateController::class);
 
-    Route::post('/dev/reset-work-events', function (Request $request) {
-        abort_unless(
-            app()->environment(['local', 'testing']) && $request->header('X-Local-Dev-Bypass') === 'rail-crm-dev',
-            404
-        );
+    $allowDemoTools = fn (Request $request): bool => app()->environment(['local', 'staging', 'testing'])
+        && $request->header('X-Local-Dev-Bypass') === 'rail-crm-dev';
+
+    Route::post('/dev/reset-work-events', function (Request $request) use ($allowDemoTools) {
+        abort_unless($allowDemoTools($request), 404);
 
         $employeeId = (int) $request->integer('employee_id', 1);
         $deleted = DB::table('work_events')->where('employee_id', $employeeId)->delete();
@@ -47,11 +47,8 @@ Route::prefix('v1')->group(function () {
         ]);
     });
 
-    Route::post('/dev/field-demo-seed', function (Request $request) {
-        abort_unless(
-            app()->environment(['local', 'testing']) && $request->header('X-Local-Dev-Bypass') === 'rail-crm-dev',
-            404
-        );
+    Route::post('/dev/field-demo-seed', function (Request $request) use ($allowDemoTools) {
+        abort_unless($allowDemoTools($request), 404);
 
         $employeeId = (int) $request->integer('employee_id', 1);
         $now = now();
