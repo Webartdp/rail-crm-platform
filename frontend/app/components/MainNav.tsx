@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { AUTH_CHANGED_EVENT, me, logout, type AuthUser } from '../../lib/auth';
+import { me, logout, type AuthUser } from '../../lib/auth';
 import { useI18n } from '../i18n';
 
 type NavItem = {
@@ -69,10 +69,9 @@ export default function MainNav() {
   const { locale, setLocale, t } = useI18n();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
-  const hiddenOnThisPage = isAuthPage(pathname);
 
   useEffect(() => {
-    if (hiddenOnThisPage) {
+    if (isAuthPage(pathname)) {
       setUser(null);
       setLoadingUser(false);
       return;
@@ -80,31 +79,21 @@ export default function MainNav() {
 
     let mounted = true;
 
-    async function loadUser() {
-      try {
-        const response = await me();
+    me()
+      .then((response) => {
         if (mounted) setUser(response.data);
-      } catch {
+      })
+      .catch(() => {
         if (mounted) setUser(null);
-      } finally {
+      })
+      .finally(() => {
         if (mounted) setLoadingUser(false);
-      }
-    }
-
-    function onStorage(event: StorageEvent) {
-      if (event.key === 'rail_crm_token') loadUser();
-    }
-
-    loadUser();
-    window.addEventListener(AUTH_CHANGED_EVENT, loadUser);
-    window.addEventListener('storage', onStorage);
+      });
 
     return () => {
       mounted = false;
-      window.removeEventListener(AUTH_CHANGED_EVENT, loadUser);
-      window.removeEventListener('storage', onStorage);
     };
-  }, [hiddenOnThisPage]);
+  }, [pathname]);
 
   async function signOut() {
     await logout();
@@ -112,7 +101,7 @@ export default function MainNav() {
     window.location.href = '/login/';
   }
 
-  if (hiddenOnThisPage) {
+  if (isAuthPage(pathname)) {
     return null;
   }
 
