@@ -1,7 +1,7 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import type { FormEvent } from 'react';
+import { useState } from 'react';
 import { login, register } from '../../lib/auth';
 
 const roleLabels: Record<string, string> = {
@@ -11,13 +11,12 @@ const roleLabels: Record<string, string> = {
 };
 
 function homeForRole(role: string) {
-  if (role === 'admin') return '/admin';
-  if (role === 'manager') return '/manager-dashboard';
-  return '/employee';
+  if (role === 'admin') return '/admin/';
+  if (role === 'manager') return '/manager-dashboard/';
+  return '/employee/';
 }
 
 export default function LoginPage() {
-  const router = useRouter();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [name, setName] = useState('Admin User');
   const [email, setEmail] = useState('admin@example.com');
@@ -40,12 +39,13 @@ export default function LoginPage() {
 
       const target = homeForRole(response.data.role);
       setMessage(`${response.data.name} вошёл как ${roleLabels[response.data.role] || response.data.role}. Открываю кабинет...`);
-      router.replace(target);
-      router.refresh();
+
+      // Hard redirect is intentional: it forces MainNav, RoleGuard and all pages
+      // to reload with the fresh token from localStorage. No manual F5 is needed.
+      window.location.href = target;
     } catch (error) {
       const fallback = mode === 'login' ? 'Не удалось войти.' : 'Не удалось создать пользователя.';
       setMessage(error instanceof Error && error.message ? `${fallback} ${error.message}` : fallback);
-    } finally {
       setSaving(false);
     }
   }
@@ -55,7 +55,7 @@ export default function LoginPage() {
       <section className="panel auth-card">
         <p className="eyebrow">Rail CRM Platform</p>
         <h1>{mode === 'login' ? 'Вход' : 'Создать пользователя'}</h1>
-        <p className="hero-text">Временный экран входа для разработки: администратор, менеджер или сотрудник.</p>
+        <p className="hero-text">Экран входа для разработки: администратор, менеджер или сотрудник.</p>
 
         <form onSubmit={submit}>
           {mode === 'register' ? <label>Имя<input value={name} onChange={(event) => setName(event.target.value)} /></label> : null}
@@ -69,7 +69,7 @@ export default function LoginPage() {
 
         <button className="action-link" onClick={() => setMode(mode === 'login' ? 'register' : 'login')} type="button" disabled={saving}>{mode === 'login' ? 'Создать аккаунт' : 'Вернуться ко входу'}</button>
         <p className="hint">{message}</p>
-        <p className="hint">После входа меню и защищённые разделы обновляются сразу, без ручного обновления страницы.</p>
+        <p className="hint">После входа система автоматически откроет нужный кабинет. Ручное обновление страницы не нужно.</p>
       </section>
     </main>
   );
