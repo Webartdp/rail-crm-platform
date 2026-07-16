@@ -1,7 +1,7 @@
 'use client';
 
 import type { FormEvent } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { login, register } from '../../lib/auth';
 
 const roleLabels: Record<string, string> = {
@@ -22,15 +22,23 @@ export default function LoginPage() {
   const [email, setEmail] = useState('admin@example.com');
   const [password, setPassword] = useState('Admin12345!');
   const [role, setRole] = useState('admin');
-  const [message, setMessage] = useState('Готово.');
+  const [message, setMessage] = useState('Готово к входу.');
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    document.body.classList.add('auth-body');
+
+    return () => {
+      document.body.classList.remove('auth-body');
+    };
+  }, []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (saving) return;
 
     setSaving(true);
-    setMessage(mode === 'login' ? 'Входим...' : 'Создаём пользователя...');
+    setMessage(mode === 'login' ? 'Проверяем доступ...' : 'Создаём пользователя...');
 
     try {
       const response = mode === 'login'
@@ -40,8 +48,6 @@ export default function LoginPage() {
       const target = homeForRole(response.data.role);
       setMessage(`${response.data.name} вошёл как ${roleLabels[response.data.role] || response.data.role}. Открываю кабинет...`);
 
-      // Hard redirect is intentional: it forces MainNav, RoleGuard and all pages
-      // to reload with the fresh token from localStorage. No manual F5 is needed.
       window.location.href = target;
     } catch (error) {
       const fallback = mode === 'login' ? 'Не удалось войти.' : 'Не удалось создать пользователя.';
@@ -51,25 +57,86 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="page-shell auth-page">
-      <section className="panel auth-card">
-        <p className="eyebrow">Rail CRM Platform</p>
-        <h1>{mode === 'login' ? 'Вход' : 'Создать пользователя'}</h1>
-        <p className="hero-text">Экран входа для разработки: администратор, менеджер или сотрудник.</p>
+    <main className="auth-page">
+      <section className="auth-shell">
+        <div className="auth-visual">
+          <div className="auth-logo-mark">CRM</div>
+          <p className="auth-kicker">Rail CRM Platform</p>
+          <h1>Управление сменами, заданиями и согласованиями</h1>
+          <p>
+            Кабинет для сотрудников, менеджеров и администратора. Рабочий день,
+            события, GPS-точки, тарифы и согласование в одном интерфейсе.
+          </p>
 
-        <form onSubmit={submit}>
-          {mode === 'register' ? <label>Имя<input value={name} onChange={(event) => setName(event.target.value)} /></label> : null}
-          <label>Email<input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" /></label>
-          <label>Пароль<input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Пароль" type="password" /></label>
-          {mode === 'register' ? (
-            <label>Роль<select value={role} onChange={(event) => setRole(event.target.value)}><option value="employee">Сотрудник</option><option value="manager">Менеджер</option><option value="admin">Администратор</option></select></label>
-          ) : null}
-          <button className="action-button primary" type="submit" disabled={saving}>{saving ? 'Подождите...' : mode === 'login' ? 'Войти' : 'Создать'}</button>
-        </form>
+          <div className="auth-feature-grid">
+            <div>
+              <strong>Field</strong>
+              <span>Gasfahrt, Dienstbeginn, Stop</span>
+            </div>
+            <div>
+              <strong>Admin</strong>
+              <span>сотрудники, тарифы, доступы</span>
+            </div>
+            <div>
+              <strong>Manager</strong>
+              <span>задания и согласования</span>
+            </div>
+            <div>
+              <strong>Audit</strong>
+              <span>история действий и контроль</span>
+            </div>
+          </div>
+        </div>
 
-        <button className="action-link" onClick={() => setMode(mode === 'login' ? 'register' : 'login')} type="button" disabled={saving}>{mode === 'login' ? 'Создать аккаунт' : 'Вернуться ко входу'}</button>
-        <p className="hint">{message}</p>
-        <p className="hint">После входа система автоматически откроет нужный кабинет. Ручное обновление страницы не нужно.</p>
+        <section className="auth-card">
+          <div className="auth-card-head">
+            <p className="eyebrow">Secure access</p>
+            <h2>{mode === 'login' ? 'Вход в CRM' : 'Создать пользователя'}</h2>
+            <p>{mode === 'login' ? 'Введите данные администратора или сотрудника.' : 'Временное создание пользователей для разработки.'}</p>
+          </div>
+
+          <form className="auth-form" onSubmit={submit}>
+            {mode === 'register' ? (
+              <label className="auth-field">
+                <span>Имя</span>
+                <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Имя пользователя" />
+              </label>
+            ) : null}
+
+            <label className="auth-field">
+              <span>Email</span>
+              <input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" autoComplete="email" />
+            </label>
+
+            <label className="auth-field">
+              <span>Пароль</span>
+              <input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Введите пароль" type="password" autoComplete="current-password" />
+            </label>
+
+            {mode === 'register' ? (
+              <label className="auth-field">
+                <span>Роль</span>
+                <select value={role} onChange={(event) => setRole(event.target.value)}>
+                  <option value="employee">Сотрудник</option>
+                  <option value="manager">Менеджер</option>
+                  <option value="admin">Администратор</option>
+                </select>
+              </label>
+            ) : null}
+
+            <button className="auth-submit" type="submit" disabled={saving}>
+              <span>{saving ? 'Подождите...' : mode === 'login' ? 'Войти в систему' : 'Создать пользователя'}</span>
+              <small>→</small>
+            </button>
+          </form>
+
+          <div className="auth-bottom">
+            <button className="auth-mode-button" onClick={() => setMode(mode === 'login' ? 'register' : 'login')} type="button" disabled={saving}>
+              {mode === 'login' ? 'Создать аккаунт' : 'Вернуться ко входу'}
+            </button>
+            <p className={`auth-message ${message.includes('Не удалось') ? 'error' : ''}`}>{message}</p>
+          </div>
+        </section>
       </section>
     </main>
   );
