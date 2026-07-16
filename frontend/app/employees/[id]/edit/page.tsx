@@ -1,11 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { use, useEffect, useState } from 'react';
 import RoleGuard from '../../../components/RoleGuard';
 import { getEmployeeProfile, updateEmployeeProfile } from '../../../../lib/employee-profiles';
 
-export default function EditEmployeePage({ params }: { params: { id: string } }) {
-  const id = Number(params.id);
+type PageProps = {
+  params: Promise<{ id: string }>;
+};
+
+export default function EditEmployeePage({ params }: PageProps) {
+  const resolvedParams = use(params);
+  const id = Number(resolvedParams.id);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
