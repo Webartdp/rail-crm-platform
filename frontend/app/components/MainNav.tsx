@@ -60,13 +60,24 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+function isAuthPage(pathname: string) {
+  return pathname === '/login' || pathname.startsWith('/login/');
+}
+
 export default function MainNav() {
   const pathname = usePathname();
   const { locale, setLocale, t } = useI18n();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
+  const hiddenOnThisPage = isAuthPage(pathname);
 
   useEffect(() => {
+    if (hiddenOnThisPage) {
+      setUser(null);
+      setLoadingUser(false);
+      return;
+    }
+
     let mounted = true;
 
     async function loadUser() {
@@ -93,12 +104,16 @@ export default function MainNav() {
       window.removeEventListener(AUTH_CHANGED_EVENT, loadUser);
       window.removeEventListener('storage', onStorage);
     };
-  }, []);
+  }, [hiddenOnThisPage]);
 
   async function signOut() {
     await logout();
     setUser(null);
-    window.location.href = '/login';
+    window.location.href = '/login/';
+  }
+
+  if (hiddenOnThisPage) {
+    return null;
   }
 
   const roleLabel: Record<string, string> = {
@@ -160,7 +175,7 @@ export default function MainNav() {
             <small>{t('login')}</small>
           </div>
         ) : (
-          <a className={`nav-item login-item ${isActive(pathname, '/login') ? 'active' : ''}`} href="/login">
+          <a className={`nav-item login-item ${isActive(pathname, '/login') ? 'active' : ''}`} href="/login/">
             <span className="nav-icon">IN</span>
             <span>{t('login')}</span>
           </a>
