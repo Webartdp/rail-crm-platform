@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { me, logout, type AuthUser } from '../../lib/auth';
+import { AUTH_CHANGED_EVENT, me, logout, type AuthUser } from '../../lib/auth';
 import { useI18n } from '../i18n';
 
 type NavItem = {
@@ -64,9 +64,35 @@ export default function MainNav() {
   const pathname = usePathname();
   const { locale, setLocale, t } = useI18n();
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
 
   useEffect(() => {
-    me().then((response) => setUser(response.data)).catch(() => setUser(null));
+    let mounted = true;
+
+    async function loadUser() {
+      try {
+        const response = await me();
+        if (mounted) setUser(response.data);
+      } catch {
+        if (mounted) setUser(null);
+      } finally {
+        if (mounted) setLoadingUser(false);
+      }
+    }
+
+    function onStorage(event: StorageEvent) {
+      if (event.key === 'rail_crm_token') loadUser();
+    }
+
+    loadUser();
+    window.addEventListener(AUTH_CHANGED_EVENT, loadUser);
+    window.addEventListener('storage', onStorage);
+
+    return () => {
+      mounted = false;
+      window.removeEventListener(AUTH_CHANGED_EVENT, loadUser);
+      window.removeEventListener('storage', onStorage);
+    };
   }, []);
 
   async function signOut() {
@@ -128,6 +154,11 @@ export default function MainNav() {
             </div>
             <button className="nav-button" onClick={signOut} type="button">{t('logout')}</button>
           </>
+        ) : loadingUser ? (
+          <div className="nav-user">
+            <span>...</span>
+            <small>{t('login')}</small>
+          </div>
         ) : (
           <a className={`nav-item login-item ${isActive(pathname, '/login') ? 'active' : ''}`} href="/login">
             <span className="nav-icon">IN</span>
