@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { me, logout, type AuthUser } from '../../lib/auth';
+import { AUTH_CHANGED_EVENT, me, logout, type AuthUser } from '../../lib/auth';
 import { useI18n } from '../i18n';
 
 type NavItem = {
@@ -79,26 +79,42 @@ export default function MainNav() {
 
     let mounted = true;
 
-    me()
-      .then((response) => {
+    async function loadUser() {
+      setLoadingUser(true);
+
+      try {
+        const response = await me();
         if (mounted) setUser(response.data);
-      })
-      .catch(() => {
+      } catch {
         if (mounted) setUser(null);
-      })
-      .finally(() => {
+      } finally {
         if (mounted) setLoadingUser(false);
-      });
+      }
+    }
+
+    function onAuthChanged() {
+      loadUser();
+    }
+
+    function onStorage(event: StorageEvent) {
+      if (event.key === 'rail_crm_token') loadUser();
+    }
+
+    loadUser();
+    window.addEventListener(AUTH_CHANGED_EVENT, onAuthChanged);
+    window.addEventListener('storage', onStorage);
 
     return () => {
       mounted = false;
+      window.removeEventListener(AUTH_CHANGED_EVENT, onAuthChanged);
+      window.removeEventListener('storage', onStorage);
     };
   }, [pathname]);
 
   async function signOut() {
     await logout();
     setUser(null);
-    window.location.href = '/login/';
+    window.location.href = '/login';
   }
 
   if (isAuthPage(pathname)) {
@@ -164,7 +180,7 @@ export default function MainNav() {
             <small>{t('login')}</small>
           </div>
         ) : (
-          <a className={`nav-item login-item ${isActive(pathname, '/login') ? 'active' : ''}`} href="/login/">
+          <a className={`nav-item login-item ${isActive(pathname, '/login') ? 'active' : ''}`} href="/login">
             <span className="nav-icon">IN</span>
             <span>{t('login')}</span>
           </a>
