@@ -25,7 +25,7 @@ Route::prefix('v1')->group(function () {
 
     Route::get('/dashboard/manager', ManagerDashboardController::class)->middleware('role:manager,admin');
 
-    Route::get('/employee/field-state', EmployeeFieldStateController::class);
+    Route::get('/employee/field-state', EmployeeFieldStateController::class)->middleware('role:employee,manager,admin');
 
     $allowDemoTools = fn (Request $request): bool => app()->environment(['local', 'staging', 'testing'])
         && $request->header('X-Local-Dev-Bypass') === 'rail-crm-dev';
@@ -182,7 +182,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/work-orders', [WorkOrderController::class, 'store'])->middleware('role:manager,admin');
     Route::post('/work-orders/{id}/close', [WorkOrderController::class, 'close'])->middleware('role:manager,admin');
 
-    Route::get('/work-events', [WorkEventController::class, 'index'])->middleware('role:manager,admin');
+    Route::get('/work-events', [WorkEventController::class, 'index'])->middleware('role:employee,manager,admin');
     Route::get('/work-event-durations', WorkEventDurationController::class)->middleware('role:manager,admin');
     Route::get('/work-event-costs', WorkEventCostController::class)->middleware('role:manager,admin');
     Route::get('/work-event-approvals', [WorkEventApprovalController::class, 'index'])->middleware('role:manager,admin');

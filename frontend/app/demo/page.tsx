@@ -3,17 +3,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   getWorkEvents,
+  getWorkOrders,
   postWorkEvent,
-  resetDemoWorkEvents,
-  seedFieldDemo,
   type DemoWorkOrder,
   type WorkEvent,
   workEventRoutes,
 } from '../../lib/api';
+import { me } from '../../lib/auth';
 import { getFieldState, type FieldState } from '../../lib/field-state';
 import { useI18n } from '../i18n';
 
-const employeeId = 1;
 const leistungsartOptions = ['', 'WTU', 'WSU', 'E-WU', 'Rb', 'Azf', 'RID-Kontrolle', 'Zugbeschtreifung'];
 
 const routeByAction: Record<string, string> = {
@@ -181,6 +180,7 @@ export default function DemoPage() {
   const [message, setMessage] = useState(t('loadingAssignments'));
   const [geoMessage, setGeoMessage] = useState(t('geoWillAsk'));
   const [saving, setSaving] = useState(false);
+  const [employeeId, setEmployeeId] = useState<number | null>(null);
 
   useEffect(() => {
     setGeoMessage(t('geoWillAsk'));
@@ -199,7 +199,7 @@ export default function DemoPage() {
   const plannedExceeded = Boolean(fieldState?.planned_exceeded);
   const stopBlocked = currentAction === 'arbeit_stop' && Boolean(fieldState?.requires_bemerkung) && bemerkung.trim() === '';
   const dienstbeginnBlocked = currentAction === 'dienstbeginn' && (!selectedOrderId || !date || !realLeistungsart || !referenznummer.trim() || !zugnummer.trim() || !einsatzort.trim());
-  const disabled = saving || stopBlocked || dienstbeginnBlocked || !selectedOrderId;
+  const disabled = saving || !employeeId || stopBlocked || dienstbeginnBlocked || !selectedOrderId;
 
   const groupedOrders = useMemo(() => {
     return orders.reduce<Record<string, DemoWorkOrder[]>>((groups, order) => {
@@ -239,9 +239,14 @@ export default function DemoPage() {
     setLog((items) => [`${timeNow(locale)} — ${text}`, ...items].slice(0, 12));
   }
 
-  async function refreshState(orderId = selectedOrderId) {
+  async function refreshState(orderId = selectedOrderId, profileId = employeeId) {
+    if (!profileId) {
+      setFieldState(null);
+      return null;
+    }
+
     try {
-      const state = await getFieldState(employeeId, orderId || undefined);
+      const state = await getFieldState(profileId, orderId || undefined);
       setFieldState(state);
       return state;
     } catch {
@@ -251,16 +256,21 @@ export default function DemoPage() {
     }
   }
 
-  async function refreshEvents() {
+  async function refreshEvents(profileId = employeeId) {
+    if (!profileId) {
+      setEvents([]);
+      return;
+    }
+
     try {
-      const response = await getWorkEvents({ employeeId });
+      const response = await getWorkEvents({ employeeId: profileId });
       setEvents(response.data);
     } catch {
       setEvents([]);
     }
   }
 
-  function applyOrder(order: DemoWorkOrder) {
+  function applyOrder(order: DemoWorkOrder, profileId = employeeId) {
     const details = parseDetails(order);
     setSelectedOrderId(order.id);
     setReferenznummer(order.reference_number || '');
@@ -271,36 +281,66 @@ export default function DemoPage() {
     setPlannedStart(order.planned_start_at ? order.planned_start_at.slice(11, 16) : '');
     setPlannedStop(order.planned_end_at ? order.planned_end_at.slice(11, 16) : '');
     setBemerkung('');
-    refreshState(order.id);
+    if (profileId) refreshState(order.id, profileId);
   }
 
-  async function loadDemo() {
+  async function loadWorkday() {
     setSaving(true);
-    setMessage(t('preparingAssignments'));
+    setMessage(t('loadingAssignments'));
 
     try {
-      const seeded = await seedFieldDemo(employeeId);
-      setOrders(seeded.orders);
+      const current = await me();
+      const profileId = current.data.employee_profile_id ? Number(current.data.employee_profile_id) : null;
 
-      const first = seeded.orders[0];
-      if (first) applyOrder(first);
+      setEmployeeId(profileId);
 
-      await refreshEvents();
-      setMessage(t('assignmentsLoaded'));
+      if (!profileId) {
+        setOrders([]);
+        setSelectedOrderId(null);
+        setFieldState(null);
+        setEvents([]);
+        setMessage('К пользователю не привязан профиль сотрудника. Сначала создайте сотрудника в справочнике и привяжите его к пользователю.');
+        return;
+      }
+
+      const response = await getWorkOrders({ employeeId: profileId });
+      setOrders(response.data);
+
+      const first = response.data[0];
+
+      if (first) {
+        applyOrder(first, profileId);
+      } else {
+        setSelectedOrderId(null);
+        setFieldState(null);
+        setMessage('Для этого сотрудника пока нет назначенных заданий.');
+      }
+
+      await refreshEvents(profileId);
     } catch (error) {
       const errorText = error instanceof Error ? error.message : t('unknownError');
+      setOrders([]);
+      setSelectedOrderId(null);
+      setFieldState(null);
+      setEvents([]);
       setMessage(t('assignmentsFailed', { error: errorText }));
     } finally {
       setSaving(false);
     }
   }
 
+
   useEffect(() => {
-    loadDemo();
+    loadWorkday();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function next() {
+    if (!employeeId) {
+      setMessage('К пользователю не привязан профиль сотрудника.');
+      return;
+    }
+
     if (disabled) {
       setMessage(t('buttonBlocked'));
       return;
@@ -372,26 +412,6 @@ export default function DemoPage() {
     }
   }
 
-  async function resetWorkflow() {
-    setSaving(true);
-    setMessage(t('resettingWorkday'));
-
-    try {
-      const result = await resetDemoWorkEvents(employeeId);
-      setLog([]);
-      addLog(t('resetLog', { count: result.deleted }));
-      await refreshEvents();
-      await refreshState();
-      setMessage(t('resetDone'));
-    } catch (error) {
-      const errorText = error instanceof Error ? error.message : t('unknownError');
-      addLog(t('resetFailedLog', { error: errorText }));
-      setMessage(t('resetFailed', { error: errorText }));
-    } finally {
-      setSaving(false);
-    }
-  }
-
   return (
     <main className="page-shell field-crm-page">
       <section className="hero-card field-hero">
@@ -448,7 +468,6 @@ export default function DemoPage() {
             <button className="action-button primary giant-action" onClick={next} type="button" disabled={disabled}>
               {saving ? t('saving') : currentLabel}
             </button>
-            <button className="action-button secondary" onClick={resetWorkflow} type="button" disabled={saving}>{t('resetWorkday')}</button>
 
             <div className="field-alerts">
               <p className="hint">{message}</p>

@@ -38,19 +38,10 @@ export type DemoWorkOrder = {
   details?: string | Record<string, unknown> | null;
 };
 
-export type DemoSeedResponse = {
-  message: string;
-  object: {
-    name: string;
-    address: string;
-  };
-  orders: DemoWorkOrder[];
-};
 
 function authHeaders(json = false): HeadersInit {
   const headers: Record<string, string> = {
     Accept: 'application/json',
-    'X-Local-Dev-Bypass': 'rail-crm-dev',
   };
 
   if (json) {
@@ -81,31 +72,20 @@ export async function postWorkEvent(path: string, payload: WorkEventPayload) {
   return response.json();
 }
 
-export async function seedFieldDemo(employeeId = 1): Promise<DemoSeedResponse> {
-  const response = await fetch(`${API_URL}/dev/field-demo-seed`, {
-    method: 'POST',
-    headers: authHeaders(true),
-    body: JSON.stringify({ employee_id: employeeId }),
+
+export async function getWorkOrders(filters: { employeeId?: number } = {}): Promise<{ data: DemoWorkOrder[] }> {
+  const params = new URLSearchParams();
+
+  if (filters.employeeId) params.set('employee_id', String(filters.employeeId));
+
+  const query = params.toString() ? `?${params.toString()}` : '';
+  const response = await fetch(`${API_URL}/work-orders${query}`, {
+    headers: authHeaders(false),
+    cache: 'no-store',
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || 'Field demo seed failed');
-  }
-
-  return response.json();
-}
-
-export async function resetDemoWorkEvents(employeeId = 1): Promise<{ message: string; employee_id: number; deleted: number }> {
-  const response = await fetch(`${API_URL}/dev/reset-work-events`, {
-    method: 'POST',
-    headers: authHeaders(true),
-    body: JSON.stringify({ employee_id: employeeId }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || 'Reset failed');
+    throw new Error('Could not load work orders');
   }
 
   return response.json();
