@@ -51,8 +51,8 @@ const navGroups: NavGroup[] = [
   },
 ];
 
-function canSee(item: NavItem, user: AuthUser | null) {
-  return !item.roles || (user && item.roles.includes(user.role));
+function canSee(item: NavItem, user: AuthUser) {
+  return !item.roles || item.roles.includes(user.role);
 }
 
 function isActive(pathname: string, href: string) {
@@ -69,6 +69,15 @@ export default function MainNav() {
   const { locale, setLocale, t } = useI18n();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
+  const hideNav = isAuthPage(pathname) || (!loadingUser && !user);
+
+  useEffect(() => {
+    document.body.classList.toggle('nav-hidden', hideNav);
+
+    return () => {
+      document.body.classList.remove('nav-hidden');
+    };
+  }, [hideNav]);
 
   useEffect(() => {
     if (isAuthPage(pathname)) {
@@ -117,7 +126,7 @@ export default function MainNav() {
     window.location.href = '/login';
   }
 
-  if (isAuthPage(pathname)) {
+  if (hideNav || !user) {
     return null;
   }
 
@@ -166,25 +175,11 @@ export default function MainNav() {
           </div>
         </div>
 
-        {user ? (
-          <>
-            <div className="nav-user">
-              <span>{user.name || user.email}</span>
-              <small>{roleLabel[user.role] || user.role}</small>
-            </div>
-            <button className="nav-button" onClick={signOut} type="button">{t('logout')}</button>
-          </>
-        ) : loadingUser ? (
-          <div className="nav-user">
-            <span>...</span>
-            <small>{t('login')}</small>
-          </div>
-        ) : (
-          <a className={`nav-item login-item ${isActive(pathname, '/login') ? 'active' : ''}`} href="/login">
-            <span className="nav-icon">IN</span>
-            <span>{t('login')}</span>
-          </a>
-        )}
+        <div className="nav-user">
+          <span>{user.name || user.email}</span>
+          <small>{roleLabel[user.role] || user.role}</small>
+        </div>
+        <button className="nav-button" onClick={signOut} type="button">{t('logout')}</button>
       </div>
     </aside>
   );
