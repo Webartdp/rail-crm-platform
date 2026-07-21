@@ -2,9 +2,15 @@ body {
   padding-left: 292px;
 }
 
-body.nav-hidden {
-  padding-left: 0;
-  padding-top: 0;
+body.nav-hidden,
+body.auth-body {
+  padding-left: 0 !important;
+  padding-top: 0 !important;
+}
+
+body.nav-hidden .main-nav,
+body.auth-body .main-nav {
+  display: none !important;
 }
 
 .main-nav {
@@ -225,8 +231,9 @@ body.nav-hidden {
     padding-top: 94px;
   }
 
-  body.nav-hidden {
-    padding-top: 0;
+  body.nav-hidden,
+  body.auth-body {
+    padding-top: 0 !important;
   }
 
   .main-nav {
@@ -302,8 +309,9 @@ body.nav-hidden {
     padding-top: 152px;
   }
 
-  body.nav-hidden {
-    padding-top: 0;
+  body.nav-hidden,
+  body.auth-body {
+    padding-top: 0 !important;
   }
 
   .main-nav {
