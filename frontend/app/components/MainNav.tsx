@@ -22,7 +22,7 @@ const navGroups: NavGroup[] = [
     titleKey: 'groupWork',
     items: [
       { href: '/', labelKey: 'home', code: 'HM' },
-      { href: '/demo', labelKey: 'fieldDay', code: 'FD' },
+      { href: '/workday', labelKey: 'fieldDay', code: 'FD' },
       { href: '/employee', labelKey: 'employeeCabinet', code: 'EM' },
       { href: '/maps', labelKey: 'gpsMap', code: 'MP' },
       { href: '/durations', labelKey: 'time', code: 'TM' },
