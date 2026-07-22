@@ -179,3 +179,89 @@
     grid-template-columns: 1fr !important;
   }
 }
+
+/* Compact action buttons */
+.action-button.compact-button {
+  width: auto !important;
+  min-width: auto !important;
+  max-width: max-content;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.85rem;
+  white-space: nowrap;
+  align-self: center;
+  justify-self: end;
+}
+
+.action-button.compact-button i {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+/* Small reload button */
+.reload-button {
+  width: auto !important;
+  max-width: max-content !important;
+  min-width: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.45rem !important;
+  padding: 0.55rem 0.9rem !important;
+  border-radius: 0.75rem !important;
+  border: 1px solid rgba(37, 99, 235, 0.35) !important;
+  background: #2554d9 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  flex: 0 0 auto !important;
+  justify-self: end !important;
+  align-self: center !important;
+}
+
+.reload-button i {
+  display: block !important;
+  font-size: 1rem !important;
+  line-height: 1 !important;
+}
+
+.reload-button:hover {
+  background: #1d4ed8 !important;
+}
+
+/* Small reload button */
+.reload-button {
+  width: auto !important;
+  max-width: max-content !important;
+  min-width: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.45rem !important;
+  padding: 0.55rem 0.9rem !important;
+  border-radius: 0.75rem !important;
+  border: 1px solid rgba(37, 99, 235, 0.35) !important;
+  background: #2554d9 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  flex: 0 0 auto !important;
+  justify-self: end !important;
+  align-self: center !important;
+}
+
+.reload-button i {
+  display: block !important;
+  font-size: 1rem !important;
+  line-height: 1 !important;
+}
+
+.reload-button:hover {
+  background: #1d4ed8 !important;
+}

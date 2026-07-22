@@ -206,7 +206,35 @@ export default function AssignmentsPage() {
               <h2>Список заданий</h2>
               <p className="hint">{loading ? 'Загрузка...' : message}</p>
             </div>
-            <a className="action-button primary" href="/work-orders/new">Создать задание</a>
+            <a
+              className="small-create-button"
+              href="/work-orders/new"
+              style={{
+                width: 'auto',
+                maxWidth: 'max-content',
+                minWidth: 0,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.45rem',
+                padding: '0.65rem 1rem',
+                borderRadius: '0.85rem',
+                border: '1px solid rgba(37, 99, 235, 0.35)',
+                background: '#2554d9',
+                color: '#ffffff',
+                fontWeight: 800,
+                lineHeight: 1,
+                whiteSpace: 'nowrap',
+                cursor: 'pointer',
+                textDecoration: 'none',
+                flex: '0 0 auto',
+                justifySelf: 'end',
+                alignSelf: 'center',
+              }}
+            >
+              <i className="las la-plus" aria-hidden="true" style={{ fontSize: '1rem', lineHeight: 1 }} />
+              <span>Создать задание</span>
+            </a>
           </div>
 
           <div style={rowStyle}>

@@ -36,7 +36,35 @@ export default function ManagerDashboardPage() {
             <p className="hero-text">Обзор согласований, счетов, подписей и открытых заданий.</p>
             <p className="hint">{message}</p>
           </div>
-          <button className="action-button primary" onClick={load} type="button">Обновить</button>
+          <button
+              className="small-refresh-button"
+              onClick={load}
+              type="button"
+              style={{
+                width: 'auto',
+                maxWidth: 'max-content',
+                minWidth: 0,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.45rem',
+                padding: '0.55rem 0.9rem',
+                borderRadius: '0.75rem',
+                border: '1px solid rgba(37, 99, 235, 0.35)',
+                background: '#2554d9',
+                color: '#ffffff',
+                fontWeight: 700,
+                lineHeight: 1,
+                whiteSpace: 'nowrap',
+                cursor: 'pointer',
+                flex: '0 0 auto',
+                justifySelf: 'end',
+                alignSelf: 'center',
+              }}
+            >
+              <i className="las la-sync-alt" aria-hidden="true" style={{ fontSize: '1rem', lineHeight: 1 }} />
+              <span>Обновить</span>
+            </button>
         </section>
 
         {data ? (
