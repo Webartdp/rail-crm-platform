@@ -1,3 +1,4 @@
+import 'line-awesome/dist/line-awesome/css/line-awesome.min.css';
 import type { Metadata } from 'next';
 import MainNav from './components/MainNav';
 import { I18nProvider } from './i18n';

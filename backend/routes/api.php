@@ -173,13 +173,16 @@ Route::prefix('v1')->group(function () {
         ]);
     });
 
-    Route::get('/employee-profiles', [EmployeeProfileController::class, 'index'])->middleware('role:admin');
+    Route::get('/employee-profiles', [EmployeeProfileController::class, 'index'])->middleware('role:manager,admin');
     Route::post('/employee-profiles', [EmployeeProfileController::class, 'store'])->middleware('role:admin');
     Route::get('/employee-profiles/{id}', [EmployeeProfileController::class, 'show'])->middleware('role:admin');
     Route::put('/employee-profiles/{id}', [EmployeeProfileController::class, 'update'])->middleware('role:admin');
 
     Route::get('/work-orders', [WorkOrderController::class, 'index'])->middleware('role:employee,manager,admin');
     Route::post('/work-orders', [WorkOrderController::class, 'store'])->middleware('role:manager,admin');
+    Route::get('/work-orders/{id}', [WorkOrderController::class, 'show'])->middleware('role:manager,admin');
+    Route::put('/work-orders/{id}', [WorkOrderController::class, 'update'])->middleware('role:manager,admin');
+    Route::delete('/work-orders/{id}', [WorkOrderController::class, 'destroy'])->middleware('role:manager,admin');
     Route::post('/work-orders/{id}/close', [WorkOrderController::class, 'close'])->middleware('role:manager,admin');
 
     Route::get('/work-events', [WorkEventController::class, 'index'])->middleware('role:employee,manager,admin');

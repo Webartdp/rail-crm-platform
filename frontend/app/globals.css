@@ -1,0 +1,181 @@
+
+.status-action-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  white-space: nowrap;
+}
+
+.icon-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.72);
+  color: #e5e7eb;
+  text-decoration: none;
+  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.icon-action:hover {
+  transform: translateY(-1px);
+  border-color: rgba(96, 165, 250, 0.8);
+  background: rgba(30, 64, 175, 0.75);
+}
+
+.icon-action svg {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.status-action-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.icon-action-xs {
+  width: 1.45rem;
+  height: 1.45rem;
+  min-width: 1.45rem;
+  min-height: 1.45rem;
+  padding: 0;
+  border-radius: 0.45rem;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.icon-action-xs i {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+/* AS assignments table: 5 real columns */
+.table-row.assignment-row {
+  display: grid !important;
+  grid-template-columns:
+    minmax(150px, 1fr)
+    minmax(340px, 2fr)
+    minmax(150px, 1fr)
+    minmax(95px, 0.6fr)
+    minmax(95px, 0.45fr) !important;
+  align-items: center;
+  gap: 1rem;
+}
+
+.table-row.assignment-row .row-actions-inline {
+  justify-content: flex-start;
+}
+
+.table-row.assignment-row .icon-action-xs {
+  width: 1.25rem;
+  height: 1.25rem;
+  min-width: 1.25rem;
+  min-height: 1.25rem;
+  font-size: 0.9rem;
+}
+
+.table-row.assignment-row .icon-action-xs i {
+  font-size: 0.9rem;
+}
+
+@media (max-width: 1100px) {
+  .table-row.assignment-row {
+    grid-template-columns:
+      minmax(130px, 1fr)
+      minmax(240px, 1.7fr)
+      minmax(120px, 0.9fr)
+      minmax(85px, 0.6fr)
+      minmax(85px, 0.45fr) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .table-row.assignment-row {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* AS assignments: force 5 columns */
+.assignments-grid-row {
+  display: grid !important;
+  grid-template-columns: 180px minmax(360px, 1fr) 180px 110px 110px !important;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.28);
+}
+
+.assignments-grid-row > span,
+.assignments-grid-row > strong {
+  min-width: 0;
+}
+
+.assignments-grid-row small {
+  display: block;
+  line-height: 1.35;
+}
+
+.assignments-grid-row .row-actions-inline {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.assignments-grid-row .icon-action-xs {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  min-width: 1.35rem;
+  min-height: 1.35rem;
+  padding: 0;
+  border-radius: 0.35rem;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: rgba(15, 23, 42, 0.08);
+  color: #111827;
+  text-decoration: none;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.assignments-grid-row .icon-action-xs:hover {
+  background: rgba(37, 99, 235, 0.12);
+  border-color: rgba(37, 99, 235, 0.45);
+}
+
+.assignments-grid-row .icon-action-xs i {
+  display: block;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.assignments-grid-row .icon-action-danger:hover {
+  color: #991b1b;
+  background: rgba(220, 38, 38, 0.1);
+  border-color: rgba(220, 38, 38, 0.45);
+}
+
+@media (max-width: 1100px) {
+  .assignments-grid-row {
+    grid-template-columns: 150px minmax(260px, 1fr) 150px 95px 95px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .assignments-grid-row {
+    grid-template-columns: 1fr !important;
+  }
+}
