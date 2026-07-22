@@ -1,24 +1,221 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import RoleGuard from '../components/RoleGuard';
-import { getManagerDashboard, type ManagerDashboard } from '../../lib/manager-dashboard';
+import { me, type AuthUser } from '../../lib/auth';
+import { getEmployeeProfiles, employeeProfileName, type EmployeeProfile } from '../../lib/employee-profiles';
+import { getWorkOrders, type WorkOrder } from '../../lib/work-orders';
+import { getWorkEvents, type WorkEvent } from '../../lib/work-events';
+import { getWorkEventApprovals, type WorkEventApproval } from '../../lib/approvals';
 
-function card(label: string, value: number, href: string) {
-  return <a className="panel stat-card" href={href}><p className="eyebrow">{label}</p><h1>{value}</h1></a>;
+function parseDetails(item?: WorkOrder | null): Record<string, string> {
+  if (!item?.details) return {};
+
+  if (typeof item.details === 'object') {
+    return item.details as Record<string, string>;
+  }
+
+  try {
+    return JSON.parse(item.details) as Record<string, string>;
+  } catch {
+    return {};
+  }
 }
 
+function eventType(event: WorkEvent) {
+  return event.event_type || event.type || event.action || '—';
+}
+
+function eventTime(event: WorkEvent) {
+  return event.occurred_at || event.event_time || event.created_at || null;
+}
+
+function assignmentId(event: WorkEvent) {
+  return event.assignment_id || event.work_order_id || null;
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return '—';
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat('de-DE', {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+}
+
+function pairLabel(pairType: WorkEventApproval['pair_type']) {
+  if (pairType === 'gasfahrt') return 'An-/Abfahrt';
+  if (pairType === 'arbeit') return 'Arbeitszeit';
+  if (pairType === 'dienstfahrt') return 'Dienstfahrt';
+  return pairType;
+}
+
+function eventLabel(type: string) {
+  const labels: Record<string, string> = {
+    gasfahrt_start: 'Anfahrt Start',
+    gasfahrt_stop: 'Anfahrt Stop',
+    dienstbeginn: 'Dienstbeginn',
+    arbeit_stop: 'Arbeit Stop',
+    dienstfahrt_start: 'Dienstfahrt Start',
+    dienstfahrt_stop: 'Dienstfahrt Stop',
+  };
+
+  return labels[type] || type;
+}
+
+const smallButtonStyle = {
+  width: 'auto',
+  maxWidth: 'max-content',
+  minWidth: 0,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '0.45rem',
+  padding: '0.55rem 0.9rem',
+  borderRadius: '0.75rem',
+  border: '1px solid rgba(37, 99, 235, 0.35)',
+  background: '#2554d9',
+  color: '#ffffff',
+  fontWeight: 700,
+  lineHeight: 1,
+  whiteSpace: 'nowrap',
+  cursor: 'pointer',
+  flex: '0 0 auto',
+  justifySelf: 'end',
+  alignSelf: 'center',
+} as const;
+
+const cardGridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+  gap: '1.15rem',
+  marginTop: '1rem',
+  marginBottom: '1.4rem',
+} as const;
+
+const miniCardStyle = {
+  display: 'grid',
+  alignContent: 'start',
+  gap: '0.75rem',
+  minHeight: '165px',
+  padding: '1.25rem',
+  borderRadius: '1.25rem',
+  border: '1px solid rgba(148, 163, 184, 0.22)',
+  background: '#ffffff',
+  boxShadow: '0 18px 45px rgba(15, 23, 42, 0.08)',
+} as const;
+
+const metricHeadStyle = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '0.75rem',
+} as const;
+
+const metricIconStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: '2.35rem',
+  height: '2.35rem',
+  borderRadius: '0.9rem',
+  background: 'rgba(37, 99, 235, 0.1)',
+  color: '#2554d9',
+  fontSize: '1.25rem',
+  lineHeight: 1,
+} as const;
+
+const metricValueStyle = {
+  margin: 0,
+  fontSize: '2.35rem',
+  lineHeight: 1,
+  letterSpacing: '-0.045em',
+} as const;
+
+const metricTextStyle = {
+  margin: 0,
+  color: '#64748b',
+  fontSize: '0.92rem',
+  lineHeight: 1.45,
+} as const;
+
+const twoColumnStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+  gap: '1.25rem',
+  marginBottom: '1.4rem',
+} as const;
+
+const listItemStyle = {
+  display: 'grid',
+  gap: '0.25rem',
+  padding: '0.85rem 0',
+  borderBottom: '1px solid rgba(148, 163, 184, 0.22)',
+} as const;
+
 export default function ManagerDashboardPage() {
-  const [data, setData] = useState<ManagerDashboard | null>(null);
-  const [message, setMessage] = useState('Загружаем панель менеджера...');
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [orders, setOrders] = useState<WorkOrder[]>([]);
+  const [events, setEvents] = useState<WorkEvent[]>([]);
+  const [approvals, setApprovals] = useState<WorkEventApproval[]>([]);
+  const [employees, setEmployees] = useState<EmployeeProfile[]>([]);
+  const [message, setMessage] = useState('Lade Manager-Dashboard...');
+  const [loading, setLoading] = useState(true);
+
+  const employeeMap = useMemo(() => {
+    const map = new Map<number, string>();
+
+    employees.forEach((employee) => {
+      map.set(employee.id, employeeProfileName(employee));
+    });
+
+    return map;
+  }, [employees]);
+
+  const orderMap = useMemo(() => {
+    const map = new Map<number, WorkOrder>();
+
+    orders.forEach((order) => {
+      map.set(order.id, order);
+    });
+
+    return map;
+  }, [orders]);
 
   async function load() {
+    setLoading(true);
+
     try {
-      const response = await getManagerDashboard();
-      setData(response.data);
-      setMessage(`Загружено для ${response.data.generated_for.name} (${response.data.generated_for.role}).`);
+      const [userResponse, ordersResponse, approvalsResponse, eventsResponse, employeesResponse] = await Promise.all([
+        me(),
+        getWorkOrders(),
+        getWorkEventApprovals(),
+        getWorkEvents(),
+        getEmployeeProfiles(),
+      ]);
+
+      const currentUser = userResponse.data;
+
+      setUser(currentUser);
+      setOrders(ordersResponse.data);
+      setApprovals(approvalsResponse.data);
+      setEvents(eventsResponse.data);
+      setEmployees(employeesResponse.data);
+      setMessage(`Загружено для ${currentUser.name || currentUser.email} (${currentUser.role}).`);
     } catch (error) {
-      setMessage('Не удалось загрузить панель менеджера. Нужен вход под manager или admin.');
+      const errorText = error instanceof Error ? error.message : 'Unbekannter Fehler';
+      setMessage(`API-Fehler: ${errorText}`);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -26,119 +223,163 @@ export default function ManagerDashboardPage() {
     load();
   }, []);
 
+  const pendingApprovals = approvals.filter((item) => item.status === 'pending');
+  const approvedApprovals = approvals.filter((item) => item.status === 'approved');
+  const openOrders = orders.filter((item) => !['approved', 'closed', 'rejected'].includes(item.status || ''));
+  const activeOrders = orders.filter((item) => ['planned', 'in_progress', 'waiting_approval'].includes(item.status || ''));
+
+  const latestApprovals = approvals.slice(0, 5);
+  const latestEvents = events.slice(0, 6);
+  const latestOpenOrders = activeOrders.slice(0, 5);
+
   return (
     <main className="page-shell">
-      <RoleGuard allowedRoles={['manager', 'admin']} title="Доступ к панели менеджера">
+      <RoleGuard allowedRoles={['manager', 'admin']} title="Manager dashboard access">
         <section className="hero-card">
           <div>
             <p className="eyebrow">Менеджер</p>
             <h1>Панель менеджера</h1>
-            <p className="hero-text">Обзор согласований, счетов, подписей и открытых заданий.</p>
-            <p className="hint">{message}</p>
+            <p className="hero-text">Обзор согласований, открытых заданий и событий смены.</p>
+            <p className="hint">{loading ? 'Загрузка...' : message}</p>
           </div>
+
           <button
-              className="small-refresh-button"
-              onClick={load}
-              type="button"
-              style={{
-                width: 'auto',
-                maxWidth: 'max-content',
-                minWidth: 0,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.45rem',
-                padding: '0.55rem 0.9rem',
-                borderRadius: '0.75rem',
-                border: '1px solid rgba(37, 99, 235, 0.35)',
-                background: '#2554d9',
-                color: '#ffffff',
-                fontWeight: 700,
-                lineHeight: 1,
-                whiteSpace: 'nowrap',
-                cursor: 'pointer',
-                flex: '0 0 auto',
-                justifySelf: 'end',
-                alignSelf: 'center',
-              }}
-            >
-              <i className="las la-sync-alt" aria-hidden="true" style={{ fontSize: '1rem', lineHeight: 1 }} />
-              <span>Обновить</span>
-            </button>
+            className="small-refresh-button"
+            onClick={load}
+            type="button"
+            style={smallButtonStyle}
+          >
+            <i className="las la-sync-alt" aria-hidden="true" style={{ fontSize: '1rem', lineHeight: 1 }} />
+            <span>Обновить</span>
+          </button>
         </section>
 
-        {data ? (
-          <>
-            <section className="stats-grid">
-              {card('Ожидают согласования', data.counts.pending_approvals, '/approvals')}
-              {card('Согласовано, но не выставлено', data.counts.approved_uninvoiced, '/billing')}
-              {card('Нужна подпись', data.counts.documents_needing_signature, '/documents')}
-              {card('Открытые задания', data.counts.open_work_orders, '/assignments')}
-            </section>
+        <section style={cardGridStyle}>
+          <div style={miniCardStyle}>
+            <div style={metricHeadStyle}>
+              <p className="eyebrow">Ждут проверки</p>
+              <i className="las la-hourglass-half" aria-hidden="true" style={metricIconStyle} />
+            </div>
+            <h2 style={metricValueStyle}>{pendingApprovals.length}</h2>
+            <p style={metricTextStyle}>Новые отрезки времени, которые менеджер ещё не подтвердил.</p>
+          </div>
 
-            <section className="grid lower-grid">
-              <div className="panel">
-                <h2>Ожидают согласования</h2>
-                <div className="table-row"><strong>Пара событий</strong><strong>Сотрудник</strong><strong>Статус</strong></div>
-                {data.pending_approvals.length === 0 ? <p className="hint">Нет ожидающих согласований.</p> : null}
-                {data.pending_approvals.map((item) => (
-                  <div className="table-row" key={item.id}>
-                    <span>{item.pair_type}<br /><small>Задание #{item.assignment_id}</small></span>
-                    <span>#{item.employee_id}</span>
-                    <span>{item.status}</span>
-                  </div>
-                ))}
-                <a className="action-link" href="/approvals">Открыть согласование</a>
+          <div style={miniCardStyle}>
+            <div style={metricHeadStyle}>
+              <p className="eyebrow">Проверено</p>
+              <i className="las la-check-circle" aria-hidden="true" style={metricIconStyle} />
+            </div>
+            <h2 style={metricValueStyle}>{approvedApprovals.length}</h2>
+            <p style={metricTextStyle}>Уже подтверждённые отрезки рабочего времени.</p>
+          </div>
+
+          <div style={miniCardStyle}>
+            <div style={metricHeadStyle}>
+              <p className="eyebrow">Активные задания</p>
+              <i className="las la-clipboard-list" aria-hidden="true" style={metricIconStyle} />
+            </div>
+            <h2 style={metricValueStyle}>{openOrders.length}</h2>
+            <p style={metricTextStyle}>Назначены сотрудникам и ещё не закрыты.</p>
+          </div>
+
+          <div style={miniCardStyle}>
+            <div style={metricHeadStyle}>
+              <p className="eyebrow">События смены</p>
+              <i className="las la-stream" aria-hidden="true" style={metricIconStyle} />
+            </div>
+            <h2 style={metricValueStyle}>{events.length}</h2>
+            <p style={metricTextStyle}>Дорога, начало работы, завершение работы и служебные поездки.</p>
+          </div>
+        </section>
+
+        <section style={twoColumnStyle}>
+          <div className="panel">
+            <div className="field-panel-head split-head">
+              <div>
+                <h2>Последние согласования</h2>
+                <p className="hint">Очередь OK / Freigabe.</p>
               </div>
+              <a className="small-create-button" href="/approvals" style={{ ...smallButtonStyle, textDecoration: 'none' }}>
+                <i className="las la-external-link-alt" aria-hidden="true" style={{ fontSize: '1rem', lineHeight: 1 }} />
+                <span>Открыть</span>
+              </a>
+            </div>
 
-              <div className="panel">
-                <h2>Согласовано, но ещё не выставлено в счёт</h2>
-                <div className="table-row"><strong>Пара событий</strong><strong>Сотрудник</strong><strong>Статус</strong></div>
-                {data.approved_uninvoiced.length === 0 ? <p className="hint">Нет согласованных интервалов без счёта.</p> : null}
-                {data.approved_uninvoiced.map((item) => (
-                  <div className="table-row" key={item.id}>
-                    <span>{item.pair_type}<br /><small>Задание #{item.assignment_id}</small></span>
-                    <span>#{item.employee_id}</span>
-                    <span>{item.status}</span>
-                  </div>
-                ))}
-                <a className="action-link" href="/billing">Создать черновик счёта</a>
-              </div>
-            </section>
+            {latestApprovals.map((approval) => {
+              const order = orderMap.get(approval.assignment_id);
+              const details = parseDetails(order);
+              const employeeName = employeeMap.get(approval.employee_id) || `Mitarbeiter #${approval.employee_id}`;
 
-            <section className="grid lower-grid">
-              <div className="panel">
-                <h2>Документы, где нужна подпись</h2>
-                <div className="table-row"><strong>Документ</strong><strong>Подписант</strong><strong>Статус</strong></div>
-                {data.documents_needing_signature.length === 0 ? <p className="hint">Нет ожидающих подписей.</p> : null}
-                {data.documents_needing_signature.map((item) => (
-                  <div className="table-row" key={item.signature_id}>
-                    <span>{item.document_title}<br /><small>Документ #{item.document_id}</small></span>
-                    <span>{item.signer_name || '—'}<br /><small>{item.signer_email || '—'}</small></span>
-                    <span>{item.status}<br /><a className="action-link" href={`/documents/${item.document_id}/print`}>Печать</a></span>
-                  </div>
-                ))}
-                <a className="action-link" href="/documents">Открыть документы</a>
-              </div>
+              return (
+                <div style={listItemStyle} key={approval.id}>
+                  <strong>{employeeName}</strong>
+                  <span>{details.work_title || order?.title || `Auftrag #${approval.assignment_id}`}</span>
+                  <small>{pairLabel(approval.pair_type)} · {approval.status}</small>
+                </div>
+              );
+            })}
 
-              <div className="panel">
+            {!latestApprovals.length ? <p className="hint">Пока нет согласований.</p> : null}
+          </div>
+
+          <div className="panel">
+            <div className="field-panel-head split-head">
+              <div>
                 <h2>Открытые задания</h2>
-                <div className="table-row"><strong>Референс</strong><strong>Название</strong><strong>Статус</strong></div>
-                {data.open_work_orders.length === 0 ? <p className="hint">Нет открытых заданий.</p> : null}
-                {data.open_work_orders.map((item) => (
-                  <div className="table-row" key={item.id}>
-                    <span>{item.reference_number || `#${item.id}`}</span>
-                    <span>{item.title}</span>
-                    <span>{item.status || 'planned'}</span>
-                  </div>
-                ))}
-                <a className="action-link" href="/assignments">Открыть задания</a>
+                <p className="hint">AS / Aufträge.</p>
               </div>
-            </section>
-          </>
-        ) : (
-          <section className="panel"><p className="hint">{message}</p></section>
-        )}
+              <a className="small-create-button" href="/assignments" style={{ ...smallButtonStyle, textDecoration: 'none' }}>
+                <i className="las la-external-link-alt" aria-hidden="true" style={{ fontSize: '1rem', lineHeight: 1 }} />
+                <span>Открыть</span>
+              </a>
+            </div>
+
+            {latestOpenOrders.map((order) => {
+              const details = parseDetails(order);
+              const employeeName = order.employee_id ? employeeMap.get(order.employee_id) || `Mitarbeiter #${order.employee_id}` : '—';
+
+              return (
+                <div style={listItemStyle} key={order.id}>
+                  <strong>{details.work_title || order.title}</strong>
+                  <span>{order.reference_number || `#${order.id}`} · {order.status || 'planned'}</span>
+                  <small>{employeeName} · {details.customer_name || '—'} · {details.object_name || '—'}</small>
+                </div>
+              );
+            })}
+
+            {!latestOpenOrders.length ? <p className="hint">Нет открытых заданий.</p> : null}
+          </div>
+        </section>
+
+        <section className="panel">
+          <div className="field-panel-head split-head">
+            <div>
+              <h2>Последние события смены</h2>
+              <p className="hint">EV / Ereignisse.</p>
+            </div>
+            <a className="small-create-button" href="/work-events" style={{ ...smallButtonStyle, textDecoration: 'none' }}>
+              <i className="las la-external-link-alt" aria-hidden="true" style={{ fontSize: '1rem', lineHeight: 1 }} />
+              <span>Открыть</span>
+            </a>
+          </div>
+
+          {latestEvents.map((event) => {
+            const orderId = assignmentId(event);
+            const order = orderId ? orderMap.get(orderId) : null;
+            const details = parseDetails(order);
+            const employeeName = event.employee_id ? employeeMap.get(event.employee_id) || `Mitarbeiter #${event.employee_id}` : '—';
+
+            return (
+              <div style={listItemStyle} key={event.id}>
+                <strong>{eventLabel(eventType(event))}</strong>
+                <span>{employeeName} · {details.work_title || order?.title || (orderId ? `Auftrag #${orderId}` : '—')}</span>
+                <small>{formatDateTime(eventTime(event))}</small>
+              </div>
+            );
+          })}
+
+          {!latestEvents.length ? <p className="hint">Пока нет событий смены.</p> : null}
+        </section>
       </RoleGuard>
     </main>
   );
