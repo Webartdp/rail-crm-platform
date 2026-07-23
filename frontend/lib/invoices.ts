@@ -6,7 +6,7 @@ export type Invoice = {
   id: number;
   number: string;
   status: string;
-  total_amount: string;
+  total_amount: string | number;
   issued_at?: string | null;
 };
 
@@ -17,32 +17,57 @@ export type InvoiceItem = {
   employee_id: number;
   assignment_id: number;
   type: string;
-  hours: string;
-  hourly_rate: string;
-  coefficient: string;
-  amount: string;
+  hours: string | number;
+  hourly_rate: string | number;
+  coefficient: string | number;
+  amount: string | number;
 };
+
+function authHeaders(json = false): HeadersInit {
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+  };
+
+  if (json) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  const token = getStoredToken();
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  return headers;
+}
+
+async function readErrorMessage(response: Response, fallback: string) {
+  const data = await response.json().catch(() => null);
+  return typeof data?.message === 'string' ? data.message : fallback;
+}
 
 export async function getInvoices(): Promise<{ data: Invoice[] }> {
   const response = await fetch(`${API_URL}/invoices`, {
-    headers: { Accept: 'application/json' },
+    headers: authHeaders(false),
     cache: 'no-store',
   });
 
-  if (!response.ok) throw new Error('Could not load invoices');
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, 'Could not load invoices'));
+  }
+
   return response.json();
 }
 
 export async function createInvoiceDraft(): Promise<{ data: Invoice; items: InvoiceItem[] }> {
-  const token = getStoredToken();
   const response = await fetch(`${API_URL}/invoices`, {
     method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      Authorization: token ? `Bearer ${token}` : '',
-    },
+    headers: authHeaders(false),
   });
 
-  if (!response.ok) throw new Error('Could not create invoice draft');
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, 'Could not create invoice draft'));
+  }
+
   return response.json();
 }

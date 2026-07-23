@@ -3,6 +3,7 @@ import { getStoredToken } from './auth';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 export type WorkEventCost = {
+  approval_id?: number | null;
   type: 'gasfahrt' | 'arbeit' | 'dienstfahrt';
   employee_id: number;
   assignment_id: number;

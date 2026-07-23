@@ -144,10 +144,23 @@ class InvoiceController extends Controller
                 $profile = DB::table('employee_profiles')->where('id', $event->employee_id)->first();
                 $seconds = max(0, strtotime($event->event_time) - strtotime($start->event_time));
                 $hours = round($seconds / 3600, 2);
+
+                if ($hours <= 0) {
+                    unset($open[$key][$startType]);
+                    continue;
+                }
+
                 $rate = $pair['rate'] === 'travel'
                     ? (float) ($profile->travel_hourly_rate ?? 0)
                     : (float) ($profile->standard_hourly_rate ?? 0);
                 $coefficient = $pair['rate'] === 'work' ? $this->coefficient($event, $profile) : 1.0;
+
+                $amount = round($hours * $rate * $coefficient, 2);
+
+                if ($amount <= 0) {
+                    unset($open[$key][$startType]);
+                    continue;
+                }
 
                 $items[] = [
                     'approval_id' => $approval->id,
@@ -157,7 +170,7 @@ class InvoiceController extends Controller
                     'hours' => $hours,
                     'hourly_rate' => $rate,
                     'coefficient' => $coefficient,
-                    'amount' => round($hours * $rate * $coefficient, 2),
+                    'amount' => $amount,
                 ];
 
                 unset($open[$key][$startType]);

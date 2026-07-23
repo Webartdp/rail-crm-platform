@@ -40,7 +40,18 @@ class WorkEventCostController extends Controller
                 }
 
                 $start = $open[$key][$startType];
-                if (!$this->isApproved($event, $start, $pair['type'])) {
+                $approval = $this->approvedApproval($event, $start, $pair['type']);
+
+                if (!$approval) {
+                    unset($open[$key][$startType]);
+                    continue;
+                }
+
+                $alreadyInvoiced = DB::table('invoice_items')
+                    ->where('approval_id', $approval->id)
+                    ->exists();
+
+                if ($alreadyInvoiced) {
                     unset($open[$key][$startType]);
                     continue;
                 }
@@ -48,10 +59,23 @@ class WorkEventCostController extends Controller
                 $profile = DB::table('employee_profiles')->where('id', $event->employee_id)->first();
                 $seconds = max(0, strtotime($event->event_time) - strtotime($start->event_time));
                 $hours = round($seconds / 3600, 2);
+
+                if ($hours <= 0) {
+                    unset($open[$key][$startType]);
+                    continue;
+                }
+
                 $rate = $this->rate($profile, $pair['rate']);
                 $coefficient = $pair['rate'] === 'work' ? $this->coefficient($event, $profile) : 1.0;
+                $amount = round($hours * $rate * $coefficient, 2);
+
+                if ($amount <= 0) {
+                    unset($open[$key][$startType]);
+                    continue;
+                }
 
                 $items[] = [
+                    'approval_id' => $approval->id,
                     'type' => $pair['type'],
                     'employee_id' => $event->employee_id,
                     'assignment_id' => $event->assignment_id,
@@ -60,7 +84,7 @@ class WorkEventCostController extends Controller
                     'hours' => $hours,
                     'hourly_rate' => $rate,
                     'coefficient' => $coefficient,
-                    'amount' => round($hours * $rate * $coefficient, 2),
+                    'amount' => $amount,
                     'approval_status' => 'approved',
                 ];
 
@@ -71,7 +95,7 @@ class WorkEventCostController extends Controller
         return response()->json(['data' => array_reverse($items)]);
     }
 
-    private function isApproved(object $event, object $start, string $type): bool
+    private function approvedApproval(object $event, object $start, string $type): ?object
     {
         return DB::table('work_event_approvals')
             ->where('employee_id', $event->employee_id)
@@ -80,7 +104,7 @@ class WorkEventCostController extends Controller
             ->where('start_time', $start->event_time)
             ->where('stop_time', $event->event_time)
             ->where('status', 'approved')
-            ->exists();
+            ->first();
     }
 
     private function rate(?object $profile, string $rateType): float
