@@ -265,3 +265,67 @@
 .reload-button:hover {
   background: #1d4ed8 !important;
 }
+
+
+
+/* Employee profile */
+.employee-profile-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  max-width: 520px;
+  margin-left: auto;
+}
+
+.employee-profile-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 132px;
+  height: 44px;
+  padding: 0 1rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  background: #0f172a;
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.employee-profile-action:hover {
+  transform: translateY(-1px);
+}
+
+.employee-profile-action.is-primary {
+  border-color: rgba(37, 99, 235, 0.35);
+  background: #2554d9;
+  color: #ffffff;
+}
+
+@media (max-width: 920px) {
+  .employee-profile-actions {
+    width: 100%;
+    max-width: none;
+    margin-left: 0;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .employee-profile-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .employee-profile-action {
+    width: 100%;
+    min-width: 0;
+  }
+}

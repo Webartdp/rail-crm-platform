@@ -17,8 +17,24 @@ class EmployeeProfileController extends Controller
         ]);
     }
 
-    public function show(int $id): JsonResponse
+    public function show(Request $request, int $id): JsonResponse
     {
+        $user = CurrentUser::fromRequest($request);
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        $role = is_array($user) ? ($user['role'] ?? null) : ($user->role ?? null);
+        $employeeProfileId = is_array($user) ? ($user['employee_profile_id'] ?? null) : ($user->employee_profile_id ?? null);
+
+        if ($role === 'employee' && (int) $employeeProfileId !== (int) $id) {
+            return response()->json([
+                'message' => 'Forbidden.',
+                'reason' => 'Employees may only view their own profile.',
+            ], 403);
+        }
+
         $profile = DB::table('employee_profiles')->where('id', $id)->first();
 
         if (!$profile) {

@@ -21,20 +21,20 @@ const navGroups: NavGroup[] = [
   {
     titleKey: 'groupWork',
     items: [
-      { href: '/', labelKey: 'home', code: 'HM' },
-      { href: '/workday', labelKey: 'fieldDay', code: 'FD' },
-      { href: '/employee', labelKey: 'employeeCabinet', code: 'EM' },
-      { href: '/maps', labelKey: 'gpsMap', code: 'MP' },
-      { href: '/durations', labelKey: 'time', code: 'TM' },
+      { href: '/workday', labelKey: 'fieldDay', code: 'FD', roles: ['employee'] },
+      { href: '/my-time', labelKey: 'time', code: 'TM', roles: ['employee'] },
+      { href: '/employee', labelKey: 'employeeCabinet', code: 'PR', roles: ['employee'] },
     ],
   },
   {
     titleKey: 'groupOperations',
     items: [
       { href: '/manager-dashboard', labelKey: 'managerDashboard', code: 'DB', roles: ['manager', 'admin'] },
-      { href: '/work-events', labelKey: 'workEvents', code: 'EV', roles: ['manager', 'admin'] },
-      { href: '/approvals', labelKey: 'approvals', code: 'OK', roles: ['manager', 'admin'] },
       { href: '/assignments', labelKey: 'assignments', code: 'AS', roles: ['manager', 'admin'] },
+      { href: '/approvals', labelKey: 'approvals', code: 'OK', roles: ['manager', 'admin'] },
+      { href: '/durations', labelKey: 'time', code: 'TM', roles: ['manager', 'admin'] },
+      { href: '/work-events', labelKey: 'workEvents', code: 'EV', roles: ['manager', 'admin'] },
+      { href: '/maps', labelKey: 'gpsMap', code: 'MP', roles: ['manager', 'admin'] },
       { href: '/billing', labelKey: 'billing', code: 'BL', roles: ['manager', 'admin'] },
     ],
   },

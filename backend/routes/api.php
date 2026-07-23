@@ -175,7 +175,7 @@ Route::prefix('v1')->group(function () {
 
     Route::get('/employee-profiles', [EmployeeProfileController::class, 'index'])->middleware('role:manager,admin');
     Route::post('/employee-profiles', [EmployeeProfileController::class, 'store'])->middleware('role:admin');
-    Route::get('/employee-profiles/{id}', [EmployeeProfileController::class, 'show'])->middleware('role:admin');
+    Route::get('/employee-profiles/{id}', [EmployeeProfileController::class, 'show'])->middleware('role:employee,manager,admin');
     Route::put('/employee-profiles/{id}', [EmployeeProfileController::class, 'update'])->middleware('role:admin');
 
     Route::get('/work-orders', [WorkOrderController::class, 'index'])->middleware('role:employee,manager,admin');

@@ -53,6 +53,20 @@ type WorkDetails = {
   einsatzort?: string;
 };
 
+type MyTimeRow = {
+  key: string;
+  date: string;
+  assignmentId: number | null;
+  reference: string;
+  title: string;
+  objectName: string;
+  customerName: string;
+  workMinutes: number;
+  travelMinutes: number;
+  totalMinutes: number;
+  status: string;
+};
+
 type PositionPayload = {
   latitude?: number;
   longitude?: number;
@@ -158,6 +172,135 @@ function eventLabel(type: string, t: Translator) {
   return t(actionLabelKeys[type] || type);
 }
 
+function eventDateValue(value?: string | null) {
+  if (!value) return '';
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return '';
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
+function assignmentIdFromEvent(event: WorkEvent) {
+  return event.assignment_id ? Number(event.assignment_id) : null;
+}
+
+function buildMyTimeRows(events: WorkEvent[], orders: DemoWorkOrder[]): MyTimeRow[] {
+  const orderMap = new Map<number, DemoWorkOrder>();
+
+  orders.forEach((order) => {
+    orderMap.set(order.id, order);
+  });
+
+  const groups = new Map<string, WorkEvent[]>();
+
+  events.forEach((event) => {
+    const eventDate = eventDateValue(event.event_time);
+    const assignmentId = assignmentIdFromEvent(event);
+    const key = `${eventDate || 'unknown'}:${assignmentId || 'none'}`;
+
+    if (!groups.has(key)) {
+      groups.set(key, []);
+    }
+
+    groups.get(key)?.push(event);
+  });
+
+  const rows: MyTimeRow[] = [];
+
+  groups.forEach((groupEvents, key) => {
+    const sorted = [...groupEvents].sort((a, b) => {
+      return new Date(a.event_time || '').getTime() - new Date(b.event_time || '').getTime();
+    });
+
+    const first = sorted[0];
+    const date = eventDateValue(first?.event_time);
+    const assignmentId = first ? assignmentIdFromEvent(first) : null;
+    const order = assignmentId ? orderMap.get(assignmentId) : null;
+    const details = parseDetails(order);
+
+    const findEvent = (type: string) => sorted.find((event) => event.event_type === type);
+
+    const gasfahrtStart = findEvent('gasfahrt_start');
+    const gasfahrtStop = findEvent('gasfahrt_stop');
+    const dienstbeginn = findEvent('dienstbeginn');
+    const arbeitStop = findEvent('arbeit_stop');
+    const dienstfahrtStart = findEvent('dienstfahrt_start');
+    const dienstfahrtStop = findEvent('dienstfahrt_stop');
+
+    const gasfahrtMinutes = minutesBetween(gasfahrtStart?.event_time, gasfahrtStop?.event_time) || 0;
+    const dienstfahrtMinutes = minutesBetween(dienstfahrtStart?.event_time, dienstfahrtStop?.event_time) || 0;
+    const workMinutes = minutesBetween(dienstbeginn?.event_time, arbeitStop?.event_time) || 0;
+    const travelMinutes = gasfahrtMinutes + dienstfahrtMinutes;
+
+    let status = 'В процессе';
+
+    if (arbeitStop) {
+      status = 'Завершено';
+    } else if (dienstbeginn) {
+      status = 'В работе';
+    } else if (gasfahrtStop) {
+      status = 'На объекте';
+    } else if (gasfahrtStart) {
+      status = 'В дороге';
+    }
+
+    rows.push({
+      key,
+      date,
+      assignmentId,
+      reference: order?.reference_number || (assignmentId ? `#${assignmentId}` : '—'),
+      title: details.work_title || order?.title || (assignmentId ? `Задание #${assignmentId}` : '—'),
+      objectName: details.object_name || '—',
+      customerName: details.customer_name || '—',
+      workMinutes,
+      travelMinutes,
+      totalMinutes: workMinutes + travelMinutes,
+      status,
+    });
+  });
+
+  return rows.sort((a, b) => b.date.localeCompare(a.date));
+}
+
+const myTimeCardGridStyle = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+  gap: '1rem',
+  margin: '1rem 0 1.25rem',
+} as const;
+
+const myTimeMetricCardStyle = {
+  display: 'grid',
+  gap: '0.45rem',
+  padding: '1rem',
+  borderRadius: '1rem',
+  border: '1px solid rgba(148, 163, 184, 0.22)',
+  background: '#ffffff',
+  boxShadow: '0 14px 35px rgba(15, 23, 42, 0.07)',
+} as const;
+
+const myTimeMetricValueStyle = {
+  margin: 0,
+  fontSize: '1.8rem',
+  lineHeight: 1,
+  letterSpacing: '-0.04em',
+} as const;
+
+const myTimeRowStyle = {
+  display: 'grid',
+  gridTemplateColumns: '120px minmax(260px, 1fr) 150px 150px 130px 130px 120px',
+  alignItems: 'center',
+  gap: '0.85rem',
+  padding: '0.8rem 0',
+  borderBottom: '1px solid rgba(148, 163, 184, 0.24)',
+} as const;
+
 export default function WorkdayPage() {
   const { locale, t } = useI18n();
   const [orders, setOrders] = useState<DemoWorkOrder[]>([]);
@@ -166,6 +309,11 @@ export default function WorkdayPage() {
   const [events, setEvents] = useState<WorkEvent[]>([]);
   const [log, setLog] = useState<string[]>([]);
   const [date, setDate] = useState(today());
+  const [dateFrom, setDateFrom] = useState(today());
+  const [dateTo, setDateTo] = useState(today());
+  const [filterObject, setFilterObject] = useState('');
+  const [filterCustomer, setFilterCustomer] = useState('');
+  const [filterAssignmentId, setFilterAssignmentId] = useState('');
   const [leistungsart, setLeistungsart] = useState('WTU');
   const [leistungsartCustom, setLeistungsartCustom] = useState('');
   const [referenznummer, setReferenznummer] = useState('');
@@ -219,6 +367,32 @@ export default function WorkdayPage() {
 
   const latestLocatedEvent = useMemo(() => events.find((event) => event.latitude && event.longitude), [events]);
   const latestMapUrl = mapsUrl(latestLocatedEvent);
+
+  const myTimeRows = useMemo(() => buildMyTimeRows(events, orders), [events, orders]);
+
+  const objectOptions = useMemo(() => {
+    return Array.from(new Set(myTimeRows.map((row) => row.objectName).filter((value) => value && value !== '—'))).sort();
+  }, [myTimeRows]);
+
+  const customerOptions = useMemo(() => {
+    return Array.from(new Set(myTimeRows.map((row) => row.customerName).filter((value) => value && value !== '—'))).sort();
+  }, [myTimeRows]);
+
+  const filteredMyTimeRows = useMemo(() => {
+    return myTimeRows.filter((row) => {
+      if (dateFrom && row.date < dateFrom) return false;
+      if (dateTo && row.date > dateTo) return false;
+      if (filterObject && row.objectName !== filterObject) return false;
+      if (filterCustomer && row.customerName !== filterCustomer) return false;
+      if (filterAssignmentId && String(row.assignmentId || '') !== filterAssignmentId) return false;
+
+      return true;
+    });
+  }, [myTimeRows, dateFrom, dateTo, filterObject, filterCustomer, filterAssignmentId]);
+
+  const myWorkMinutes = filteredMyTimeRows.reduce((sum, row) => sum + row.workMinutes, 0);
+  const myTravelMinutes = filteredMyTimeRows.reduce((sum, row) => sum + row.travelMinutes, 0);
+  const myTotalMinutes = filteredMyTimeRows.reduce((sum, row) => sum + row.totalMinutes, 0);
 
   const selectedWorkDuration = useMemo(() => {
     if (!selectedOrderId) return null;
