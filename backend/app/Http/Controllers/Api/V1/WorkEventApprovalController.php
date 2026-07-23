@@ -57,7 +57,7 @@ class WorkEventApprovalController extends Controller
             'updated_at' => $now,
         ]);
 
-        $this->updateWorkOrderStatus($approval->assignment_id, $status, $now);
+        $this->recalculateWorkOrderStatus((int) $approval->assignment_id, $now);
 
         DB::table('audit_logs')->insert([
             'user_id' => $user->id,
@@ -76,9 +76,26 @@ class WorkEventApprovalController extends Controller
         ]);
     }
 
-    private function updateWorkOrderStatus(int $assignmentId, string $approvalStatus, $now): void
+    private function recalculateWorkOrderStatus(int $assignmentId, $now): void
     {
-        $status = $approvalStatus === 'approved' ? 'approved' : 'waiting_approval';
+        $approvals = DB::table('work_event_approvals')
+            ->where('assignment_id', $assignmentId)
+            ->get();
+
+        if ($approvals->isEmpty()) {
+            return;
+        }
+
+        $hasRejected = $approvals->contains(fn ($approval) => $approval->status === 'rejected');
+        $hasPending = $approvals->contains(fn ($approval) => $approval->status === 'pending');
+
+        if ($hasRejected) {
+            $status = 'rejected';
+        } elseif ($hasPending) {
+            $status = 'waiting_approval';
+        } else {
+            $status = 'approved';
+        }
 
         DB::table('work_orders')->where('id', $assignmentId)->update([
             'status' => $status,

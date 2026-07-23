@@ -4,7 +4,6 @@ const cards = [
   ['/employees', 'Employees', '24 active'],
   ['/assignments', 'Assignments', '8 today'],
   ['/approvals', 'Open approvals', '5 pending'],
-  ['/demo', 'Work events', 'Workflow demo'],
 ];
 
 export default function AdminPage() {

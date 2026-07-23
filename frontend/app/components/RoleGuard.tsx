@@ -78,7 +78,7 @@ export default function RoleGuard({ allowedRoles, children, title = 'Досту�
         <p className="eyebrow">Нет доступа</p>
         <h1>{title}</h1>
         <p className="hint">Ваша роль: <strong>{roleLabels[user.role] || user.role}</strong>. Нужная роль: {allowedRoles.map((role) => roleLabels[role] || role).join(' / ')}.</p>
-        <a className="action-link" href="/employee">Перейти в кабинет сотрудника</a>
+        <a className="action-link" href="/employee">Перейти в профиль</a>
       </section>
     );
   }
