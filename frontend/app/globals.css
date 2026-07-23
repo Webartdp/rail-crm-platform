@@ -329,3 +329,70 @@
     min-width: 0;
   }
 }
+
+
+
+/* CRM layout: full workspace to the right of sidebar */
+.app-frame {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  width: 100%;
+  min-height: 100vh;
+}
+
+.main-nav {
+  width: 280px;
+  min-width: 280px;
+}
+
+body.nav-hidden .app-frame {
+  display: block;
+}
+
+body.nav-hidden .page-shell {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+}
+
+.page-shell {
+  width: 100%;
+  max-width: none !important;
+  min-width: 0;
+  margin: 0;
+  padding-left: clamp(1rem, 2vw, 2rem);
+  padding-right: clamp(1rem, 2vw, 2rem);
+  box-sizing: border-box;
+}
+
+.hero-card,
+.panel {
+  width: 100%;
+  max-width: none !important;
+  box-sizing: border-box;
+}
+
+.field-layout,
+.field-main,
+.grid,
+.form-grid {
+  width: 100%;
+  max-width: none !important;
+  box-sizing: border-box;
+}
+
+@media (max-width: 1100px) {
+  .app-frame {
+    display: block;
+  }
+
+  .main-nav {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .page-shell {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
