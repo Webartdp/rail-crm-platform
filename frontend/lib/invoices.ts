@@ -71,3 +71,17 @@ export async function createInvoiceDraft(): Promise<{ data: Invoice; items: Invo
 
   return response.json();
 }
+
+
+export async function getInvoice(id: number): Promise<{ data: Invoice; items: InvoiceItem[] }> {
+  const response = await fetch(`${API_URL}/invoices/${id}`, {
+    headers: authHeaders(false),
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, 'Could not load invoice'));
+  }
+
+  return response.json();
+}

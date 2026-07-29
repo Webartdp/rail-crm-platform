@@ -361,7 +361,7 @@ export default function BillingPage() {
 
             {invoices.map((invoice) => (
               <div style={invoiceRowStyle} key={invoice.id}>
-                <span><strong>{invoice.number}</strong></span>
+                <span><a className="action-link" href={`/billing/invoices/${invoice.id}`}><strong>{invoice.number}</strong></a></span>
                 <span>{invoice.issued_at || '—'}</span>
                 <span>{formatMoney(invoice.total_amount)}</span>
                 <span>{invoiceStatusLabel(invoice.status)}</span>
