@@ -311,6 +311,7 @@ export default function WorkdayPage() {
   const { locale, t } = useI18n();
   const [orders, setOrders] = useState<DemoWorkOrder[]>([]);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
+  const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
   const [fieldState, setFieldState] = useState<FieldState | null>(null);
   const [events, setEvents] = useState<WorkEvent[]>([]);
   const [log, setLog] = useState<string[]>([]);
@@ -355,15 +356,70 @@ export default function WorkdayPage() {
   const dienstbeginnBlocked = currentAction === 'dienstbeginn' && (!selectedOrderId || !date || !realLeistungsart || !referenznummer.trim() || !zugnummer.trim() || !einsatzort.trim());
   const disabled = saving || !employeeId || stopBlocked || dienstbeginnBlocked || !selectedOrderId;
 
-  const groupedOrders = useMemo(() => {
-    return orders.reduce<Record<string, DemoWorkOrder[]>>((groups, order) => {
+  const [sortMode, setSortMode] = useState<'time_asc' | 'time_desc' | 'object' | 'customer'>('time_asc');
+
+  const objectGroups = useMemo(() => {
+    const orderTime = (order: DemoWorkOrder) => {
+      const raw = order.planned_start_at || order.planned_end_at || '';
+      const time = raw ? new Date(raw).getTime() : 0;
+      return Number.isFinite(time) ? time : 0;
+    };
+
+    const sortedOrders = [...orders].sort((a, b) => {
+      const aDetails = parseDetails(a);
+      const bDetails = parseDetails(b);
+
+      if (sortMode === 'time_desc') {
+        return orderTime(b) - orderTime(a);
+      }
+
+      if (sortMode === 'object') {
+        return String(aDetails.object_name || '').localeCompare(String(bDetails.object_name || ''));
+      }
+
+      if (sortMode === 'customer') {
+        return String(aDetails.customer_name || '').localeCompare(String(bDetails.customer_name || ''));
+      }
+
+      return orderTime(a) - orderTime(b);
+    });
+
+    const groups = new Map<string, {
+      objectName: string;
+      objectAddress: string;
+      customers: Map<string, DemoWorkOrder[]>;
+    }>();
+
+    sortedOrders.forEach((order) => {
       const details = parseDetails(order);
-      const customer = details.customer_name || t('customerNotSelected');
-      groups[customer] = groups[customer] || [];
-      groups[customer].push(order);
-      return groups;
-    }, {});
-  }, [orders, t]);
+      const objectName = details.object_name || 'Objekt ohne Namen';
+      const objectAddress = details.object_address || '';
+      const customerName = details.customer_name || t('customerNotSelected');
+      const objectKey = `${objectName}__${objectAddress}`;
+
+      if (!groups.has(objectKey)) {
+        groups.set(objectKey, {
+          objectName,
+          objectAddress,
+          customers: new Map<string, DemoWorkOrder[]>(),
+        });
+      }
+
+      const objectGroup = groups.get(objectKey)!;
+      const customerOrders = objectGroup.customers.get(customerName) || [];
+      customerOrders.push(order);
+      objectGroup.customers.set(customerName, customerOrders);
+    });
+
+    return Array.from(groups.values()).map((group) => ({
+      objectName: group.objectName,
+      objectAddress: group.objectAddress,
+      customers: Array.from(group.customers.entries()).map(([customerName, customerOrders]) => ({
+        customerName,
+        orders: customerOrders,
+      })),
+    }));
+  }, [orders, sortMode, t]);
 
   const completedOrderIds = useMemo(() => {
     return new Set(events
@@ -486,7 +542,16 @@ export default function WorkdayPage() {
       const response = await getWorkOrders({ employeeId: profileId });
       setOrders(response.data.filter(isWorkdayAvailableOrder));
 
-      const first = response.data[0];
+      
+      
+      setSelectedOrderId(null);
+      setExpandedOrderId(null);
+      setEvents([]);
+      setLog([]);
+setSelectedOrderId(null);
+      setEvents([]);
+      setLog([]);
+const first = response.data[0];
 
       if (first) {
         applyOrder(first, profileId);
@@ -593,120 +658,230 @@ export default function WorkdayPage() {
   }
 
   return (
-    <main className="page-shell field-crm-page">
-      <section className="hero-card field-hero">
+    <main className="page-shell field-crm-page workday-v2-clean-page">
+      <section className="workday-v2-clean-top">
         <div>
-          <p className="eyebrow">{t('fieldEyebrow')}</p>
-          <h1>{t('fieldTitle')}</h1>
-          <p className="hero-text">{t('fieldHeroText')}</p>
+          <p className="eyebrow">Рабочий день</p>
+          <h1>Объекты, заказчики и работы</h1>
+          <p>Все работы свернуты. Откройте нужную работу стрелкой — внутри будут действие и факт по этой работе.</p>
         </div>
-        <div className="field-status-stack">
-          <div className="status-pill">{currentStateLabel}</div>
-          <span>{selectedDetails.object_name || t('objectLoading')}</span>
+
+        <div className="workday-v2-clean-status">
+          <span>Текущий статус</span>
+          <strong>{currentStateLabel}</strong>
         </div>
       </section>
 
-      <section className="field-layout">
-        <aside className="panel field-sidebar">
-          <div className="field-panel-head">
-            <p className="eyebrow">{t('object')}</p>
-            <h2>{selectedDetails.object_name || 'Berlin Hauptbahnhof'}</h2>
-            <p className="hint">{selectedDetails.object_address || 'Europaplatz 1, 10557 Berlin'}</p>
+      <section className="panel workday-v2-clean-toolbar">
+        <div>
+          <p className="eyebrow">Сортировка</p>
+          <strong>Работы отсортированы по плановой дате и времени</strong>
+        </div>
+
+        <label>
+          Порядок
+          <select value={sortMode} onChange={(event) => setSortMode(event.target.value as 'time_asc' | 'time_desc' | 'object' | 'customer')}>
+            <option value="time_asc">Ранние первыми</option>
+            <option value="time_desc">Поздние первыми</option>
+            <option value="object">По объекту</option>
+            <option value="customer">По заказчику</option>
+          </select>
+        </label>
+      </section>
+
+      <section className="workday-v2-clean-board">
+        {objectGroups.length === 0 ? (
+          <div className="panel workday-v2-clean-empty">
+            <strong>Нет доступных работ</strong>
+            <span>{message}</span>
           </div>
+        ) : null}
 
-          {Object.entries(groupedOrders).map(([customer, customerOrders]) => (
-            <div className="customer-block" key={customer}>
-              <h3>{customer}</h3>
-              <div className="work-list">
-                {customerOrders.map((order) => {
-                  const details = parseDetails(order);
-                  const active = order.id === selectedOrderId;
-                  const done = completedOrderIds.has(order.id);
-
-                  return (
-                    <button className={`work-card ${active ? 'active' : ''}`} key={order.id} onClick={() => applyOrder(order)} type="button">
-                      <span className="work-card-title">{details.work_title || order.title}</span>
-                      <span>{order.reference_number}</span>
-                      <small>{details.leistungsart || '—'} · {details.zugnummer || '—'} · {details.einsatzort || '—'}</small>
-                      <strong className={done ? 'done-badge' : 'planned-badge'}>{done ? t('done') : order.status || 'planned'}</strong>
-                    </button>
-                  );
-                })}
+        {objectGroups.map((objectGroup) => (
+          <article className="panel workday-v2-clean-object" key={`${objectGroup.objectName}-${objectGroup.objectAddress}`}>
+            <header className="workday-v2-clean-object-head">
+              <div className="workday-v2-clean-object-icon">
+                <i className="las la-map-marker-alt"></i>
               </div>
-            </div>
-          ))}
-        </aside>
 
-        <section className="field-main">
-          <div className="panel action-panel field-action-panel">
-            <div>
-              <p className="eyebrow">{t('nextAction')}</p>
-              <h2>{currentLabel}</h2>
-              <p className="hint">Backend action: {currentAction}</p>
-            </div>
-
-            <button className="action-button primary giant-action" onClick={next} type="button" disabled={disabled}>
-              {saving ? t('saving') : currentLabel}
-            </button>
-
-            <div className="field-alerts">
-              <p className="hint">{message}</p>
-              <p className="hint">{geoMessage}</p>
-              {stopBlocked ? <p className="hint danger-text"><strong>{t('stopBlockedTitle')}</strong> {t('stopBlockedText')}</p> : null}
-              {dienstbeginnBlocked ? <p className="hint danger-text"><strong>{t('dienstbeginnBlockedTitle')}</strong> {t('dienstbeginnBlockedText')}</p> : null}
-            </div>
-          </div>
-
-          <div className="panel">
-            <div className="field-panel-head split-head">
               <div>
-                <p className="eyebrow">{t('selectedWork')}</p>
-                <h2>{selectedDetails.work_title || selectedOrder?.title || t('workNotSelected')}</h2>
-                <p className="hint">{selectedDetails.customer_name || t('customerNotSelected')}</p>
+                <p className="eyebrow">Objekt</p>
+                <h2>{objectGroup.objectName}</h2>
+                {objectGroup.objectAddress ? <span>{objectGroup.objectAddress}</span> : null}
               </div>
-              <div className="metric-card compact">
-                <span>{t('workFact')}</span>
-                <strong>{durationLabel(selectedWorkDuration, t)}</strong>
-              </div>
-            </div>
+            </header>
 
-            <div className="form-grid">
-              <label>{t('date')}<input value={date} onChange={(event) => setDate(event.target.value)} type="date" /></label>
-              <label>{t('workType')}<select value={leistungsart} onChange={(event) => setLeistungsart(event.target.value)}>{leistungsartOptions.map((item) => <option key={item || 'custom'} value={item}>{item === '' ? t('customWorkTypeOption') : item}</option>)}</select></label>
-              {leistungsart === '' ? <label>{t('customWorkType')}<input value={leistungsartCustom} onChange={(event) => setLeistungsartCustom(event.target.value)} placeholder={t('customWorkTypePlaceholder')} /></label> : null}
-              <label>Referenznummer<input value={referenznummer} onChange={(event) => setReferenznummer(event.target.value)} /></label>
-              <label>Zugnummer<input value={zugnummer} onChange={(event) => setZugnummer(event.target.value)} /></label>
-              <label>Einsatzort<input value={einsatzort} onChange={(event) => setEinsatzort(event.target.value)} /></label>
-              <label>{t('plannedStart')}<input value={plannedStart} onChange={(event) => setPlannedStart(event.target.value)} type="time" /></label>
-              <label>{t('plannedStop')}<input value={plannedStop} onChange={(event) => setPlannedStop(event.target.value)} type="time" /></label>
-              <label><input checked={isNight} onChange={(event) => setIsNight(event.target.checked)} type="checkbox" /> {t('nightWork')}</label>
-              <label><input checked={isSunday} onChange={(event) => setIsSunday(event.target.checked)} type="checkbox" /> {t('sunday')}</label>
-              <label><input checked={isHoliday} onChange={(event) => setIsHoliday(event.target.checked)} type="checkbox" /> {t('holiday')}</label>
-              <label className="wide-field">{t('bemerkung')}<textarea value={bemerkung} onChange={(event) => setBemerkung(event.target.value)} placeholder={t('bemerkungPlaceholder')} /></label>
+            <div className="workday-v2-clean-customers">
+              {objectGroup.customers.map((customerGroup) => (
+                <section className="workday-v2-clean-customer" key={`${objectGroup.objectName}-${customerGroup.customerName}`}>
+                  <header className="workday-v2-clean-customer-head">
+                    <i className="las la-building"></i>
+                    <div>
+                      <span>Kunde</span>
+                      <strong>{customerGroup.customerName}</strong>
+                    </div>
+                  </header>
+
+                  <div className="workday-v2-clean-work-list">
+                    {customerGroup.orders.map((order) => {
+                      const details = parseDetails(order);
+                      const active = order.id === selectedOrderId;
+                      const expanded = order.id === expandedOrderId;
+                      const done = completedOrderIds.has(order.id);
+                      const workFinished = done || ['waiting_approval', 'approved', 'invoiced', 'rejected', 'cancelled', 'closed'].includes(String(order.status || ''));
+
+                      return (
+                        <article className={`workday-v2-clean-work ${expanded ? 'active' : ''}`} key={order.id}>
+                          <button
+                            className="workday-v2-clean-work-head"
+                            onClick={() => {
+                              if (expanded) {
+                                setExpandedOrderId(null);
+                                setSelectedOrderId(null);
+                                setEvents([]);
+                                setLog([]);
+                                return;
+                              }
+
+                              setExpandedOrderId(order.id);
+                              applyOrder(order);
+                            }}
+                            type="button"
+                            aria-expanded={expanded}
+                          >
+                            <span className="workday-v2-clean-arrow" aria-hidden="true">
+                              <i className="las la-angle-down"></i>
+                            </span>
+
+                            <div>
+                              <p className="eyebrow">Arbeit</p>
+                              <h3>{details.work_title || order.title}</h3>
+                              <span>{customerGroup.customerName}</span>
+                            </div>
+
+                            <div className="workday-v2-clean-work-meta">
+                              <strong>{order.reference_number || `#${order.id}`}</strong>
+                              <small>{details.leistungsart || '—'} · Zug {details.zugnummer || '—'} · {details.einsatzort || '—'}</small>
+                              <em>
+                                {order.planned_start_at ? order.planned_start_at.slice(0, 10) : '—'}
+                                {' · '}
+                                {order.planned_start_at ? order.planned_start_at.slice(11, 16) : '—'}
+                                {' — '}
+                                {order.planned_end_at ? order.planned_end_at.slice(11, 16) : '—'}
+                              </em>
+                            </div>
+
+                            <b className={workFinished ? 'done-badge' : 'planned-badge'}>
+                              {workFinished ? t('done') : order.status || 'planned'}
+                            </b>
+                          </button>
+
+                          {expanded ? (
+                            <div className="workday-v2-clean-work-body">
+                              {workFinished ? (
+                                <section className="workday-v2-clean-finished">
+                                  <div>
+                                    <p className="eyebrow">Статус работы</p>
+                                    <h4>Работа завершена</h4>
+                                    <span>Действия по этой работе больше недоступны.</span>
+                                  </div>
+                                  <i className="las la-check-circle"></i>
+                                </section>
+                              ) : (
+                                <section className="workday-v2-clean-action">
+                                  <div>
+                                    <p className="eyebrow">Действие</p>
+                                    <h4>{currentLabel}</h4>
+                                    <span>{geoMessage}</span>
+                                  </div>
+
+                                  <button className="action-button primary workday-v2-clean-action-button" onClick={next} type="button" disabled={disabled}>
+                                    {saving ? t('saving') : currentLabel}
+                                  </button>
+                                </section>
+                              )}
+
+                              {stopBlocked ? (
+                                <p className="danger-text">
+                                  <strong>{t('stopBlockedTitle')}</strong> {t('stopBlockedText')}
+                                </p>
+                              ) : null}
+
+                              {dienstbeginnBlocked ? (
+                                <p className="danger-text">
+                                  <strong>{t('dienstbeginnBlockedTitle')}</strong> {t('dienstbeginnBlockedText')}
+                                </p>
+                              ) : null}
+
+                              <section className="workday-v2-clean-fact">
+                                <header>
+                                  <p className="eyebrow">Факт по работе</p>
+                                  <h4>{details.work_title || order.title}</h4>
+                                </header>
+
+                                <div className="workday-v2-clean-fact-grid">
+                                  <label>{t('date')}<input value={date} onChange={(event) => setDate(event.target.value)} type="date" /></label>
+
+                                  <label>{t('workType')}<select value={leistungsart} onChange={(event) => setLeistungsart(event.target.value)}>{leistungsartOptions.map((item) => <option key={item || 'custom'} value={item}>{item === '' ? t('customWorkTypeOption') : item}</option>)}</select></label>
+
+                                  {leistungsart === '' ? <label>{t('customWorkType')}<input value={leistungsartCustom} onChange={(event) => setLeistungsartCustom(event.target.value)} placeholder={t('customWorkTypePlaceholder')} /></label> : null}
+
+                                  <label>Referenznummer<input value={referenznummer} onChange={(event) => setReferenznummer(event.target.value)} /></label>
+                                  <label>Zugnummer<input value={zugnummer} onChange={(event) => setZugnummer(event.target.value)} /></label>
+                                  <label>Einsatzort<input value={einsatzort} onChange={(event) => setEinsatzort(event.target.value)} /></label>
+                                  <label>{t('plannedStart')}<input value={plannedStart} onChange={(event) => setPlannedStart(event.target.value)} type="time" /></label>
+                                  <label>{t('plannedStop')}<input value={plannedStop} onChange={(event) => setPlannedStop(event.target.value)} type="time" /></label>
+
+                                  <label className="workday-v2-clean-check"><input checked={isNight} onChange={(event) => setIsNight(event.target.checked)} type="checkbox" /> {t('nightWork')}</label>
+                                  <label className="workday-v2-clean-check"><input checked={isSunday} onChange={(event) => setIsSunday(event.target.checked)} type="checkbox" /> {t('sunday')}</label>
+                                  <label className="workday-v2-clean-check"><input checked={isHoliday} onChange={(event) => setIsHoliday(event.target.checked)} type="checkbox" /> {t('holiday')}</label>
+
+                                  <label className="workday-v2-clean-wide">{t('bemerkung')}<textarea value={bemerkung} onChange={(event) => setBemerkung(event.target.value)} placeholder={t('bemerkungPlaceholder')} /></label>
+                                </div>
+                              </section>
+                            </div>
+                          ) : null}
+                        </article>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
             </div>
+          </article>
+        ))}
+      </section>
+
+      <section className="panel workday-v2-clean-bottom">
+        <header className="workday-v2-clean-bottom-head">
+          <div>
+            <p className="eyebrow">Журнал</p>
+            <h2>Лог, Google Maps и лента событий рабочего дня</h2>
           </div>
 
-          <section className="grid lower-grid field-lower-grid">
-            <div className="panel">
-              <h2>{t('actionLog')}</h2>
-              {log.length === 0 ? <p className="hint">{t('noActions')}</p> : null}
-              {log.map((item, index) => <p className="log-line" key={`${item}-${index}`}>{item}</p>)}
-            </div>
+          <span>{selectedOrderId ? 'Показано для выбранной работы' : 'Выберите работу выше'}</span>
+        </header>
 
-            <div className="panel">
-              <h2>{t('googleMapsPosition')}</h2>
-              <div className="map-box">
-                {latestMapUrl ? <a className="action-link" href={latestMapUrl} target="_blank" rel="noreferrer">{t('openLastPoint')}</a> : <span>{t('coordinatesAfterAllow')}</span>}
-              </div>
-              <p className="hint">{t('lastGpsEvent', { event: latestLocatedEvent ? `${eventLabel(latestLocatedEvent.event_type, t)} · ${formatDateTime(latestLocatedEvent.event_time, locale)}` : t('noGpsEvent') })}</p>
-            </div>
-          </section>
+        <div className="workday-v2-clean-bottom-grid">
+          <div>
+            <h3>{t('actionLog')}</h3>
+            {log.length === 0 ? <p className="hint">{t('noActions')}</p> : null}
+            {log.map((item, index) => <p className="log-line" key={`${item}-${index}`}>{item}</p>)}
+          </div>
 
-          <div className="panel">
-            <h2>{t('workdayTimeline')}</h2>
+          <div>
+            <h3>{t('googleMapsPosition')}</h3>
+            <div className="map-box">
+              {latestMapUrl ? <a className="action-link" href={latestMapUrl} target="_blank" rel="noreferrer">{t('openLastPoint')}</a> : <span>{t('coordinatesAfterAllow')}</span>}
+            </div>
+            <p className="hint">{t('lastGpsEvent', { event: latestLocatedEvent ? `${eventLabel(latestLocatedEvent.event_type, t)} · ${formatDateTime(latestLocatedEvent.event_time, locale)}` : t('noGpsEvent') })}</p>
+          </div>
+
+          <div>
+            <h3>{t('workdayTimeline')}</h3>
             <div className="timeline">
               {events.length === 0 ? <p className="hint">{t('noEvents')}</p> : null}
-              {events.map((event) => {
+              {events.slice(0, 8).map((event) => {
                 const payload = parsePayload(event);
                 return (
                   <div className="timeline-item done" key={event.id}>
@@ -721,7 +896,7 @@ export default function WorkdayPage() {
               })}
             </div>
           </div>
-        </section>
+        </div>
       </section>
     </main>
   );
