@@ -99,6 +99,23 @@ class WorkEventController extends Controller
 
     private function storeEvent(Request $request, string $eventType, string $message, ?bool $plannedExceeded = null): JsonResponse
     {
+        $assignmentId = $request->input('assignment_id');
+
+        if ($assignmentId) {
+            $workOrder = DB::table('work_orders')->where('id', $assignmentId)->first();
+
+            if (!$workOrder) {
+                return response()->json(['message' => 'Work order not found.'], 404);
+            }
+
+            if (in_array((string) $workOrder->status, ['approved', 'invoiced', 'rejected', 'cancelled', 'closed'], true)) {
+                return response()->json([
+                    'message' => 'Work order is closed for field events.',
+                    'status' => $workOrder->status,
+                ], 422);
+            }
+        }
+
         $employeeId = $this->employeeId($request);
         $assignmentId = $this->assignmentId($request);
         $allowed = $this->allowedAction($employeeId);
@@ -113,7 +130,9 @@ class WorkEventController extends Controller
 
         $now = now();
         $payload = $this->payload($request);
-        $payload['planned_exceeded'] = $plannedExceeded ?? $request->boolean('planned_exceeded');
+        $payload['planned_exceeded'] = $eventType === 'arbeit_stop'
+            ? ($plannedExceeded ?? $request->boolean('planned_exceeded'))
+            : false;
         $payload['bemerkung'] = $request->input('bemerkung');
 
         $id = DB::table('work_events')->insertGetId([

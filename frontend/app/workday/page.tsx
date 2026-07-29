@@ -15,6 +15,12 @@ import { useI18n } from '../i18n';
 
 const leistungsartOptions = ['', 'WTU', 'WSU', 'E-WU', 'Rb', 'Azf', 'RID-Kontrolle', 'Zugbeschtreifung'];
 
+const workdayAllowedStatuses = ['planned', 'in_progress', 'waiting_approval'];
+
+function isWorkdayAvailableOrder(order: DemoWorkOrder) {
+  return !order.status || workdayAllowedStatuses.includes(order.status);
+}
+
 const routeByAction: Record<string, string> = {
   gasfahrt_start: workEventRoutes.gasfahrtStart,
   gasfahrt_stop: workEventRoutes.gasfahrtStop,
@@ -478,7 +484,7 @@ export default function WorkdayPage() {
       }
 
       const response = await getWorkOrders({ employeeId: profileId });
-      setOrders(response.data);
+      setOrders(response.data.filter(isWorkdayAvailableOrder));
 
       const first = response.data[0];
 
