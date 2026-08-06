@@ -23,6 +23,7 @@ const navGroups: NavGroup[] = [
     items: [
       { href: '/workday', labelKey: 'fieldDay', code: 'FD', roles: ['employee'] },
       { href: '/my-time', labelKey: 'time', code: 'TM', roles: ['employee'] },
+{ href: '/reports', labelKey: 'reports', code: 'RP', roles: ['employee'] },
       { href: '/employee', labelKey: 'employeeCabinet', code: 'PR', roles: ['employee'] },
     ],
   },

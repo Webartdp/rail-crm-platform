@@ -36,6 +36,9 @@ const dictionaries: Record<Locale, Dictionary> = {
     documents: 'Документы',
     audit: 'Аудит',
     admin: 'Админка',
+    reports: 'Отчёты',
+    reportsTitle: 'Раздел отчётов',
+    reportsEmpty: 'Пока пусто. Позже здесь будут смены, часы, маршруты, GPS и статистика по работам.',
     login: 'Вход',
     logout: 'Выйти',
     language: 'Язык',
@@ -143,6 +146,9 @@ const dictionaries: Record<Locale, Dictionary> = {
     documents: 'Dokumente',
     audit: 'Audit',
     admin: 'Adminbereich',
+    reports: 'Berichte',
+    reportsTitle: 'Berichte',
+    reportsEmpty: 'Noch leer. Später werden hier Schichten, Stunden, Routen, GPS und Arbeitsstatistiken angezeigt.',
     login: 'Anmelden',
     logout: 'Abmelden',
     language: 'Sprache',
@@ -232,14 +238,14 @@ const dictionaries: Record<Locale, Dictionary> = {
 };
 
 function getInitialLocale(): Locale {
-  if (typeof window === 'undefined') return 'ru';
-  return window.localStorage.getItem(localeStorageKey) === 'de' ? 'de' : 'ru';
+  if (typeof window === 'undefined') return 'de';
+  return window.localStorage.getItem(localeStorageKey) === 'ru' ? 'ru' : 'de';
 }
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>('ru');
+  const [locale, setLocaleState] = useState<Locale>('de');
 
   useEffect(() => {
     setLocaleState(getInitialLocale());
