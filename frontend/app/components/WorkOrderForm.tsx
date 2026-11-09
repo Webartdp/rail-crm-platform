@@ -13,7 +13,7 @@ const STATUSES = ['planned', 'in_progress', 'waiting_approval', 'approved', 'rej
 
 type Props = {
   initial?: WorkOrder | null;
-  preset?: { clientId?: number; objectId?: number };
+  preset?: { clientId?: number; objectId?: number; date?: string; employeeId?: number };
   submitLabel: string;
   onSubmit: (input: WorkOrderInput) => Promise<void>;
 };
@@ -40,13 +40,13 @@ export default function WorkOrderForm({ initial, preset, submitLabel, onSubmit }
   const [employees, setEmployees] = useState<EmployeeProfile[]>([]);
   const [clientId, setClientId] = useState(String(initial?.client_id ?? preset?.clientId ?? ''));
   const [objectId, setObjectId] = useState(String(initial?.object_id ?? preset?.objectId ?? ''));
-  const [employeeIds, setEmployeeIds] = useState<number[]>(initial ? orderEmployeeIds(initial) : []);
+  const [employeeIds, setEmployeeIds] = useState<number[]>(initial ? orderEmployeeIds(initial) : preset?.employeeId ? [preset.employeeId] : []);
   const [employeeQuery, setEmployeeQuery] = useState('');
   const [title, setTitle] = useState(details.work_title || initial?.title || '');
   const [leistungsart, setLeistungsart] = useState(details.leistungsart || '');
   const [reference, setReference] = useState(initial?.reference_number || '');
   const [zugnummer, setZugnummer] = useState(details.zugnummer || '');
-  const [plannedDate, setPlannedDate] = useState(datePart(initial?.planned_start_at));
+  const [plannedDate, setPlannedDate] = useState(datePart(initial?.planned_start_at) || preset?.date || '');
   const [startTime, setStartTime] = useState(timePart(initial?.planned_start_at));
   const [endTime, setEndTime] = useState(timePart(initial?.planned_end_at));
   const [status, setStatus] = useState(initial?.status || 'planned');

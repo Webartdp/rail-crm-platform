@@ -340,6 +340,13 @@ body.auth-body { background: var(--ink); }
 .auth-field input, .auth-field select { min-height: 48px; border-radius: var(--radius-md); }
 .auth-mode-button { font-family: var(--font); }
 .auth-language { background: var(--porcelain); }
+.auth-language span { display: block !important; color: var(--slate); }
+.auth-language button { color: var(--ink); background: var(--paper); border-color: var(--hairline); }
+.auth-language button:hover { color: var(--ink); background: var(--paper); border-color: var(--ink-3); }
+.auth-card .eyebrow { color: var(--brass); }
+.auth-submit { box-shadow: none; }
+.auth-submit small { background: rgba(255, 255, 255, .12); }
+.auth-mode-button { color: var(--ink); border-color: var(--hairline); }
 .auth-language button.active { color: #fff; background: var(--ink); border-color: var(--ink); }
 
 @media (max-width: 760px) {
@@ -449,3 +456,36 @@ body.auth-body { background: var(--ink); }
   .data-table th, .data-table td { padding: 4px 6px; }
   .data-table-scroll { overflow: visible; }
 }
+
+/* Week planner (Schichtplan) */
+.view-switch { display: inline-flex; gap: 2px; margin-bottom: 16px; padding: 3px; border: 1px solid var(--hairline); border-radius: 12px; background: var(--paper); }
+.view-switch button { min-height: 34px; padding: 6px 16px; border: 0; border-radius: 9px; background: transparent; color: var(--slate); font-family: var(--font); font-weight: 600; cursor: pointer; }
+.view-switch button.active { background: var(--ink); color: #fff; }
+.planner-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-bottom: 16px; }
+.planner-head h2 { margin: 0; }
+.planner-head .hint { margin-left: auto; }
+.planner-scroll { overflow-x: auto; }
+.planner { width: 100%; min-width: 980px; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+.planner th, .planner td { border-bottom: 1px solid var(--hairline-soft); border-right: 1px solid var(--hairline-soft); vertical-align: top; }
+.planner thead th { padding: 10px; background: var(--paper); text-align: left; font-weight: 500; }
+.planner thead th span { display: block; color: var(--slate); font-size: 12.5px; }
+.planner thead th strong { font-size: 15px; font-weight: 600; }
+.planner thead th.is-weekend { background: #fafbfc; }
+.planner thead th.is-today { box-shadow: inset 0 -2px 0 var(--brass); }
+.planner-corner { width: 200px; color: var(--slate); }
+.planner-employee { padding: 12px; text-align: left; background: var(--paper); }
+.planner-employee strong { display: block; font-weight: 600; }
+.planner-employee small { color: var(--slate); }
+.planner td { position: relative; height: 92px; padding: 6px 6px 26px; }
+.planner td.is-today { background: #fdfbf6; }
+.planner-shift { display: grid; gap: 1px; margin-bottom: 6px; padding: 7px 9px; border-radius: 8px; background: var(--info-soft); color: var(--ink); font-size: 12.5px; line-height: 1.3; border-left: 3px solid var(--info); }
+.planner-shift span { font-variant-numeric: tabular-nums; color: var(--ink-3); }
+.planner-shift strong { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.planner-shift small { color: var(--slate); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.planner-shift.status-in_progress { background: var(--warn-soft); border-left-color: var(--warn); }
+.planner-shift.status-waiting_approval { background: #fff7e8; border-left-color: var(--brass); }
+.planner-shift.status-approved, .planner-shift.status-invoiced, .planner-shift.status-closed { background: var(--ok-soft); border-left-color: var(--ok); }
+.planner-shift.is-clash { outline: 2px solid var(--bad); outline-offset: -2px; }
+.planner-add { position: absolute; right: 6px; bottom: 4px; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 6px; color: var(--slate-2); font-weight: 600; opacity: 0; transition: opacity .15s ease; }
+.planner td:hover .planner-add, .planner-add:focus-visible { opacity: 1; background: var(--porcelain); color: var(--ink); }
+@media (hover: none) { .planner-add { opacity: 1; } }

@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import RoleGuard from '../components/RoleGuard';
+import WeekPlanner, { addDays, weekStart } from '../components/WeekPlanner';
 import { useI18n } from '../i18n';
 import { employeeProfileName, getEmployeeProfiles, type EmployeeProfile } from '../../lib/employee-profiles';
 import { orderDetails } from '../../lib/order-details';
-import { monthEndIso, monthStartIso } from '../../lib/period';
+import { monthEndIso, monthStartIso, todayIso } from '../../lib/period';
 import { deleteWorkOrder, getWorkOrders, orderEmployeeIds, type WorkOrder } from '../../lib/work-orders';
 
 const STATUS_CLASS: Record<string, string> = {
@@ -22,6 +23,8 @@ export default function AssignmentsPage() {
   const { t, fmt } = useI18n();
   const [orders, setOrders] = useState<WorkOrder[]>([]);
   const [employees, setEmployees] = useState<EmployeeProfile[]>([]);
+  const [view, setView] = useState<'week' | 'list'>('week');
+  const [week, setWeek] = useState(weekStart(todayIso()));
   const [from, setFrom] = useState(monthStartIso());
   const [to, setTo] = useState(monthEndIso());
   const [status, setStatus] = useState('');
@@ -34,7 +37,7 @@ export default function AssignmentsPage() {
     setLoading(true);
     try {
       const [ordersResponse, employeesResponse] = await Promise.all([
-        getWorkOrders({ dateFrom: from || undefined, dateTo: to || undefined }),
+        getWorkOrders(view === 'week' ? { dateFrom: week, dateTo: addDays(week, 6) } : { dateFrom: from || undefined, dateTo: to || undefined }),
         employees.length ? Promise.resolve({ data: employees }) : getEmployeeProfiles(),
       ]);
       setOrders(ordersResponse.data);
@@ -48,7 +51,7 @@ export default function AssignmentsPage() {
 
   useEffect(() => {
     load();
-  }, [from, to]);
+  }, [from, to, view, week]);
 
   const names = useMemo(() => new Map(employees.map((employee) => [employee.id, employeeProfileName(employee)])), [employees]);
 
@@ -97,6 +100,28 @@ export default function AssignmentsPage() {
 
         {notice ? <p className={`notice ${notice.tone}`} role={notice.tone === 'error' ? 'alert' : 'status'}>{notice.text}</p> : null}
 
+        <div className="view-switch" role="tablist" aria-label={t('plannerView')}>
+          <button aria-selected={view === 'week'} className={view === 'week' ? 'active' : ''} onClick={() => setView('week')} role="tab" type="button">{t('plannerWeek')}</button>
+          <button aria-selected={view === 'list'} className={view === 'list' ? 'active' : ''} onClick={() => setView('list')} role="tab" type="button">{t('plannerList')}</button>
+        </div>
+
+        {view === 'week' ? (
+          <section className="panel">
+            <div className="planner-head">
+              <div className="row-actions">
+                <button className="small-button" onClick={() => setWeek(addDays(week, -7))} type="button" aria-label={t('plannerPrev')}>←</button>
+                <button className="small-button" onClick={() => setWeek(weekStart(todayIso()))} type="button">{t('plannerToday')}</button>
+                <button className="small-button" onClick={() => setWeek(addDays(week, 7))} type="button" aria-label={t('plannerNext')}>→</button>
+              </div>
+              <h2>{fmt.date(week)} – {fmt.date(addDays(week, 6))}</h2>
+              <span className="hint">{t('plannerHint')}</span>
+            </div>
+            <WeekPlanner start={week} orders={orders} employees={employees} />
+            {loading ? <p className="hint">{t('commonLoadingDots')}</p> : null}
+          </section>
+        ) : null}
+
+        {view === 'list' ? (
         <section className="panel">
           <div className="filter-bar">
             <label>{t('commonDateFrom')}<input type="date" value={from} onChange={(event) => setFrom(event.target.value)} /></label>
@@ -169,6 +194,7 @@ export default function AssignmentsPage() {
           {loading ? <p className="hint">{t('commonLoadingDots')}</p> : null}
           {!loading && !rows.length ? <p className="empty-state">{t('asgNoneInPeriod')}</p> : null}
         </section>
+        ) : null}
       </RoleGuard>
     </main>
   );

@@ -8,13 +8,15 @@ import { createWorkOrder } from '../../../lib/work-orders';
 
 export default function NewWorkOrderPage() {
   const { t } = useI18n();
-  const [preset, setPreset] = useState<{ clientId?: number; objectId?: number } | null>(null);
+  const [preset, setPreset] = useState<{ clientId?: number; objectId?: number; date?: string; employeeId?: number } | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setPreset({
       clientId: Number(params.get('client')) || undefined,
       objectId: Number(params.get('object')) || undefined,
+      date: /^\d{4}-\d{2}-\d{2}$/.test(params.get('date') || '') ? params.get('date') || undefined : undefined,
+      employeeId: Number(params.get('employee')) || undefined,
     });
   }, []);
 
