@@ -1,4 +1,5 @@
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { StatusBar } from 'expo-status-bar';
 import * as Location from 'expo-location';
 import * as SecureStore from 'expo-secure-store';
@@ -39,6 +40,14 @@ const mobileText: Record<Locale, Record<string, string>> = {
     tabEvents: 'Ereignisse',
     tabReports: 'Berichte',
     tabProfile: 'Profil',
+    workFilterCurrent: 'Aktuell',
+    workFilterCompleted: 'Abgeschlossen',
+    workFilterAll: 'Alle',
+    workDateToday: 'Heute',
+    workDateLast7: 'Letzte 7 Tage',
+    workDatePick: 'Datum wählen',
+    workFilterTitle: 'Arbeitsfilter',
+    noFilteredWorks: 'Keine Arbeiten für diesen Filter.',
     reportsTitle: 'Berichte',
     reportsEmptyTitle: 'Noch leer',
     reportsEmptyText: 'Später werden hier Schichten, Stunden, Routen, GPS und Arbeitsstatistiken angezeigt.',
@@ -53,12 +62,19 @@ const mobileText: Record<Locale, Record<string, string>> = {
     employeeProfileId: 'Mitarbeiterprofil ID',
     refreshData: 'Daten aktualisieren',
     logout: 'Aus App abmelden',
-  },
-  ru: {
+  },  ru: {
     tabWork: 'Работы',
     tabEvents: 'События',
     tabReports: 'Отчёты',
     tabProfile: 'Профиль',
+    workFilterCurrent: 'Текущие',
+    workFilterCompleted: 'Завершённые',
+    workFilterAll: 'Все',
+    workDateToday: 'Сегодня',
+    workDateLast7: 'Последние 7 дней',
+    workDatePick: 'Выбрать дату',
+    workFilterTitle: 'Фильтр работ',
+    noFilteredWorks: 'Нет работ для этого фильтра.',
     reportsTitle: 'Отчёты',
     reportsEmptyTitle: 'Раздел отчётов',
     reportsEmptyText: 'Пока пусто. Позже здесь будут смены, часы, маршруты, GPS и статистика по работам.',
@@ -73,8 +89,7 @@ const mobileText: Record<Locale, Record<string, string>> = {
     employeeProfileId: 'Employee profile ID',
     refreshData: 'Обновить данные',
     logout: 'Выйти из приложения',
-  },
-};
+  },};
 
 
 
@@ -143,6 +158,54 @@ function plannedExceeded(order?: WorkOrder | null) {
   return Number.isFinite(plannedEnd) && Date.now() > plannedEnd;
 }
 
+
+type WorkStatusFilter = 'current' | 'completed' | 'all';
+type CompletedDateFilter = 'today' | 'last7' | 'date';
+
+const completedWorkStatuses = ['waiting_approval', 'approved', 'invoiced', 'rejected', 'cancelled', 'closed'];
+
+function localDateIso(date = new Date()) {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+}
+
+function daysAgoIso(days: number) {
+  const date = new Date();
+  date.setDate(date.getDate() - days);
+  return localDateIso(date);
+}
+
+function dateFromIso(iso: string) {
+  const [year, month, day] = iso.split('-').map(Number);
+  if (!year || !month || !day) return new Date();
+  return new Date(year, month - 1, day);
+}
+
+function getOrderDateIso(order: any) {
+  const raw =
+    order.date ||
+    order.work_date ||
+    order.planned_date ||
+    order.assignment_date ||
+    order.scheduled_date ||
+    order.created_at ||
+    order.updated_at;
+
+  if (!raw) return '';
+
+  if (typeof raw === 'string') return raw.slice(0, 10);
+
+  try {
+    return localDateIso(new Date(raw));
+  } catch {
+    return '';
+  }
+}
+
+function isCompletedOrder(order: any) {
+  return completedWorkStatuses.includes(String(order.status || ''));
+}
+
 function AppContent() {
   const insets = useSafeAreaInsets();
   const [locale, setLocale] = useState<Locale>('de');
@@ -180,6 +243,10 @@ function AppContent() {
   const [bemerkung, setBemerkung] = useState('');
   const [sortMode, setSortMode] = useState<'time_asc' | 'time_desc' | 'object' | 'customer'>('time_asc');
   const [activeTab, setActiveTab] = useState<'workday' | 'events' | 'reports' | 'profile'>('workday');
+  const [workStatusFilter, setWorkStatusFilter] = useState<WorkStatusFilter>('current');
+  const [completedDateFilter, setCompletedDateFilter] = useState<CompletedDateFilter>('today');
+  const [selectedCompletedDate, setSelectedCompletedDate] = useState(localDateIso());
+  const [showCompletedDatePicker, setShowCompletedDatePicker] = useState(false);
 
   const selectedOrder = useMemo(() => {
     return orders.find((order) => order.id === expandedOrderId) || null;
@@ -207,10 +274,35 @@ function AppContent() {
     });
   }, [orders, sortMode]);
 
+  const filteredOrders = useMemo(() => {
+    return sortedOrders.filter((order) => {
+      const completed = isCompletedOrder(order);
+
+      if (workStatusFilter === 'current') return !completed;
+      if (workStatusFilter === 'all') return true;
+
+      if (!completed) return false;
+
+      const orderDate = getOrderDateIso(order);
+      if (!orderDate) return false;
+
+      if (completedDateFilter === 'today') {
+        return orderDate === localDateIso();
+      }
+
+      if (completedDateFilter === 'last7') {
+        return orderDate >= daysAgoIso(6) && orderDate <= localDateIso();
+      }
+
+      return orderDate === selectedCompletedDate;
+    });
+  }, [sortedOrders, workStatusFilter, completedDateFilter, selectedCompletedDate]);
+
+
   const objectGroups = useMemo(() => {
     const map = new Map<string, { objectName: string; objectAddress: string; customers: Map<string, WorkOrder[]> }>();
 
-    sortedOrders.forEach((order) => {
+    filteredOrders.forEach((order) => {
       const details = parseDetails(order);
       const objectName = details.object_name || 'Objekt ohne Namen';
       const objectAddress = details.object_address || '';
@@ -239,7 +331,7 @@ function AppContent() {
         orders: customerOrders,
       })),
     }));
-  }, [sortedOrders]);
+  }, [filteredOrders]);
 
   const loadEvents = useCallback(async (orderId: number, employeeProfileId?: number | null) => {
     const response = await getWorkEvents({
@@ -463,6 +555,73 @@ function AppContent() {
 
         {activeTab === 'workday' ? (
         <>
+          <View style={styles.workFilterCard}>
+            <Text style={styles.workFilterTitle}>{t('workFilterTitle')}</Text>
+
+            <View style={styles.filterRow}>
+              {([
+                { key: 'current', label: t('workFilterCurrent') },
+                { key: 'completed', label: t('workFilterCompleted') },
+                { key: 'all', label: t('workFilterAll') },
+              ] as const).map((item) => (
+                <Pressable
+                  key={item.key}
+                  onPress={() => setWorkStatusFilter(item.key)}
+                  style={[styles.filterButton, workStatusFilter === item.key && styles.filterButtonActive]}
+                >
+                  <Text style={[styles.filterButtonText, workStatusFilter === item.key && styles.filterButtonTextActive]}>
+                    {item.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            {workStatusFilter === 'completed' ? (
+              <>
+                <View style={styles.filterRow}>
+                  {([
+                    { key: 'today', label: t('workDateToday') },
+                    { key: 'last7', label: t('workDateLast7') },
+                    { key: 'date', label: t('workDatePick') },
+                  ] as const).map((item) => (
+                    <Pressable
+                      key={item.key}
+                      onPress={() => {
+                        setCompletedDateFilter(item.key);
+                        if (item.key === 'date') setShowCompletedDatePicker(true);
+                      }}
+                      style={[styles.filterButton, completedDateFilter === item.key && styles.filterButtonActive]}
+                    >
+                      <Text style={[styles.filterButtonText, completedDateFilter === item.key && styles.filterButtonTextActive]}>
+                        {item.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+
+                {completedDateFilter === 'date' ? (
+                  <Pressable style={styles.datePickerButton} onPress={() => setShowCompletedDatePicker(true)}>
+                    <Text style={styles.datePickerButtonText}>{selectedCompletedDate}</Text>
+                  </Pressable>
+                ) : null}
+
+                {showCompletedDatePicker ? (
+                  <DateTimePicker
+                    value={dateFromIso(selectedCompletedDate)}
+                    mode="date"
+                    display="default"
+                    onChange={(_, date) => {
+                      setShowCompletedDatePicker(false);
+                      if (date) {
+                        setSelectedCompletedDate(localDateIso(date));
+                        setCompletedDateFilter('date');
+                      }
+                    }}
+                  />
+                ) : null}
+              </>
+            ) : null}
+          </View>
         <View style={styles.sortCard}>
           <Text style={styles.cardTitle}>Сортировка</Text>
 
@@ -685,6 +844,64 @@ export default function App() {
 
 
 const styles = StyleSheet.create({
+  workFilterCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 14,
+    marginBottom: 12,
+  },
+  workFilterTitle: {
+    color: '#0f172a',
+    fontSize: 14,
+    fontWeight: '900',
+    marginBottom: 10,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  filterButton: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  filterButtonActive: {
+    backgroundColor: '#2563eb',
+    borderColor: '#2563eb',
+  },
+  filterButtonText: {
+    color: '#334155',
+    fontWeight: '900',
+    fontSize: 11,
+    textAlign: 'center',
+  },
+  filterButtonTextActive: {
+    color: '#ffffff',
+  },
+  datePickerButton: {
+    backgroundColor: '#eff6ff',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  datePickerButtonText: {
+    color: '#2563eb',
+    fontWeight: '900',
+    fontSize: 14,
+  },
+  emptyFilterBox: {
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    padding: 18,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   mobileTabs: {
     position: 'absolute',
     left: 14,

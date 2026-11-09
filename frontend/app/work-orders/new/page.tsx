@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import RoleGuard from '../../components/RoleGuard';
 import { getEmployeeProfiles, employeeProfileName, type EmployeeProfile } from '../../../lib/employee-profiles';
 import { createWorkOrder } from '../../../lib/work-orders';
-
+import { useI18n } from '../../i18n';
 const leistungsartOptions = ['WTU', 'WSU', 'E-WU', 'Rb', 'Azf', 'RID-Kontrolle', 'Zugbeschtreifung'];
 
 function toSqlDateTime(value: string) {
@@ -12,6 +12,7 @@ function toSqlDateTime(value: string) {
 }
 
 export default function NewWorkOrderPage() {
+  const { t } = useI18n();
   const [employees, setEmployees] = useState<EmployeeProfile[]>([]);
   const [employeeId, setEmployeeId] = useState('');
   const [objectName, setObjectName] = useState('');
@@ -24,7 +25,7 @@ export default function NewWorkOrderPage() {
   const [einsatzort, setEinsatzort] = useState('');
   const [plannedStart, setPlannedStart] = useState('');
   const [plannedStop, setPlannedStop] = useState('');
-  const [message, setMessage] = useState('Заполни данные задания.');
+  const [message, setMessage] = useState(t('woNewHero'));
 
   useEffect(() => {
     async function loadEmployees() {
@@ -46,7 +47,7 @@ export default function NewWorkOrderPage() {
 
   async function submit() {
     if (!employeeId || !workTitle.trim() || !referenznummer.trim()) {
-      setMessage('Сотрудник, название работы и Referenznummer обязательны.');
+      setMessage(t('woRequired'));
       return;
     }
 
@@ -76,20 +77,20 @@ export default function NewWorkOrderPage() {
 
   return (
     <main className="page-shell">
-      <RoleGuard allowedRoles={['manager', 'admin']} title="New work order access">
+      <RoleGuard allowedRoles={['manager', 'admin']} title={t('woNewTitle')}>
         <section className="hero-card">
           <div>
-            <p className="eyebrow">AS / Neuer Auftrag</p>
-            <h1>Создать задание</h1>
-            <p className="hero-text">Задание попадёт в work_orders и будет доступно сотруднику на странице “Рабочий день”.</p>
+            <p className="eyebrow">{t('woNewEyebrow')}</p>
+            <h1>{t('woNewTitle')}</h1>
+            <p className="hero-text">{t('woNewHero')}</p>
           </div>
-          <a className="action-link" href="/assignments">Назад к заданиям</a>
+          <a className="action-link" href="/assignments">{t('woBackToAssignments')}</a>
         </section>
 
         <section className="panel">
           <div className="form-grid">
             <label>
-              Сотрудник
+              {t('commonEmployee')}
               <select value={employeeId} onChange={(event) => setEmployeeId(event.target.value)}>
                 {employees.map((employee) => (
                   <option value={employee.id} key={employee.id}>
@@ -100,23 +101,23 @@ export default function NewWorkOrderPage() {
             </label>
 
             <label>
-              Объект
-              <input value={objectName} onChange={(event) => setObjectName(event.target.value)} placeholder="Например RLCI Objekt 2" />
+              {t('commonObject')}
+              <input value={objectName} onChange={(event) => setObjectName(event.target.value)} placeholder={t('woObjectPlaceholder')} />
             </label>
 
             <label>
-              Адрес объекта
-              <input value={objectAddress} onChange={(event) => setObjectAddress(event.target.value)} placeholder="Адрес" />
+              {t('asgObjectAddress')}
+              <input value={objectAddress} onChange={(event) => setObjectAddress(event.target.value)} placeholder={t('woAddress')} />
             </label>
 
             <label>
-              Клиент
-              <input value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="Название клиента" />
+              {t('commonCustomer')}
+              <input value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder={t('woClientName')} />
             </label>
 
             <label>
-              Название работы
-              <input value={workTitle} onChange={(event) => setWorkTitle(event.target.value)} placeholder="Например Sicherheitskontrolle" />
+              {t('asgWorkTitle')}
+              <input value={workTitle} onChange={(event) => setWorkTitle(event.target.value)} placeholder={t('woWorkTitlePlaceholder')} />
             </label>
 
             <label>
@@ -128,17 +129,17 @@ export default function NewWorkOrderPage() {
 
             <label>
               Referenznummer
-              <input value={referenznummer} onChange={(event) => setReferenznummer(event.target.value)} placeholder="Например RLCI-WORK-002" />
+              <input value={referenznummer} onChange={(event) => setReferenznummer(event.target.value)} placeholder={t('woRefPlaceholder')} />
             </label>
 
             <label>
               Zugnummer
-              <input value={zugnummer} onChange={(event) => setZugnummer(event.target.value)} placeholder="Например ICE 101" />
+              <input value={zugnummer} onChange={(event) => setZugnummer(event.target.value)} placeholder={t('woZugPlaceholder')} />
             </label>
 
             <label>
               Einsatzort
-              <input value={einsatzort} onChange={(event) => setEinsatzort(event.target.value)} placeholder="Например Berlin / Gleis 2" />
+              <input value={einsatzort} onChange={(event) => setEinsatzort(event.target.value)} placeholder={t('woEinsatzPlaceholder')} />
             </label>
 
             <label>
@@ -152,7 +153,7 @@ export default function NewWorkOrderPage() {
             </label>
           </div>
 
-          <button className="action-button primary" onClick={submit} type="button">Сохранить задание</button>
+          <button className="action-button primary" onClick={submit} type="button">{t('woSaveAssignment')}</button>
           <p className="hint">{message}</p>
         </section>
       </RoleGuard>

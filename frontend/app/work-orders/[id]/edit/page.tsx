@@ -4,7 +4,7 @@ import { use, useEffect, useState } from 'react';
 import RoleGuard from '../../../components/RoleGuard';
 import { getEmployeeProfiles, employeeProfileName, type EmployeeProfile } from '../../../../lib/employee-profiles';
 import { getWorkOrder, updateWorkOrder } from '../../../../lib/work-orders';
-
+import { useI18n } from '../../../i18n';
 const leistungsartOptions = ['WTU', 'WSU', 'E-WU', 'Rb', 'Azf', 'RID-Kontrolle', 'Zugbeschtreifung'];
 const statusOptions = ['planned', 'in_progress', 'waiting_approval', 'approved', 'rejected', 'closed'];
 
@@ -42,6 +42,7 @@ function toSqlDateTime(value: string) {
 }
 
 export default function EditWorkOrderPage({ params }: PageProps) {
+  const { t } = useI18n();
   const resolvedParams = use(params);
   const id = Number(resolvedParams.id);
 
@@ -98,7 +99,7 @@ export default function EditWorkOrderPage({ params }: PageProps) {
 
   async function submit() {
     if (!employeeId || !workTitle.trim() || !referenznummer.trim()) {
-      setMessage('Сотрудник, название работы и Referenznummer обязательны.');
+      setMessage(t('woRequired'));
       return;
     }
 
@@ -128,22 +129,22 @@ export default function EditWorkOrderPage({ params }: PageProps) {
 
   return (
     <main className="page-shell">
-      <RoleGuard allowedRoles={['manager', 'admin']} title="Edit work order access">
+      <RoleGuard allowedRoles={['manager', 'admin']} title={t('woEditTitle', { id })}>
         <section className="hero-card">
           <div>
-            <p className="eyebrow">AS / Auftrag bearbeiten</p>
-            <h1>Редактировать задание #{id}</h1>
-            <p className="hero-text">Изменение сотрудника, объекта, клиента, планового времени и статуса задания.</p>
+            <p className="eyebrow">{t('woEditEyebrow')}</p>
+            <h1>{t('woEditTitle', { id })}</h1>
+            <p className="hero-text">{t('woEditHero')}</p>
           </div>
-          <a className="action-link" href="/assignments">Назад к заданиям</a>
+          <a className="action-link" href="/assignments">{t('woBackToAssignments')}</a>
         </section>
 
         <section className="panel">
           <div className="form-grid">
             <label>
-              Сотрудник
+              {t('commonEmployee')}
               <select value={employeeId} onChange={(event) => setEmployeeId(event.target.value)}>
-                <option value="">Выбери сотрудника</option>
+                <option value="">{t('woSelectEmployee')}</option>
                 {employees.map((employee) => (
                   <option value={employee.id} key={employee.id}>
                     {employeeProfileName(employee)}
@@ -153,29 +154,29 @@ export default function EditWorkOrderPage({ params }: PageProps) {
             </label>
 
             <label>
-              Статус
+              {t('commonStatus')}
               <select value={status} onChange={(event) => setStatus(event.target.value)}>
                 {statusOptions.map((item) => <option value={item} key={item}>{item}</option>)}
               </select>
             </label>
 
             <label>
-              Объект
+              {t('commonObject')}
               <input value={objectName} onChange={(event) => setObjectName(event.target.value)} />
             </label>
 
             <label>
-              Адрес объекта
+              {t('asgObjectAddress')}
               <input value={objectAddress} onChange={(event) => setObjectAddress(event.target.value)} />
             </label>
 
             <label>
-              Клиент
+              {t('commonCustomer')}
               <input value={customerName} onChange={(event) => setCustomerName(event.target.value)} />
             </label>
 
             <label>
-              Название работы
+              {t('asgWorkTitle')}
               <input value={workTitle} onChange={(event) => setWorkTitle(event.target.value)} />
             </label>
 
@@ -212,7 +213,7 @@ export default function EditWorkOrderPage({ params }: PageProps) {
             </label>
           </div>
 
-          <button className="action-button primary" onClick={submit} type="button">Сохранить изменения</button>
+          <button className="action-button primary" onClick={submit} type="button">{t('woSaveChanges')}</button>
           <p className="hint">{message}</p>
         </section>
       </RoleGuard>

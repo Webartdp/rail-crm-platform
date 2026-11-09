@@ -12,10 +12,49 @@ import {
 import { me } from '../../lib/auth';
 import { getFieldState, type FieldState } from '../../lib/field-state';
 import { useI18n } from '../i18n';
-
 const leistungsartOptions = ['', 'WTU', 'WSU', 'E-WU', 'Rb', 'Azf', 'RID-Kontrolle', 'Zugbeschtreifung'];
 
-const workdayAllowedStatuses = ['planned', 'in_progress', 'waiting_approval'];
+const workdayAllowedStatuses = ['planned', 'in_progress', 'waiting_approval', 'approved', 'invoiced'];
+
+type WorkStatusFilter = 'current' | 'completed' | 'all';
+type CompletedDateFilter = 'today' | 'last7' | 'date';
+
+const completedWorkStatuses = ['waiting_approval', 'approved', 'invoiced', 'rejected', 'cancelled', 'closed'];
+
+function localDateIso(date = new Date()) {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+}
+
+function daysAgoIso(days: number) {
+  const date = new Date();
+  date.setDate(date.getDate() - days);
+  return localDateIso(date);
+}
+
+function getOrderDateIso(order: any) {
+  const raw =
+    order.date ||
+    order.work_date ||
+    order.planned_date ||
+    order.assignment_date ||
+    order.scheduled_date ||
+    order.created_at ||
+    order.updated_at;
+
+  if (!raw) return '';
+  if (typeof raw === 'string') return raw.slice(0, 10);
+
+  try {
+    return localDateIso(new Date(raw));
+  } catch {
+    return '';
+  }
+}
+
+function isCompletedOrder(order: any) {
+  return completedWorkStatuses.includes(String(order.status || ''));
+}
 
 function isWorkdayAvailableOrder(order: DemoWorkOrder) {
   return !order.status || workdayAllowedStatuses.includes(order.status);
@@ -357,6 +396,34 @@ export default function WorkdayPage() {
   const disabled = saving || !employeeId || stopBlocked || dienstbeginnBlocked || !selectedOrderId;
 
   const [sortMode, setSortMode] = useState<'time_asc' | 'time_desc' | 'object' | 'customer'>('time_asc');
+  const [workStatusFilter, setWorkStatusFilter] = useState<WorkStatusFilter>('current');
+  const [completedDateFilter, setCompletedDateFilter] = useState<CompletedDateFilter>('today');
+  const [selectedCompletedDate, setSelectedCompletedDate] = useState(localDateIso());
+
+  const filteredOrders = useMemo(() => {
+    return orders.filter((order) => {
+      const completed = isCompletedOrder(order);
+
+      if (workStatusFilter === 'current') return !completed;
+      if (workStatusFilter === 'all') return true;
+
+      if (!completed) return false;
+
+      const orderDate = getOrderDateIso(order);
+      if (!orderDate) return false;
+
+      if (completedDateFilter === 'today') {
+        return orderDate === localDateIso();
+      }
+
+      if (completedDateFilter === 'last7') {
+        return orderDate >= daysAgoIso(6) && orderDate <= localDateIso();
+      }
+
+      return orderDate === selectedCompletedDate;
+    });
+  }, [orders, workStatusFilter, completedDateFilter, selectedCompletedDate]);
+
 
   const objectGroups = useMemo(() => {
     const orderTime = (order: DemoWorkOrder) => {
@@ -365,7 +432,7 @@ export default function WorkdayPage() {
       return Number.isFinite(time) ? time : 0;
     };
 
-    const sortedOrders = [...orders].sort((a, b) => {
+    const sortedOrders = [...filteredOrders].sort((a, b) => {
       const aDetails = parseDetails(a);
       const bDetails = parseDetails(b);
 
@@ -419,7 +486,7 @@ export default function WorkdayPage() {
         orders: customerOrders,
       })),
     }));
-  }, [orders, sortMode, t]);
+  }, [filteredOrders, sortMode, t]);
 
   const completedOrderIds = useMemo(() => {
     return new Set(events
@@ -661,30 +728,101 @@ const first = response.data[0];
     <main className="page-shell field-crm-page workday-v2-clean-page">
       <section className="workday-v2-clean-top">
         <div>
-          <p className="eyebrow">Рабочий день</p>
-          <h1>Объекты, заказчики и работы</h1>
-          <p>Все работы свернуты. Откройте нужную работу стрелкой — внутри будут действие и факт по этой работе.</p>
+          <p className="eyebrow">{t('wdEyebrow')}</p>
+          <h1>{t('wdTitle')}</h1>
+          <p>{t('wdIntro')}</p>
         </div>
 
         <div className="workday-v2-clean-status">
-          <span>Текущий статус</span>
+          <span>{t('wdCurrentStatus')}</span>
           <strong>{currentStateLabel}</strong>
         </div>
       </section>
 
-      <section className="panel workday-v2-clean-toolbar">
+            <section className="panel workday-filter-panel" style={{ padding: '1rem', marginBottom: '1rem' }}>
+        <p className="eyebrow">{t('workFilterTitle')}</p>
+
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: workStatusFilter === 'completed' ? '0.75rem' : 0 }}>
+          {([
+            { key: 'current', label: t('workFilterCurrent') },
+            { key: 'completed', label: t('workFilterCompleted') },
+            { key: 'all', label: t('workFilterAll') },
+          ] as const).map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => setWorkStatusFilter(item.key)}
+              style={{
+                border: 0,
+                borderRadius: '999px',
+                padding: '0.65rem 1rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                background: workStatusFilter === item.key ? '#2563eb' : '#f1f5f9',
+                color: workStatusFilter === item.key ? '#ffffff' : '#334155',
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        {workStatusFilter === 'completed' ? (
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            {([
+              { key: 'today', label: t('workDateToday') },
+              { key: 'last7', label: t('workDateLast7') },
+              { key: 'date', label: t('workDatePick') },
+            ] as const).map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setCompletedDateFilter(item.key)}
+                style={{
+                  border: 0,
+                  borderRadius: '999px',
+                  padding: '0.55rem 0.9rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  background: completedDateFilter === item.key ? '#0f172a' : '#f8fafc',
+                  color: completedDateFilter === item.key ? '#ffffff' : '#334155',
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
+
+            {completedDateFilter === 'date' ? (
+              <input
+                type="date"
+                value={selectedCompletedDate}
+                onChange={(event) => setSelectedCompletedDate(event.target.value)}
+                style={{
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '999px',
+                  padding: '0.55rem 0.9rem',
+                  fontWeight: 800,
+                  color: '#0f172a',
+                }}
+              />
+            ) : null}
+          </div>
+        ) : null}
+      </section>
+
+<section className="panel workday-v2-clean-toolbar">
         <div>
-          <p className="eyebrow">Сортировка</p>
-          <strong>Работы отсортированы по плановой дате и времени</strong>
+          <p className="eyebrow">{t('wdSortTitle')}</p>
+          <strong>{t('wdSortText')}</strong>
         </div>
 
         <label>
-          Порядок
+          {t('wdOrder')}
           <select value={sortMode} onChange={(event) => setSortMode(event.target.value as 'time_asc' | 'time_desc' | 'object' | 'customer')}>
-            <option value="time_asc">Ранние первыми</option>
-            <option value="time_desc">Поздние первыми</option>
-            <option value="object">По объекту</option>
-            <option value="customer">По заказчику</option>
+            <option value="time_asc">{t('wdEarlyFirst')}</option>
+            <option value="time_desc">{t('wdLateFirst')}</option>
+            <option value="object">{t('wdByObject')}</option>
+            <option value="customer">{t('wdByCustomer')}</option>
           </select>
         </label>
       </section>
@@ -692,7 +830,7 @@ const first = response.data[0];
       <section className="workday-v2-clean-board">
         {objectGroups.length === 0 ? (
           <div className="panel workday-v2-clean-empty">
-            <strong>Нет доступных работ</strong>
+            <strong>{t('wdNoWorks')}</strong>
             <span>{message}</span>
           </div>
         ) : null}
@@ -705,7 +843,7 @@ const first = response.data[0];
               </div>
 
               <div>
-                <p className="eyebrow">Objekt</p>
+                <p className="eyebrow">{t('wdObject')}</p>
                 <h2>{objectGroup.objectName}</h2>
                 {objectGroup.objectAddress ? <span>{objectGroup.objectAddress}</span> : null}
               </div>
@@ -717,7 +855,7 @@ const first = response.data[0];
                   <header className="workday-v2-clean-customer-head">
                     <i className="las la-building"></i>
                     <div>
-                      <span>Kunde</span>
+                      <span>{t('wdCustomer')}</span>
                       <strong>{customerGroup.customerName}</strong>
                     </div>
                   </header>
@@ -754,7 +892,7 @@ const first = response.data[0];
                             </span>
 
                             <div>
-                              <p className="eyebrow">Arbeit</p>
+                              <p className="eyebrow">{t('wdWork')}</p>
                               <h3>{details.work_title || order.title}</h3>
                               <span>{customerGroup.customerName}</span>
                             </div>
@@ -781,16 +919,16 @@ const first = response.data[0];
                               {workFinished ? (
                                 <section className="workday-v2-clean-finished">
                                   <div>
-                                    <p className="eyebrow">Статус работы</p>
-                                    <h4>Работа завершена</h4>
-                                    <span>Действия по этой работе больше недоступны.</span>
+                                    <p className="eyebrow">{t('wdWorkStatus')}</p>
+                                    <h4>{t('wdWorkFinished')}</h4>
+                                    <span>{t('wdWorkFinishedText')}</span>
                                   </div>
                                   <i className="las la-check-circle"></i>
                                 </section>
                               ) : (
                                 <section className="workday-v2-clean-action">
                                   <div>
-                                    <p className="eyebrow">Действие</p>
+                                    <p className="eyebrow">{t('wdAction')}</p>
                                     <h4>{currentLabel}</h4>
                                     <span>{geoMessage}</span>
                                   </div>
@@ -815,7 +953,7 @@ const first = response.data[0];
 
                               <section className="workday-v2-clean-fact">
                                 <header>
-                                  <p className="eyebrow">Факт по работе</p>
+                                  <p className="eyebrow">{t('wdFact')}</p>
                                   <h4>{details.work_title || order.title}</h4>
                                 </header>
 
@@ -855,11 +993,11 @@ const first = response.data[0];
       <section className="panel workday-v2-clean-bottom">
         <header className="workday-v2-clean-bottom-head">
           <div>
-            <p className="eyebrow">Журнал</p>
-            <h2>Лог, Google Maps и лента событий рабочего дня</h2>
+            <p className="eyebrow">{t('wdJournal')}</p>
+            <h2>{t('wdJournalTitle')}</h2>
           </div>
 
-          <span>{selectedOrderId ? 'Показано для выбранной работы' : 'Выберите работу выше'}</span>
+          <span>{selectedOrderId ? t('wdShownSelected') : t('wdChooseWork')}</span>
         </header>
 
         <div className="workday-v2-clean-bottom-grid">

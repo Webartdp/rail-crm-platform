@@ -12,7 +12,6 @@ import {
 import { me } from '../../lib/auth';
 import { getFieldState, type FieldState } from '../../lib/field-state';
 import { useI18n } from '../i18n';
-
 const leistungsartOptions = ['', 'WTU', 'WSU', 'E-WU', 'Rb', 'Azf', 'RID-Kontrolle', 'Zugbeschtreifung'];
 
 const workdayAllowedStatuses = ['planned', 'in_progress', 'waiting_approval'];

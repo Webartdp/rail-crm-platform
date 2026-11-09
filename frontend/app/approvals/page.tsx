@@ -5,11 +5,11 @@ import RoleGuard from '../components/RoleGuard';
 import { getEmployeeProfiles, employeeProfileName, type EmployeeProfile } from '../../lib/employee-profiles';
 import { getWorkOrders, type WorkOrder } from '../../lib/work-orders';
 import {
-  getWorkEventApprovals,
+getWorkEventApprovals,
   setWorkEventApprovalStatus,
   type WorkEventApproval,
 } from '../../lib/approvals';
-
+import { useI18n } from '../i18n';
 function parseDetails(item?: WorkOrder | null): Record<string, string> {
   if (!item?.details) return {};
 
@@ -84,6 +84,7 @@ const actionStyle = {
 } as const;
 
 export default function ApprovalsPage() {
+  const { t } = useI18n();
   const [items, setItems] = useState<WorkEventApproval[]>([]);
   const [employees, setEmployees] = useState<EmployeeProfile[]>([]);
   const [orders, setOrders] = useState<WorkOrder[]>([]);
@@ -154,12 +155,12 @@ export default function ApprovalsPage() {
 
   return (
     <main className="page-shell">
-      <RoleGuard allowedRoles={['manager', 'admin']} title="Approvals access">
+      <RoleGuard allowedRoles={['manager', 'admin']} title={t('apprTitle')}>
         <section className="hero-card">
           <div>
-            <p className="eyebrow">OK / Freigabe</p>
-            <h1>Согласование</h1>
-            <p className="hero-text">Проверка пар событий рабочего дня: дорога, рабочее время и служебные поездки.</p>
+            <p className="eyebrow">{t('apprEyebrow')}</p>
+            <h1>{t('apprTitle')}</h1>
+            <p className="hero-text">{t('apprHero')}</p>
           </div>
           <div className="field-status-stack">
             <div className="status-pill">{items.length} total</div>
@@ -170,8 +171,8 @@ export default function ApprovalsPage() {
         <section className="panel">
           <div className="field-panel-head split-head">
             <div>
-              <h2>Очередь согласования</h2>
-              <p className="hint">{loading ? 'Загрузка...' : message}</p>
+              <h2>{t('apprQueue')}</h2>
+              <p className="hint">{loading ? t('commonLoading') : message}</p>
             </div>
             <button
               className="small-refresh-button"
@@ -200,17 +201,17 @@ export default function ApprovalsPage() {
               }}
             >
               <i className="las la-sync-alt" aria-hidden="true" style={{ fontSize: '1rem', lineHeight: 1 }} />
-              <span>Обновить</span>
+              <span>{t('commonRefresh')}</span>
             </button>
           </div>
 
           <div style={rowStyle}>
-            <strong>Сотрудник</strong>
-            <strong>Задание</strong>
-            <strong>Тип</strong>
-            <strong>Время</strong>
-            <strong>Статус</strong>
-            <strong>Действия</strong>
+            <strong>{t('commonEmployee')}</strong>
+            <strong>{t('commonAssignment')}</strong>
+            <strong>{t('commonType')}</strong>
+            <strong>{t('commonTime')}</strong>
+            <strong>{t('commonStatus')}</strong>
+            <strong>{t('commonActions')}</strong>
           </div>
 
           {items.map((item) => {
@@ -243,11 +244,11 @@ export default function ApprovalsPage() {
                 <span style={actionsWrapStyle}>
                   {item.status === 'pending' ? (
                     <>
-                      <button style={actionStyle} onClick={() => updateStatus('approve', item)} type="button" title="Согласовать">
+                      <button style={actionStyle} onClick={() => updateStatus('approve', item)} type="button" title={t('apprApprove')}>
                         <i className="las la-check" aria-hidden="true" />
                       </button>
 
-                      <button style={actionStyle} onClick={() => updateStatus('reject', item)} type="button" title="Отклонить">
+                      <button style={actionStyle} onClick={() => updateStatus('reject', item)} type="button" title={t('apprReject')}>
                         <i className="las la-times" aria-hidden="true" />
                       </button>
                     </>
@@ -260,7 +261,7 @@ export default function ApprovalsPage() {
           })}
 
           {!loading && !items.length ? (
-            <p className="hint">Пока нет событий для согласования. Они появятся после рабочего дня сотрудника.</p>
+            <p className="hint">{t('apprNoItems')}</p>
           ) : null}
         </section>
       </RoleGuard>

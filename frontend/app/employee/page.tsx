@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import RoleGuard from '../components/RoleGuard';
 import { me, type AuthUser } from '../../lib/auth';
 import { getEmployeeProfile } from '../../lib/employee-profiles';
-
+import { useI18n } from '../i18n';
 type ProfileData = Record<string, unknown>;
 
 function value(profile: ProfileData | null, keys: string[]) {
@@ -165,14 +165,15 @@ const profileHeroButtonPrimaryStyle = {
 } as const;
 
 export default function EmployeeProfilePage() {
+  const { t } = useI18n();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [message, setMessage] = useState('Загрузка профиля...');
+  const [message, setMessage] = useState(t('empLoadingProfile'));
   const [loading, setLoading] = useState(true);
 
   async function load() {
     setLoading(true);
-    setMessage('Загрузка профиля...');
+    setMessage(t('empLoadingProfile'));
 
     try {
       const current = await me();
@@ -182,18 +183,18 @@ export default function EmployeeProfilePage() {
 
       if (!profileId) {
         setProfile(null);
-        setMessage('К пользователю не привязан профиль сотрудника.');
+        setMessage(t('empNoProfile'));
         return;
       }
 
       const response = await getEmployeeProfile(profileId);
       setProfile(response.data as unknown as ProfileData);
-      setMessage('Профиль сотрудника загружен.');
+      setMessage(t('empProfileLoaded'));
     } catch (error) {
       const errorText = error instanceof Error ? error.message : 'Неизвестная ошибка';
       setUser(null);
       setProfile(null);
-      setMessage(`Ошибка загрузки профиля: ${errorText}`);
+      setMessage(t('empLoadError', { error: errorText }));
     } finally {
       setLoading(false);
     }
@@ -214,21 +215,21 @@ export default function EmployeeProfilePage() {
 
   return (
     <main className="page-shell">
-      <RoleGuard allowedRoles={['employee']} title="Employee profile access">
+      <RoleGuard allowedRoles={['employee']} title={t('empProfileTitle')}>
         <section className="hero-card">
           <div>
-            <p className="eyebrow">Сотрудник</p>
-            <h1>Профиль</h1>
+            <p className="eyebrow">{t('empEyebrow')}</p>
+            <h1>{t('empProfileTitle')}</h1>
             <p className="hero-text">
-              Личные данные, рабочие параметры, ставки, коэффициенты и домашняя локация.
+              {t('empProfileHero')}
             </p>
-            <p className="hint">{loading ? 'Загрузка...' : message}</p>
+            <p className="hint">{loading ? t('empLoadingProfile') : message}</p>
           </div>
 
           <div style={profileHeroActionsStyle}>
-            <a style={profileHeroButtonStyle} href="/workday">Рабочий день</a>
-            <a style={profileHeroButtonStyle} href="/my-time">Моё время</a>
-            <button style={{ ...profileHeroButtonStyle, ...profileHeroButtonPrimaryStyle }} onClick={load} type="button">Обновить</button>
+            <a style={profileHeroButtonStyle} href="/workday">{t('empWorkday')}</a>
+            <a style={profileHeroButtonStyle} href="/my-time">{t('empMyTime')}</a>
+            <button style={{ ...profileHeroButtonStyle, ...profileHeroButtonPrimaryStyle }} onClick={load} type="button">{t('empRefresh')}</button>
           </div>
         </section>
 
@@ -238,7 +239,7 @@ export default function EmployeeProfilePage() {
               <div style={avatarStyle}>{initials}</div>
 
               <div>
-                <p className="eyebrow">Личные данные</p>
+                <p className="eyebrow">{t('empPersonalData')}</p>
                 <h2>{name}</h2>
                 <p className="hint">{user?.email || '—'}</p>
               </div>
@@ -246,27 +247,27 @@ export default function EmployeeProfilePage() {
 
             <div style={miniGridStyle}>
               <div style={miniCardStyle}>
-                <p className="eyebrow">Роль</p>
-                <strong>{user?.role === 'employee' ? 'Сотрудник' : user?.role || '—'}</strong>
+                <p className="eyebrow">{t('empRole')}</p>
+                <strong>{user?.role === 'employee' ? t('roleEmployee') : user?.role || '—'}</strong>
               </div>
 
               <div style={miniCardStyle}>
-                <p className="eyebrow">Профиль ID</p>
+                <p className="eyebrow">{t('empProfileId')}</p>
                 <strong>{user?.employee_profile_id || '—'}</strong>
               </div>
 
               <div style={miniCardStyle}>
-                <p className="eyebrow">Статус</p>
-                <strong>{value(profile, ['is_active']) === '1' ? 'Активен' : '—'}</strong>
+                <p className="eyebrow">{t('empStatus')}</p>
+                <strong>{value(profile, ['is_active']) === '1' ? t('empActive') : '—'}</strong>
               </div>
             </div>
           </div>
 
           <div style={cardStyle}>
-            <p className="eyebrow">Домашняя локация</p>
+            <p className="eyebrow">{t('empHomeLocation')}</p>
             <h2>{value(profile, ['home_location', 'home_address', 'home_city'])}</h2>
             <p className="hint">
-              Используется для маршрута и расчёта дороги. Изменение домашней локации лучше делать через подтверждение менеджера.
+              {t('empHomeLocationHint')}
             </p>
           </div>
         </section>
@@ -274,18 +275,18 @@ export default function EmployeeProfilePage() {
         <section style={sectionGridStyle}>
           <div className="panel">
             <div className="field-panel-head">
-              <p className="eyebrow">Профиль</p>
-              <h2>Контактные данные</h2>
-              <p className="hint">Эти данные помогают менеджеру связаться с сотрудником.</p>
+              <p className="eyebrow">{t('empProfile')}</p>
+              <h2>{t('empContactData')}</h2>
+              <p className="hint">{t('empContactDataHint')}</p>
             </div>
 
             <div style={rowStyle}>
-              <strong>Имя</strong>
+              <strong>{t('empFirstName')}</strong>
               <span style={valueStyle}>{value(profile, ['first_name', 'firstname', 'name'])}</span>
             </div>
 
             <div style={rowStyle}>
-              <strong>Фамилия</strong>
+              <strong>{t('empLastName')}</strong>
               <span style={valueStyle}>{value(profile, ['last_name', 'lastname', 'surname'])}</span>
             </div>
 
@@ -295,40 +296,40 @@ export default function EmployeeProfilePage() {
             </div>
 
             <div style={rowLastStyle}>
-              <strong>Телефон</strong>
+              <strong>{t('empPhone')}</strong>
               <span style={valueStyle}>{value(profile, ['phone', 'mobile', 'telephone'])}</span>
             </div>
           </div>
 
           <div className="panel">
             <div className="field-panel-head">
-              <p className="eyebrow">Расчёт</p>
-              <h2>Рабочие параметры</h2>
-              <p className="hint">Сотрудник видит эти параметры, но не изменяет их самостоятельно.</p>
+              <p className="eyebrow">{t('empCalculation')}</p>
+              <h2>{t('empWorkParams')}</h2>
+              <p className="hint">{t('empWorkParamsHint')}</p>
             </div>
 
             <div style={rowStyle}>
-              <strong>Основная ставка</strong>
+              <strong>{t('empStandardRate')}</strong>
               <span style={valueStyle}>{value(profile, ['standard_hourly_rate', 'standard_rate', 'hourly_rate', 'base_rate'])}</span>
             </div>
 
             <div style={rowStyle}>
-              <strong>Ставка дороги</strong>
+              <strong>{t('empTravelRate')}</strong>
               <span style={valueStyle}>{value(profile, ['travel_hourly_rate', 'travel_rate', 'drive_rate'])}</span>
             </div>
 
             <div style={rowStyle}>
-              <strong>Ночной коэффициент</strong>
+              <strong>{t('empNightCoef')}</strong>
               <span style={valueStyle}>{coefficient(profile, ['night_coefficient', 'night_coef'])}</span>
             </div>
 
             <div style={rowStyle}>
-              <strong>Воскресный коэффициент</strong>
+              <strong>{t('empSundayCoef')}</strong>
               <span style={valueStyle}>{coefficient(profile, ['sunday_coefficient', 'sunday_coef'])}</span>
             </div>
 
             <div style={rowLastStyle}>
-              <strong>Праздничный коэффициент</strong>
+              <strong>{t('empHolidayCoef')}</strong>
               <span style={valueStyle}>{coefficient(profile, ['holiday_coefficient', 'holiday_coef'])}</span>
             </div>
           </div>
@@ -336,27 +337,27 @@ export default function EmployeeProfilePage() {
 
         <section className="panel">
           <div className="field-panel-head">
-            <p className="eyebrow">Права сотрудника</p>
-            <h2>Что можно менять</h2>
+            <p className="eyebrow">{t('empRights')}</p>
+            <h2>{t('empWhatCanChange')}</h2>
             <p className="hint">
-              Ставки и коэффициенты защищены. Изменение личных данных лучше делать через запрос менеджеру.
+              {t('empRatesProtected')}
             </p>
           </div>
 
           <div style={noteGridStyle}>
             <div style={noteCardStyle}>
-              <strong>Можно менять через запрос</strong>
-              <p className="hint">Телефон, адрес, домашнюю локацию, контактные данные.</p>
+              <strong>{t('empCanChangeByRequest')}</strong>
+              <p className="hint">{t('empCanChangeByRequestHint')}</p>
             </div>
 
             <div style={noteCardStyle}>
-              <strong>Только просмотр</strong>
-              <p className="hint">Ставка, ставка дороги, ночные, воскресные и праздничные коэффициенты.</p>
+              <strong>{t('empReadonly')}</strong>
+              <p className="hint">{t('empReadonlyHint')}</p>
             </div>
 
             <div style={noteCardStyle}>
-              <strong>Рабочие действия</strong>
-              <p className="hint">Старт дороги, начало работы и завершение смены находятся в “Рабочем дне”.</p>
+              <strong>{t('empWorkActions')}</strong>
+              <p className="hint">{t('empWorkActionsHint')}</p>
             </div>
           </div>
         </section>

@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { AUTH_CHANGED_EVENT, me, logout, type AuthUser } from '../../lib/auth';
 import { useI18n } from '../i18n';
-
 type NavItem = {
   href: string;
   labelKey: string;

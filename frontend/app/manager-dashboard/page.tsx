@@ -7,7 +7,7 @@ import { getEmployeeProfiles, employeeProfileName, type EmployeeProfile } from '
 import { getWorkOrders, type WorkOrder } from '../../lib/work-orders';
 import { getWorkEvents, type WorkEvent } from '../../lib/work-events';
 import { getWorkEventApprovals, type WorkEventApproval } from '../../lib/approvals';
-
+import { useI18n } from '../i18n';
 function parseDetails(item?: WorkOrder | null): Record<string, string> {
   if (!item?.details) return {};
 
@@ -163,6 +163,7 @@ const listItemStyle = {
 } as const;
 
 export default function ManagerDashboardPage() {
+  const { t } = useI18n();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [orders, setOrders] = useState<WorkOrder[]>([]);
   const [events, setEvents] = useState<WorkEvent[]>([]);
@@ -210,7 +211,7 @@ export default function ManagerDashboardPage() {
       setApprovals(approvalsResponse.data);
       setEvents(eventsResponse.data);
       setEmployees(employeesResponse.data);
-      setMessage(`Загружено для ${currentUser.name || currentUser.email} (${currentUser.role}).`);
+      setMessage(t('mgrLoaded', { name: currentUser.name || currentUser.email, role: currentUser.role }));
     } catch (error) {
       const errorText = error instanceof Error ? error.message : 'Unbekannter Fehler';
       setMessage(`API-Fehler: ${errorText}`);
@@ -234,13 +235,13 @@ export default function ManagerDashboardPage() {
 
   return (
     <main className="page-shell">
-      <RoleGuard allowedRoles={['manager', 'admin']} title="Manager dashboard access">
+      <RoleGuard allowedRoles={['manager', 'admin']} title={t('mgrTitle')}>
         <section className="hero-card">
           <div>
-            <p className="eyebrow">Менеджер</p>
-            <h1>Панель менеджера</h1>
-            <p className="hero-text">Обзор согласований, открытых заданий и событий смены.</p>
-            <p className="hint">{loading ? 'Загрузка...' : message}</p>
+            <p className="eyebrow">{t('mgrEyebrow')}</p>
+            <h1>{t('mgrTitle')}</h1>
+            <p className="hero-text">{t('mgrHero')}</p>
+            <p className="hint">{loading ? t('commonLoading') : message}</p>
           </div>
 
           <button
@@ -250,45 +251,45 @@ export default function ManagerDashboardPage() {
             style={smallButtonStyle}
           >
             <i className="las la-sync-alt" aria-hidden="true" style={{ fontSize: '1rem', lineHeight: 1 }} />
-            <span>Обновить</span>
+            <span>{t('commonRefresh')}</span>
           </button>
         </section>
 
         <section style={cardGridStyle}>
           <div style={miniCardStyle}>
             <div style={metricHeadStyle}>
-              <p className="eyebrow">Ждут проверки</p>
+              <p className="eyebrow">{t('mgrWaiting')}</p>
               <i className="las la-hourglass-half" aria-hidden="true" style={metricIconStyle} />
             </div>
             <h2 style={metricValueStyle}>{pendingApprovals.length}</h2>
-            <p style={metricTextStyle}>Новые отрезки времени, которые менеджер ещё не подтвердил.</p>
+            <p style={metricTextStyle}>{t('mgrWaitingText')}</p>
           </div>
 
           <div style={miniCardStyle}>
             <div style={metricHeadStyle}>
-              <p className="eyebrow">Проверено</p>
+              <p className="eyebrow">{t('mgrChecked')}</p>
               <i className="las la-check-circle" aria-hidden="true" style={metricIconStyle} />
             </div>
             <h2 style={metricValueStyle}>{approvedApprovals.length}</h2>
-            <p style={metricTextStyle}>Уже подтверждённые отрезки рабочего времени.</p>
+            <p style={metricTextStyle}>{t('mgrCheckedText')}</p>
           </div>
 
           <div style={miniCardStyle}>
             <div style={metricHeadStyle}>
-              <p className="eyebrow">Активные задания</p>
+              <p className="eyebrow">{t('mgrActiveOrders')}</p>
               <i className="las la-clipboard-list" aria-hidden="true" style={metricIconStyle} />
             </div>
             <h2 style={metricValueStyle}>{openOrders.length}</h2>
-            <p style={metricTextStyle}>Назначены сотрудникам и ещё не закрыты.</p>
+            <p style={metricTextStyle}>{t('mgrActiveOrdersText')}</p>
           </div>
 
           <div style={miniCardStyle}>
             <div style={metricHeadStyle}>
-              <p className="eyebrow">События смены</p>
+              <p className="eyebrow">{t('mgrShiftEvents')}</p>
               <i className="las la-stream" aria-hidden="true" style={metricIconStyle} />
             </div>
             <h2 style={metricValueStyle}>{events.length}</h2>
-            <p style={metricTextStyle}>Дорога, начало работы, завершение работы и служебные поездки.</p>
+            <p style={metricTextStyle}>{t('mgrShiftEventsText')}</p>
           </div>
         </section>
 
@@ -296,12 +297,12 @@ export default function ManagerDashboardPage() {
           <div className="panel">
             <div className="field-panel-head split-head">
               <div>
-                <h2>Последние согласования</h2>
-                <p className="hint">Очередь OK / Freigabe.</p>
+                <h2>{t('mgrLatestApprovals')}</h2>
+                <p className="hint">{t('mgrApprovalsHint')}</p>
               </div>
               <a className="small-create-button" href="/approvals" style={{ ...smallButtonStyle, textDecoration: 'none' }}>
                 <i className="las la-external-link-alt" aria-hidden="true" style={{ fontSize: '1rem', lineHeight: 1 }} />
-                <span>Открыть</span>
+                <span>{t('commonOpen')}</span>
               </a>
             </div>
 
@@ -319,18 +320,18 @@ export default function ManagerDashboardPage() {
               );
             })}
 
-            {!latestApprovals.length ? <p className="hint">Пока нет согласований.</p> : null}
+            {!latestApprovals.length ? <p className="hint">{t('mgrNoApprovals')}</p> : null}
           </div>
 
           <div className="panel">
             <div className="field-panel-head split-head">
               <div>
-                <h2>Открытые задания</h2>
-                <p className="hint">AS / Aufträge.</p>
+                <h2>{t('mgrOpenOrders')}</h2>
+                <p className="hint">{t('mgrOpenOrdersHint')}</p>
               </div>
               <a className="small-create-button" href="/assignments" style={{ ...smallButtonStyle, textDecoration: 'none' }}>
                 <i className="las la-external-link-alt" aria-hidden="true" style={{ fontSize: '1rem', lineHeight: 1 }} />
-                <span>Открыть</span>
+                <span>{t('commonOpen')}</span>
               </a>
             </div>
 
@@ -347,19 +348,19 @@ export default function ManagerDashboardPage() {
               );
             })}
 
-            {!latestOpenOrders.length ? <p className="hint">Нет открытых заданий.</p> : null}
+            {!latestOpenOrders.length ? <p className="hint">{t('mgrNoOpenOrders')}</p> : null}
           </div>
         </section>
 
         <section className="panel">
           <div className="field-panel-head split-head">
             <div>
-              <h2>Последние события смены</h2>
-              <p className="hint">EV / Ereignisse.</p>
+              <h2>{t('mgrLatestEvents')}</h2>
+              <p className="hint">{t('mgrEventsHint')}</p>
             </div>
             <a className="small-create-button" href="/work-events" style={{ ...smallButtonStyle, textDecoration: 'none' }}>
               <i className="las la-external-link-alt" aria-hidden="true" style={{ fontSize: '1rem', lineHeight: 1 }} />
-              <span>Открыть</span>
+              <span>{t('commonOpen')}</span>
             </a>
           </div>
 
@@ -378,7 +379,7 @@ export default function ManagerDashboardPage() {
             );
           })}
 
-          {!latestEvents.length ? <p className="hint">Пока нет событий смены.</p> : null}
+          {!latestEvents.length ? <p className="hint">{t('mgrNoEvents')}</p> : null}
         </section>
       </RoleGuard>
     </main>

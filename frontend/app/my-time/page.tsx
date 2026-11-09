@@ -9,7 +9,7 @@ import {
   type DemoWorkOrder,
   type WorkEvent,
 } from '../../lib/api';
-
+import { useI18n } from '../i18n';
 type WorkDetails = {
   object_name?: string;
   object_address?: string;
@@ -206,6 +206,7 @@ const rowStyle = {
 } as const;
 
 export default function MyTimePage() {
+  const { t } = useI18n();
   const [employeeId, setEmployeeId] = useState<number | null>(null);
   const [orders, setOrders] = useState<DemoWorkOrder[]>([]);
   const [events, setEvents] = useState<WorkEvent[]>([]);
@@ -285,69 +286,69 @@ export default function MyTimePage() {
 
   return (
     <main className="page-shell">
-      <RoleGuard allowedRoles={['employee']} title="Employee time access">
+      <RoleGuard allowedRoles={['employee']} title={t('mtTitle')}>
         <section className="hero-card">
           <div>
-            <p className="eyebrow">Моё время</p>
-            <h1>Мои часы</h1>
-            <p className="hero-text">Здесь сотрудник видит только своё время: работа, дорога и общий итог за выбранный период.</p>
-            <p className="hint">{loading ? 'Загрузка...' : message}</p>
+            <p className="eyebrow">{t('mtEyebrow')}</p>
+            <h1>{t('mtTitle')}</h1>
+            <p className="hero-text">{t('mtHero')}</p>
+            <p className="hint">{loading ? t('empLoadingProfile') : message}</p>
           </div>
 
           <button className="action-button primary" onClick={load} type="button">
-            Обновить
+            {t('empRefresh')}
           </button>
         </section>
 
         <section style={cardGridStyle}>
           <div style={metricCardStyle}>
-            <p className="eyebrow">Работа</p>
+            <p className="eyebrow">{t('mtWork')}</p>
             <h2 style={metricValueStyle}>{durationLabel(workMinutes)}</h2>
-            <p className="hint">Время на объекте.</p>
+            <p className="hint">{t('mtWorkHint')}</p>
           </div>
 
           <div style={metricCardStyle}>
-            <p className="eyebrow">Дорога</p>
+            <p className="eyebrow">{t('mtTravel')}</p>
             <h2 style={metricValueStyle}>{durationLabel(travelMinutes)}</h2>
-            <p className="hint">Дорога до объекта и служебные поездки.</p>
+            <p className="hint">{t('mtTravelHint')}</p>
           </div>
 
           <div style={metricCardStyle}>
-            <p className="eyebrow">Всего</p>
+            <p className="eyebrow">{t('mtTotal')}</p>
             <h2 style={metricValueStyle}>{durationLabel(totalMinutes)}</h2>
-            <p className="hint">Работа + дорога.</p>
+            <p className="hint">{t('mtTotalHint')}</p>
           </div>
         </section>
 
         <section className="panel">
           <div className="field-panel-head split-head">
             <div>
-              <h2>Фильтры</h2>
-              <p className="hint">Можно посмотреть свои часы за конкретный день, период, объект, заказчика или задание.</p>
+              <h2>{t('mtFilters')}</h2>
+              <p className="hint">{t('mtFiltersHint')}</p>
             </div>
           </div>
 
           <div className="form-grid">
-            <label>Дата от<input value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} type="date" /></label>
-            <label>Дата до<input value={dateTo} onChange={(event) => setDateTo(event.target.value)} type="date" /></label>
+            <label>{t('mtDateFrom')}<input value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} type="date" /></label>
+            <label>{t('mtDateTo')}<input value={dateTo} onChange={(event) => setDateTo(event.target.value)} type="date" /></label>
 
-            <label>Объект
+            <label>{t('mtObject')}
               <select value={filterObject} onChange={(event) => setFilterObject(event.target.value)}>
-                <option value="">Все объекты</option>
+                <option value="">{t('mtAllObjects')}</option>
                 {objectOptions.map((item) => <option key={item} value={item}>{item}</option>)}
               </select>
             </label>
 
-            <label>Заказчик
+            <label>{t('mtCustomer')}
               <select value={filterCustomer} onChange={(event) => setFilterCustomer(event.target.value)}>
-                <option value="">Все заказчики</option>
+                <option value="">{t('mtAllCustomers')}</option>
                 {customerOptions.map((item) => <option key={item} value={item}>{item}</option>)}
               </select>
             </label>
 
-            <label className="wide-field">Задание
+            <label className="wide-field">{t('mtAssignment')}
               <select value={filterAssignmentId} onChange={(event) => setFilterAssignmentId(event.target.value)}>
-                <option value="">Все задания</option>
+                <option value="">{t('mtAllAssignments')}</option>
                 {orders.map((order) => {
                   const details = parseDetails(order);
 
@@ -363,16 +364,16 @@ export default function MyTimePage() {
         </section>
 
         <section className="panel">
-          <h2>Мои смены</h2>
+          <h2>{t('mtMyShifts')}</h2>
 
           <div style={rowStyle}>
-            <strong>Дата</strong>
-            <strong>Задание</strong>
-            <strong>Объект</strong>
-            <strong>Заказчик</strong>
-            <strong>Работа</strong>
-            <strong>Дорога</strong>
-            <strong>Статус</strong>
+            <strong>{t('mtDate')}</strong>
+            <strong>{t('mtAssignment')}</strong>
+            <strong>{t('mtObject')}</strong>
+            <strong>{t('mtCustomer')}</strong>
+            <strong>{t('mtWork')}</strong>
+            <strong>{t('mtTravel')}</strong>
+            <strong>{t('mtStatus')}</strong>
           </div>
 
           {filteredRows.map((row) => (
@@ -393,7 +394,7 @@ export default function MyTimePage() {
           ))}
 
           {!filteredRows.length ? (
-            <p className="hint">За выбранный период пока нет смен.</p>
+            <p className="hint">{t('mtNoShifts')}</p>
           ) : null}
         </section>
       </RoleGuard>

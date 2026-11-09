@@ -4,7 +4,7 @@ import { use, useEffect, useState } from 'react';
 import RoleGuard from '../../components/RoleGuard';
 import { getEmployeeProfiles, employeeProfileName, type EmployeeProfile } from '../../../lib/employee-profiles';
 import { getWorkOrder, type WorkOrder } from '../../../lib/work-orders';
-
+import { useI18n } from '../../i18n';
 type PageProps = {
   params: Promise<{ id: string }>;
 };
@@ -46,6 +46,7 @@ function formatDateTime(value?: string | null) {
 }
 
 export default function WorkOrderViewPage({ params }: PageProps) {
+  const { t } = useI18n();
   const resolvedParams = use(params);
   const id = Number(resolvedParams.id);
 
@@ -78,18 +79,18 @@ export default function WorkOrderViewPage({ params }: PageProps) {
 
   return (
     <main className="page-shell">
-      <RoleGuard allowedRoles={['manager', 'admin']} title="Work order view access">
+      <RoleGuard allowedRoles={['manager', 'admin']} title={t('woViewTitle', { id })}>
         <section className="hero-card">
           <div>
-            <p className="eyebrow">AS / Auftrag</p>
-            <h1>Просмотр задания #{id}</h1>
+            <p className="eyebrow">{t('woViewEyebrow')}</p>
+            <h1>{t('woViewTitle', { id })}</h1>
             <p className="hero-text">{message}</p>
           </div>
           <div className="row-actions-inline">
-            <a className="icon-action icon-action-xs" href="/assignments" title="Назад">
+            <a className="icon-action icon-action-xs" href="/assignments" title={t('commonBack')}>
               <i className="las la-arrow-left" aria-hidden="true" />
             </a>
-            <a className="icon-action icon-action-xs" href={`/work-orders/${id}/edit`} title="Редактировать">
+            <a className="icon-action icon-action-xs" href={`/work-orders/${id}/edit`} title={t('commonEdit')}>
               <i className="las la-pen" aria-hidden="true" />
             </a>
           </div>
@@ -99,17 +100,17 @@ export default function WorkOrderViewPage({ params }: PageProps) {
           <section className="panel">
             <div className="details-grid">
               <div><strong>Referenznummer</strong><span>{item.reference_number || '—'}</span></div>
-              <div><strong>Статус</strong><span>{item.status || 'planned'}</span></div>
-              <div><strong>Сотрудник</strong><span>{employee ? employeeProfileName(employee) : item.employee_id ? `Mitarbeiter #${item.employee_id}` : '—'}</span></div>
-              <div><strong>Название работы</strong><span>{details.work_title || item.title}</span></div>
-              <div><strong>Клиент</strong><span>{details.customer_name || '—'}</span></div>
-              <div><strong>Объект</strong><span>{details.object_name || '—'}</span></div>
-              <div><strong>Адрес</strong><span>{details.object_address || '—'}</span></div>
+              <div><strong>{t('commonStatus')}</strong><span>{item.status || 'planned'}</span></div>
+              <div><strong>{t('commonEmployee')}</strong><span>{employee ? employeeProfileName(employee) : item.employee_id ? `Mitarbeiter #${item.employee_id}` : '—'}</span></div>
+              <div><strong>{t('asgWorkTitle')}</strong><span>{details.work_title || item.title}</span></div>
+              <div><strong>{t('commonCustomer')}</strong><span>{details.customer_name || '—'}</span></div>
+              <div><strong>{t('commonObject')}</strong><span>{details.object_name || '—'}</span></div>
+              <div><strong>{t('woAddress')}</strong><span>{details.object_address || '—'}</span></div>
               <div><strong>Leistungsart</strong><span>{details.leistungsart || '—'}</span></div>
               <div><strong>Zugnummer</strong><span>{details.zugnummer || '—'}</span></div>
               <div><strong>Einsatzort</strong><span>{details.einsatzort || '—'}</span></div>
-              <div><strong>Плановый старт</strong><span>{formatDateTime(item.planned_start_at)}</span></div>
-              <div><strong>Плановый стоп</strong><span>{formatDateTime(item.planned_end_at)}</span></div>
+              <div><strong>{t('asgPlannedStart')}</strong><span>{formatDateTime(item.planned_start_at)}</span></div>
+              <div><strong>{t('asgPlannedStop')}</strong><span>{formatDateTime(item.planned_end_at)}</span></div>
             </div>
           </section>
         ) : null}

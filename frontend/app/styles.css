@@ -2213,3 +2213,80 @@ textarea { min-height: 96px; resize: vertical; }
 
 /* WORKDAY V2 FINISHED / COLLAPSE FIX END */
 
+/* WORKDAY FILTER BEAUTY START */
+
+.workday-filter-panel {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 1.25rem !important;
+  padding: 1.15rem !important;
+  border-radius: 24px !important;
+  border: 1px solid rgba(37, 99, 235, 0.18) !important;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08) !important;
+}
+
+.workday-filter-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: linear-gradient(180deg, #2563eb, #0f172a);
+}
+
+.workday-filter-panel .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.85rem !important;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8 !important;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.workday-filter-panel .eyebrow::before {
+  content: "☰";
+  font-size: 0.8rem;
+}
+
+.workday-filter-panel button {
+  min-height: 42px !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(226, 232, 240, 0.95) !important;
+  font-weight: 900 !important;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06) !important;
+}
+
+.workday-filter-panel input[type="date"] {
+  min-height: 42px !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(37, 99, 235, 0.24) !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  font-weight: 900 !important;
+  padding: 0.55rem 0.95rem !important;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06) !important;
+}
+
+@media (max-width: 700px) {
+  .workday-filter-panel {
+    border-radius: 20px !important;
+    padding: 1rem !important;
+  }
+
+  .workday-filter-panel button {
+    flex: 1 1 calc(50% - 0.5rem) !important;
+    font-size: 0.78rem !important;
+  }
+
+  .workday-filter-panel input[type="date"] {
+    width: 100%;
+  }
+}
+
+/* WORKDAY FILTER BEAUTY END */
+

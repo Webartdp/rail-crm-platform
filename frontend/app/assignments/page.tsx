@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import RoleGuard from '../components/RoleGuard';
 import { getEmployeeProfiles, employeeProfileName, type EmployeeProfile } from '../../lib/employee-profiles';
 import { deleteWorkOrder, getWorkOrders, type WorkOrder } from '../../lib/work-orders';
-
+import { useI18n } from '../i18n';
 function parseDetails(item?: WorkOrder | null): Record<string, string> {
   if (!item?.details) return {};
 
@@ -118,6 +118,7 @@ const modalFieldStyle = {
 } as const;
 
 export default function AssignmentsPage() {
+  const { t } = useI18n();
   const [items, setItems] = useState<WorkOrder[]>([]);
   const [employees, setEmployees] = useState<EmployeeProfile[]>([]);
   const [selectedItem, setSelectedItem] = useState<WorkOrder | null>(null);
@@ -158,17 +159,17 @@ export default function AssignmentsPage() {
   async function deleteOrder(item: WorkOrder) {
     const label = item.reference_number || `#${item.id}`;
 
-    if (!window.confirm(`Удалить задание ${label}?`)) {
+    if (!window.confirm(t('asgDeleteConfirm', { label }))) {
       return;
     }
 
     try {
       await deleteWorkOrder(item.id);
-      setMessage(`Задание ${label} удалено.`);
+      setMessage(t('asgDeleted', { label }));
       await load();
     } catch (error) {
       const errorText = error instanceof Error ? error.message : 'Unbekannter Fehler';
-      setMessage(`Не удалось удалить: ${errorText}`);
+      setMessage(t('asgDeleteFailed', { error: errorText }));
     }
   }
 
@@ -187,12 +188,12 @@ export default function AssignmentsPage() {
 
   return (
     <main className="page-shell">
-      <RoleGuard allowedRoles={['manager', 'admin']} title="Assignments access">
+      <RoleGuard allowedRoles={['manager', 'admin']} title={t('asgTitle')}>
         <section className="hero-card">
           <div>
-            <p className="eyebrow">AS / Aufträge</p>
-            <h1>Задания</h1>
-            <p className="hero-text">Реальные задания из work_orders: сотрудник, объект, клиент, работа, плановое время и статус.</p>
+            <p className="eyebrow">{t('asgEyebrow')}</p>
+            <h1>{t('asgTitle')}</h1>
+            <p className="hero-text">{t('asgHero')}</p>
           </div>
           <div className="field-status-stack">
             <div className="status-pill">{items.length} total</div>
@@ -203,8 +204,8 @@ export default function AssignmentsPage() {
         <section className="panel">
           <div className="field-panel-head split-head">
             <div>
-              <h2>Список заданий</h2>
-              <p className="hint">{loading ? 'Загрузка...' : message}</p>
+              <h2>{t('asgList')}</h2>
+              <p className="hint">{loading ? t('commonLoading') : message}</p>
             </div>
             <a
               className="small-create-button"
@@ -233,16 +234,16 @@ export default function AssignmentsPage() {
               }}
             >
               <i className="las la-plus" aria-hidden="true" style={{ fontSize: '1rem', lineHeight: 1 }} />
-              <span>Создать задание</span>
+              <span>{t('asgCreate')}</span>
             </a>
           </div>
 
           <div style={rowStyle}>
             <strong>Referenz</strong>
-            <strong>Задание</strong>
-            <strong>Сотрудник</strong>
-            <strong>Статус</strong>
-            <strong>Действия</strong>
+            <strong>{t('commonAssignment')}</strong>
+            <strong>{t('commonEmployee')}</strong>
+            <strong>{t('commonStatus')}</strong>
+            <strong>{t('commonActions')}</strong>
           </div>
 
           {items.map((item) => {
@@ -267,15 +268,15 @@ export default function AssignmentsPage() {
                 <span>{item.status || 'planned'}</span>
 
                 <span style={actionsWrapStyle}>
-                  <button style={actionStyle} onClick={() => setSelectedItem(item)} type="button" aria-label="Посмотреть задание" title="Посмотреть">
+                  <button style={actionStyle} onClick={() => setSelectedItem(item)} type="button" aria-label={t('commonView')} title={t('commonView')}>
                     <i className="las la-eye" aria-hidden="true" />
                   </button>
 
-                  <a style={actionStyle} href={`/work-orders/${item.id}/edit`} aria-label="Редактировать задание" title="Редактировать">
+                  <a style={actionStyle} href={`/work-orders/${item.id}/edit`} aria-label={t('commonEdit')} title={t('commonEdit')}>
                     <i className="las la-pen" aria-hidden="true" />
                   </a>
 
-                  <button style={actionStyle} onClick={() => deleteOrder(item)} type="button" aria-label="Удалить задание" title="Удалить">
+                  <button style={actionStyle} onClick={() => deleteOrder(item)} type="button" aria-label={t('commonDelete')} title={t('commonDelete')}>
                     <i className="las la-trash" aria-hidden="true" />
                   </button>
                 </span>
@@ -284,7 +285,7 @@ export default function AssignmentsPage() {
           })}
 
           {!loading && !items.length ? (
-            <p className="hint">Заданий пока нет. Нажми “Создать задание”.</p>
+            <p className="hint">{t('asgNoItems')}</p>
           ) : null}
         </section>
 
@@ -293,17 +294,17 @@ export default function AssignmentsPage() {
             <div style={modalStyle} role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
               <div style={modalHeaderStyle}>
                 <div>
-                  <p className="eyebrow">AS / Auftrag anzeigen</p>
+                  <p className="eyebrow">{t('asgShow')}</p>
                   <h2>{selectedDetails.work_title || selectedItem.title}</h2>
                   <p className="hint">{selectedItem.reference_number || `#${selectedItem.id}`} · {selectedItem.status || 'planned'}</p>
                 </div>
 
                 <span style={actionsWrapStyle}>
-                  <a style={actionStyle} href={`/work-orders/${selectedItem.id}/edit`} title="Редактировать">
+                  <a style={actionStyle} href={`/work-orders/${selectedItem.id}/edit`} title={t('commonEdit')}>
                     <i className="las la-pen" aria-hidden="true" />
                   </a>
 
-                  <button style={actionStyle} onClick={() => setSelectedItem(null)} type="button" title="Закрыть">
+                  <button style={actionStyle} onClick={() => setSelectedItem(null)} type="button" title={t('commonClose')}>
                     <i className="las la-times" aria-hidden="true" />
                   </button>
                 </span>
@@ -316,32 +317,32 @@ export default function AssignmentsPage() {
                 </div>
 
                 <div style={modalFieldStyle}>
-                  <strong>Статус</strong>
+                  <strong>{t('commonStatus')}</strong>
                   <span>{selectedItem.status || 'planned'}</span>
                 </div>
 
                 <div style={modalFieldStyle}>
-                  <strong>Сотрудник</strong>
+                  <strong>{t('commonEmployee')}</strong>
                   <span>{selectedEmployeeName}</span>
                 </div>
 
                 <div style={modalFieldStyle}>
-                  <strong>Название работы</strong>
+                  <strong>{t('asgWorkTitle')}</strong>
                   <span>{selectedDetails.work_title || selectedItem.title}</span>
                 </div>
 
                 <div style={modalFieldStyle}>
-                  <strong>Клиент</strong>
+                  <strong>{t('commonCustomer')}</strong>
                   <span>{selectedDetails.customer_name || '—'}</span>
                 </div>
 
                 <div style={modalFieldStyle}>
-                  <strong>Объект</strong>
+                  <strong>{t('commonObject')}</strong>
                   <span>{selectedDetails.object_name || '—'}</span>
                 </div>
 
                 <div style={modalFieldStyle}>
-                  <strong>Адрес объекта</strong>
+                  <strong>{t('asgObjectAddress')}</strong>
                   <span>{selectedDetails.object_address || '—'}</span>
                 </div>
 
@@ -361,12 +362,12 @@ export default function AssignmentsPage() {
                 </div>
 
                 <div style={modalFieldStyle}>
-                  <strong>Плановый старт</strong>
+                  <strong>{t('asgPlannedStart')}</strong>
                   <span>{formatDateTime(selectedItem.planned_start_at)}</span>
                 </div>
 
                 <div style={modalFieldStyle}>
-                  <strong>Плановый стоп</strong>
+                  <strong>{t('asgPlannedStop')}</strong>
                   <span>{formatDateTime(selectedItem.planned_end_at)}</span>
                 </div>
               </div>
