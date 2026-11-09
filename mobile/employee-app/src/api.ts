@@ -1,126 +1,141 @@
-import * as SecureStore from 'expo-secure-store';
-import { AuthResponse, AuthUser, WorkEvent, WorkOrder } from './types';
+import { API_URL } from './config';
+import type { Locale } from './i18n';
+import { tokenStore } from './storage';
+import type { AuthResponse, AuthUser, FieldState, Timesheet, WorkEvent, WorkEventPayload, WorkOrder } from './types';
 
-const API_URL = 'https://rlci.ridnovir.in.ua/api/api/v1';
-const TOKEN_KEY = 'rail_crm_mobile_token';
-
-export const workEventRoutes = {
-  gasfahrtStart: '/work-events/gasfahrt/start',
-  gasfahrtStop: '/work-events/gasfahrt/stop',
-  dienstbeginn: '/work-events/dienstbeginn',
-  arbeitStop: '/work-events/arbeit/stop',
-  dienstfahrtStart: '/work-events/dienstfahrt/start',
-  dienstfahrtStop: '/work-events/dienstfahrt/stop',
-};
-
-export async function getToken() {
-  return SecureStore.getItemAsync(TOKEN_KEY);
+/** The server answered with an error (validation, forbidden, …). Message is already translated. */
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
 }
 
-export async function setToken(token: string) {
-  await SecureStore.setItemAsync(TOKEN_KEY, token);
+/** No answer from the server: no connection, timeout. */
+export class NetworkError extends Error {}
+
+let locale: Locale = 'de';
+let onUnauthorized: (() => void) | null = null;
+
+export function setApiLocale(next: Locale) {
+  locale = next;
 }
 
-export async function clearToken() {
-  await SecureStore.deleteItemAsync(TOKEN_KEY);
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+  onUnauthorized = handler;
 }
 
-async function readError(response: any, fallback: string) {
+type Options = { method?: string; body?: unknown; auth?: boolean; timeoutMs?: number };
+
+async function request<T>(path: string, options: Options = {}): Promise<T> {
+  const headers: Record<string, string> = { Accept: 'application/json', 'Accept-Language': locale };
+  if (options.body !== undefined) headers['Content-Type'] = 'application/json';
+  if (options.auth !== false) {
+    const token = await tokenStore.get();
+    if (token) headers.Authorization = `Bearer ${token}`;
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? 20000);
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      method: options.method || (options.body !== undefined ? 'POST' : 'GET'),
+      headers,
+      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    throw new NetworkError(error instanceof Error ? error.message : 'Network request failed');
+  } finally {
+    clearTimeout(timer);
+  }
+
   const data = await response.json().catch(() => null);
-  return typeof data?.message === 'string' ? data.message : fallback;
-}
-
-async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = await getToken();
-
-  const headers: Record<string, string> = {
-    Accept: 'application/json',
-    ...((options.headers || {}) as Record<string, string>),
-  };
-
-  if (token) headers.Authorization = `Bearer ${token}`;
-
-  const response = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers,
-  });
 
   if (!response.ok) {
-    throw new Error(await readError(response, 'Request failed'));
+    if (response.status === 401 && options.auth !== false) onUnauthorized?.();
+    const errors = data && typeof data.errors === 'object' ? (Object.values(data.errors) as string[][]) : [];
+    const first = errors[0]?.[0];
+    throw new ApiError(first || (typeof data?.message === 'string' ? data.message : `HTTP ${response.status}`), response.status);
   }
 
-  return response.json();
+  return data as T;
 }
 
-export async function login(email: string, password: string): Promise<AuthResponse> {
-  const response = await fetch(`${API_URL}/auth/login`, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ email, password }),
-  });
+/* ---------- Auth ---------- */
 
-  if (!response.ok) {
-    throw new Error(await readError(response, 'Login failed'));
-  }
-
-  const data: AuthResponse = await response.json();
-
-  if (data.token) {
-    await setToken(data.token);
-  }
-
-  return data;
-}
-
-export async function me(): Promise<{ data: AuthUser }> {
-  return apiRequest<{ data: AuthUser }>('/auth/me');
+export async function login(email: string, password: string): Promise<AuthUser> {
+  const data = await request<AuthResponse>('/auth/login', { body: { email, password, client: 'mobile' }, auth: false });
+  if (data.token) await tokenStore.set(data.token);
+  return data.data;
 }
 
 export async function logout() {
   try {
-    await apiRequest('/auth/logout', { method: 'POST' });
-  } finally {
-    await clearToken();
+    await request('/auth/logout', { body: {}, timeoutMs: 5000 });
+  } catch {
+    // token is removed locally anyway
   }
+  await tokenStore.clear();
 }
 
-export async function getWorkOrders(employeeId?: number): Promise<{ data: WorkOrder[] }> {
-  const query = employeeId ? `?employee_id=${encodeURIComponent(String(employeeId))}` : '';
-  return apiRequest<{ data: WorkOrder[] }>(`/work-orders${query}`);
-}
-
-export async function getWorkEvents(filters: { employeeId?: number; assignmentId?: number } = {}): Promise<{ data: WorkEvent[] }> {
-  const params: string[] = [];
-
-  if (filters.employeeId) params.push(`employee_id=${encodeURIComponent(String(filters.employeeId))}`);
-  if (filters.assignmentId) params.push(`assignment_id=${encodeURIComponent(String(filters.assignmentId))}`);
-
-  const query = params.length ? `?${params.join('&')}` : '';
-
-  return apiRequest<{ data: WorkEvent[] }>(`/work-events${query}`);
-}
-
-export async function postWorkEvent(
-  route: string,
-  payload: {
-    employee_id?: number;
-    assignment_id?: number;
-    latitude?: number;
-    longitude?: number;
-    location_accuracy?: number | null;
-    bemerkung?: string;
-    planned_exceeded?: boolean;
-    payload?: Record<string, unknown>;
-  }
-) {
-  return apiRequest(route, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
+export const me = () => request<{ data: AuthUser }>('/auth/me');
+export const forgotPassword = (email: string) => request<{ message: string }>('/auth/forgot-password', { body: { email }, auth: false });
+export const changePassword = (current: string, password: string, confirmation: string) =>
+  request<{ message: string }>('/auth/change-password', {
+    body: { current_password: current, password, password_confirmation: confirmation },
   });
+export const saveUserLocale = (value: Locale) => request('/auth/locale', { method: 'PUT', body: { locale: value } });
+
+/* ---------- Work ---------- */
+
+export const getWorkOrders = (employeeId: number) =>
+  request<{ data: WorkOrder[] }>(`/work-orders?employee_id=${employeeId}`);
+
+export const getWorkEvents = (employeeId: number, assignmentId?: number) =>
+  request<{ data: WorkEvent[] }>(`/work-events?employee_id=${employeeId}${assignmentId ? `&assignment_id=${assignmentId}` : ''}`);
+
+export const getFieldState = (employeeId: number, assignmentId: number) =>
+  request<FieldState>(`/employee/field-state?employee_id=${employeeId}&assignment_id=${assignmentId}`);
+
+export const postWorkEvent = (path: string, payload: WorkEventPayload) => request<{ message?: string }>(path, { body: payload });
+
+export const getTimesheet = (from: string, to: string) =>
+  request<{ data: Timesheet }>(`/reports/timesheet?date_from=${from}&date_to=${to}`);
+
+export const correctTime = (input: { start_event_id: number; stop_event_id: number; start_time: string; stop_time: string; bemerkung?: string }) =>
+  request<{ message: string }>('/work-events/correct', { body: input });
+
+export const ACTION_ROUTES: Record<string, string> = {
+  gasfahrt_start: '/work-events/gasfahrt/start',
+  gasfahrt_stop: '/work-events/gasfahrt/stop',
+  dienstbeginn: '/work-events/dienstbeginn',
+  arbeit_stop: '/work-events/arbeit/stop',
+  dienstfahrt_start: '/work-events/dienstfahrt/start',
+  dienstfahrt_stop: '/work-events/dienstfahrt/stop',
+};
+
+/** What the button turns into after an action (used while offline). */
+export const NEXT_ACTION: Record<string, string> = {
+  gasfahrt_start: 'gasfahrt_stop',
+  gasfahrt_stop: 'dienstbeginn',
+  dienstbeginn: 'arbeit_stop',
+  arbeit_stop: 'dienstfahrt_start',
+  dienstfahrt_start: 'dienstfahrt_stop',
+  dienstfahrt_stop: 'dienstbeginn',
+};
+
+export const STATE_AFTER: Record<string, string> = {
+  gasfahrt_start: 'gasfahrt_active',
+  gasfahrt_stop: 'arrived',
+  dienstbeginn: 'work_active',
+  arbeit_stop: 'work_finished',
+  dienstfahrt_start: 'dienstfahrt_active',
+  dienstfahrt_stop: 'dienstfahrt_finished',
+};
+
+export function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
 }

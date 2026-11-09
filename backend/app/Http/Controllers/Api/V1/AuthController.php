@@ -80,8 +80,10 @@ class AuthController extends Controller
 
         LoginThrottle::record($email, $ip, true);
 
-        $user->tokens()->delete();
-        $token = $user->createToken('crm-api', [$user->role])->plainTextToken;
+        // One session per client type: logging in on the phone app does not log out the website and vice versa.
+        $tokenName = $request->input('client') === 'mobile' ? 'crm-mobile' : 'crm-api';
+        $user->tokens()->where('name', $tokenName)->delete();
+        $token = $user->createToken($tokenName, [$user->role])->plainTextToken;
         DB::table('app_users')->where('id', $user->id)->update(['last_login_at' => now()]);
 
         return response()->json([
