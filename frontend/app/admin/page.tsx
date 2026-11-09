@@ -3,7 +3,6 @@
 import type { FormEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import CompanySettingsForm from '../components/CompanySettingsForm';
-import MailSettingsForm from '../components/MailSettingsForm';
 import RoleGuard from '../components/RoleGuard';
 import { useI18n } from '../i18n';
 import { getEmployeeProfiles, employeeProfileName, type EmployeeProfile } from '../../lib/employee-profiles';
@@ -294,7 +293,6 @@ export default function AdminPage() {
         </section>
 
         <CompanySettingsForm />
-        <MailSettingsForm />
       </RoleGuard>
     </main>
   );

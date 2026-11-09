@@ -50,6 +50,12 @@ const navGroups: NavGroup[] = [
       { href: '/admin', labelKey: 'admin', code: 'AD', roles: ['admin'] },
     ],
   },
+  {
+    titleKey: 'groupSettings',
+    items: [
+      { href: '/mail-settings', labelKey: 'mailSettings', code: 'ML', roles: ['admin'] },
+    ],
+  },
 ];
 
 function canSee(item: NavItem, user: AuthUser) {
