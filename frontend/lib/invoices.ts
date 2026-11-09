@@ -1,13 +1,24 @@
-import { getStoredToken } from './auth';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { apiDownload, apiRequest } from './http';
 
 export type Invoice = {
   id: number;
   number: string;
   status: string;
+  client_id?: number | null;
+  client_name?: string | null;
+  client_email?: string | null;
   total_amount: string | number;
+  vat_rate?: string | number;
+  vat_amount?: string | number;
+  gross_amount?: string | number;
   issued_at?: string | null;
+  due_at?: string | null;
+  period_from?: string | null;
+  period_to?: string | null;
+  paid_at?: string | null;
+  sent_at?: string | null;
+  sent_to?: string | null;
+  notes?: string | null;
 };
 
 export type InvoiceItem = {
@@ -17,71 +28,55 @@ export type InvoiceItem = {
   employee_id: number;
   assignment_id: number;
   type: string;
+  tariff_zone?: string | null;
+  day_type?: string | null;
   hours: string | number;
   hourly_rate: string | number;
   coefficient: string | number;
   amount: string | number;
 };
 
-function authHeaders(json = false): HeadersInit {
-  const headers: Record<string, string> = {
-    Accept: 'application/json',
-  };
+export type InvoiceLine = {
+  id: number;
+  date: string | null;
+  employee: string;
+  employee_id: number;
+  assignment_id: number;
+  work_title: string;
+  reference: string;
+  object: string;
+  type: string;
+  tariff_zone: string | null;
+  day_type: string | null;
+  label: string;
+  hours: number;
+  rate: number;
+  coefficient: number;
+  amount: number;
+};
 
-  if (json) {
-    headers['Content-Type'] = 'application/json';
-  }
+export type BillableGroup = {
+  client_id: number | null;
+  client_name: string | null;
+  lines: number;
+  hours: number;
+  amount: number;
+  from: string | null;
+  to: string | null;
+};
 
-  const token = getStoredToken();
+export type CompanySettings = Record<string, string>;
 
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
+export const getInvoices = () => apiRequest<{ data: Invoice[] }>('/invoices');
+export const getInvoice = (id: number) => apiRequest<{ data: Invoice; items: InvoiceItem[]; lines: InvoiceLine[] }>(`/invoices/${id}`);
+export const getBillable = () => apiRequest<{ data: BillableGroup[] }>('/invoices/billable');
+export const createInvoiceDraft = (input: { client_id?: number | null; period_from?: string; period_to?: string } = {}) =>
+  apiRequest<{ data: Invoice; message: string }>('/invoices', { body: input });
+export const updateInvoice = (id: number, input: { status?: string; notes?: string | null; due_at?: string }) =>
+  apiRequest<{ data: Invoice; message: string }>(`/invoices/${id}`, { method: 'PUT', body: input });
+export const deleteInvoice = (id: number) => apiRequest<{ message: string }>(`/invoices/${id}`, { method: 'DELETE' });
+export const sendInvoice = (id: number, input: { to: string; message?: string }) => apiRequest<{ message: string }>(`/invoices/${id}/send`, { body: input });
+export const downloadInvoicePdf = (invoice: Pick<Invoice, 'id' | 'number'>) => apiDownload(`/invoices/${invoice.id}/pdf`, `Rechnung_${invoice.number}.pdf`);
 
-  return headers;
-}
-
-async function readErrorMessage(response: Response, fallback: string) {
-  const data = await response.json().catch(() => null);
-  return typeof data?.message === 'string' ? data.message : fallback;
-}
-
-export async function getInvoices(): Promise<{ data: Invoice[] }> {
-  const response = await fetch(`${API_URL}/invoices`, {
-    headers: authHeaders(false),
-    cache: 'no-store',
-  });
-
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Could not load invoices'));
-  }
-
-  return response.json();
-}
-
-export async function createInvoiceDraft(): Promise<{ data: Invoice; items: InvoiceItem[] }> {
-  const response = await fetch(`${API_URL}/invoices`, {
-    method: 'POST',
-    headers: authHeaders(false),
-  });
-
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Could not create invoice draft'));
-  }
-
-  return response.json();
-}
-
-
-export async function getInvoice(id: number): Promise<{ data: Invoice; items: InvoiceItem[] }> {
-  const response = await fetch(`${API_URL}/invoices/${id}`, {
-    headers: authHeaders(false),
-    cache: 'no-store',
-  });
-
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Could not load invoice'));
-  }
-
-  return response.json();
-}
+export const getCompanySettings = () => apiRequest<{ data: CompanySettings }>('/settings/company');
+export const saveCompanySettings = (input: CompanySettings) => apiRequest<{ data: CompanySettings; message: string }>('/settings/company', { method: 'PUT', body: input });

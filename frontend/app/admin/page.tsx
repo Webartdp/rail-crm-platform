@@ -2,6 +2,7 @@
 
 import type { FormEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
+import CompanySettingsForm from '../components/CompanySettingsForm';
 import RoleGuard from '../components/RoleGuard';
 import { useI18n } from '../i18n';
 import { getEmployeeProfiles, employeeProfileName, type EmployeeProfile } from '../../lib/employee-profiles';
@@ -290,6 +291,8 @@ export default function AdminPage() {
           </div>
           {!loading && !filtered.length ? <p className="hint">{t('commonNoData')}</p> : null}
         </section>
+
+        <CompanySettingsForm />
       </RoleGuard>
     </main>
   );

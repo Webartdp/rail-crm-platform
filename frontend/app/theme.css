@@ -489,3 +489,7 @@ body.auth-body { background: var(--ink); }
 .planner-add { position: absolute; right: 6px; bottom: 4px; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 6px; color: var(--slate-2); font-weight: 600; opacity: 0; transition: opacity .15s ease; }
 .planner td:hover .planner-add, .planner-add:focus-visible { opacity: 1; background: var(--porcelain); color: var(--ink); }
 @media (hover: none) { .planner-add { opacity: 1; } }
+.invoice-group { padding: 16px 0; border-top: 1px solid var(--hairline-soft); }
+.invoice-group:first-of-type { border-top: 0; padding-top: 0; }
+.invoice-group h3 { margin: 0; font-size: 15.5px; }
+.choice input[type='radio'] { width: 18px; height: 18px; accent-color: var(--ink); }

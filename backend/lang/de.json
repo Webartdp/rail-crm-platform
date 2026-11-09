@@ -104,5 +104,12 @@
   "Object not found.": "Objekt nicht gefunden.",
   "Object has work orders and was deactivated instead of deleted.": "Das Objekt hat Aufträge und wurde deaktiviert statt gelöscht.",
   "Object deleted.": "Objekt gelöscht.",
-  "The object does not belong to this client.": "Das Objekt gehört nicht zu diesem Kunden."
+  "The object does not belong to this client.": "Das Objekt gehört nicht zu diesem Kunden.",
+  "Company data saved.": "Firmendaten gespeichert.",
+  "Invoice saved.": "Rechnung gespeichert.",
+  "Only draft invoices can be deleted.": "Nur Rechnungsentwürfe können gelöscht werden.",
+  "Invoice deleted.": "Rechnung gelöscht. Die Zeiten sind wieder abrechenbar.",
+  "E-mail sending is not configured on the server. Download the PDF and send it yourself.": "Auf dem Server ist kein E-Mail-Versand eingerichtet. Laden Sie das PDF herunter und senden Sie es selbst.",
+  "The e-mail could not be sent: :error": "Die E-Mail konnte nicht gesendet werden: :error",
+  "Invoice sent to :email.": "Rechnung an :email gesendet."
 }

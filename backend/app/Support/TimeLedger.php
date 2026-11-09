@@ -203,9 +203,10 @@ class TimeLedger
         }
 
         $rate = (float) ($profile->standard_hourly_rate ?? 0);
+        $mode = Settings::get('surcharge_mode', 'max') === 'sum' ? 'sum' : 'max';
         $groups = [];
         foreach (TariffZones::split((string) $pair['start_time'], (string) $pair['stop_time']) as $segment) {
-            $coefficient = TariffZones::coefficient($segment, $profile);
+            $coefficient = TariffZones::coefficient($segment, $profile, $mode);
             $key = $segment['zone'].'|'.$segment['day_type'];
             $groups[$key] ??= ['zone' => $segment['zone'], 'day_type' => $segment['day_type'], 'minutes' => 0, 'coefficient' => $coefficient];
             $groups[$key]['minutes'] += $segment['minutes'];

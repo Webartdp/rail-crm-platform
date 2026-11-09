@@ -104,5 +104,12 @@
   "Object not found.": "Объект не найден.",
   "Object has work orders and was deactivated instead of deleted.": "У объекта есть задания, поэтому он отключён, а не удалён.",
   "Object deleted.": "Объект удалён.",
-  "The object does not belong to this client.": "Этот объект не принадлежит выбранному клиенту."
+  "The object does not belong to this client.": "Этот объект не принадлежит выбранному клиенту.",
+  "Company data saved.": "Данные компании сохранены.",
+  "Invoice saved.": "Счёт сохранён.",
+  "Only draft invoices can be deleted.": "Удалить можно только черновик счёта.",
+  "Invoice deleted.": "Счёт удалён. Время снова доступно для выставления.",
+  "E-mail sending is not configured on the server. Download the PDF and send it yourself.": "На сервере не настроена отправка почты. Скачайте PDF и отправьте его сами.",
+  "The e-mail could not be sent: :error": "Письмо не отправлено: :error",
+  "Invoice sent to :email.": "Счёт отправлен на :email."
 }

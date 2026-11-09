@@ -96,9 +96,11 @@ class TariffZones
 
     /**
      * Coefficient for one segment from the employee profile.
-     * Night zone and Sunday/holiday surcharges are not added up: the higher factor wins.
+     * $mode decides how a night zone and a Sunday/holiday surcharge combine (admin setting):
+     *   max — the higher factor wins (night 1.25 + Sunday 1.50 → 1.50)
+     *   sum — the surcharges add up   (night +25 % + Sunday +50 % → 1.75)
      */
-    public static function coefficient(array $segment, ?object $profile): float
+    public static function coefficient(array $segment, ?object $profile, string $mode = 'max'): float
     {
         $zoneFactor = match ($segment['zone']) {
             self::NIGHT_20_24 => (float) ($profile->night_20_24_coefficient ?? 1),
@@ -112,6 +114,10 @@ class TariffZones
             'sunday' => (float) ($profile->sunday_coefficient ?? 1),
             default => 1.0,
         };
+
+        if ($mode === 'sum') {
+            return round(1.0 + max(0.0, $zoneFactor - 1.0) + max(0.0, $dayFactor - 1.0), 3);
+        }
 
         return max(1.0, $zoneFactor, $dayFactor);
     }

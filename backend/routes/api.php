@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\AuditController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ClientController;
 use App\Http\Controllers\Api\V1\ObjectController;
+use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\TimesheetController;
 use App\Http\Controllers\Api\V1\DocumentController;
 use App\Http\Controllers\Api\V1\DocumentSignatureController;
@@ -221,8 +222,16 @@ Route::prefix('v1')->group(function () {
     Route::post('/work-event-approvals/{id}/reject', [WorkEventApprovalController::class, 'reject'])->middleware('role:manager,admin');
 
     Route::get('/invoices', [InvoiceController::class, 'index'])->middleware('role:manager,admin');
+    Route::get('/invoices/billable', [InvoiceController::class, 'billable'])->middleware('role:manager,admin');
     Route::post('/invoices', [InvoiceController::class, 'store'])->middleware('role:manager,admin');
-    Route::get('/invoices/{id}', [InvoiceController::class, 'show'])->middleware('role:manager,admin');
+    Route::get('/invoices/{id}', [InvoiceController::class, 'show'])->whereNumber('id')->middleware('role:manager,admin');
+    Route::put('/invoices/{id}', [InvoiceController::class, 'update'])->middleware('role:manager,admin');
+    Route::delete('/invoices/{id}', [InvoiceController::class, 'destroy'])->middleware('role:manager,admin');
+    Route::get('/invoices/{id}/pdf', [InvoiceController::class, 'pdf'])->middleware('role:manager,admin');
+    Route::post('/invoices/{id}/send', [InvoiceController::class, 'send'])->middleware('role:manager,admin');
+
+    Route::get('/settings/company', [SettingsController::class, 'company'])->middleware('role:manager,admin');
+    Route::put('/settings/company', [SettingsController::class, 'updateCompany'])->middleware('role:admin');
 
     Route::get('/documents', [DocumentController::class, 'index'])->middleware('role:manager,admin');
     Route::post('/documents', [DocumentController::class, 'store'])->middleware('role:manager,admin');
