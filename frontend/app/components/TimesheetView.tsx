@@ -266,7 +266,7 @@ export default function TimesheetView({ heading, intro }: { heading: string; int
                     );
                   })}
                 </tbody>
-                <tfoot>
+                {rows.length ? <tfoot>
                   <tr>
                     <td colSpan={4}>{t('tsTotalWork')}</td>
                     <td className="num">{fmt.number(hours(sheet.totals.work), 2)}</td>
@@ -276,7 +276,7 @@ export default function TimesheetView({ heading, intro }: { heading: string; int
                     <td className="num">{fmt.number(hours(sheet.totals.night_04_06), 2)}</td>
                     <td colSpan={2} />
                   </tr>
-                </tfoot>
+                </tfoot> : null}
               </table>
             </div>
             {!loading && !rows.length ? <p className="empty-state">{t('tsEmpty')}</p> : null}
