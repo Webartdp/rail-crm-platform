@@ -80,3 +80,25 @@ export const downloadInvoicePdf = (invoice: Pick<Invoice, 'id' | 'number'>) => a
 
 export const getCompanySettings = () => apiRequest<{ data: CompanySettings }>('/settings/company');
 export const saveCompanySettings = (input: CompanySettings) => apiRequest<{ data: CompanySettings; message: string }>('/settings/company', { method: 'PUT', body: input });
+
+export type MailSettings = {
+  mail_enabled: boolean;
+  mail_host: string;
+  mail_port: string | number;
+  mail_encryption: 'tls' | 'ssl' | string;
+  mail_username: string;
+  mail_password_set: boolean;
+  mail_from_address: string;
+  mail_from_name: string;
+  ready: boolean;
+  source: 'app' | 'env' | 'none';
+};
+
+export type MailSettingsInput = Omit<MailSettings, 'mail_password_set' | 'ready' | 'source'> & {
+  mail_password?: string;
+  mail_password_clear?: boolean;
+};
+
+export const getMailSettings = () => apiRequest<{ data: MailSettings }>('/settings/mail');
+export const saveMailSettings = (input: MailSettingsInput) => apiRequest<{ data: MailSettings; message: string }>('/settings/mail', { method: 'PUT', body: input });
+export const sendTestMail = (to: string) => apiRequest<{ message: string }>('/settings/mail/test', { body: { to } });

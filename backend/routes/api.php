@@ -232,6 +232,9 @@ Route::prefix('v1')->group(function () {
 
     Route::get('/settings/company', [SettingsController::class, 'company'])->middleware('role:manager,admin');
     Route::put('/settings/company', [SettingsController::class, 'updateCompany'])->middleware('role:admin');
+    Route::get('/settings/mail', [SettingsController::class, 'mail'])->middleware('role:admin');
+    Route::put('/settings/mail', [SettingsController::class, 'updateMail'])->middleware('role:admin');
+    Route::post('/settings/mail/test', [SettingsController::class, 'testMail'])->middleware(['role:admin', 'throttle:5,1']);
 
     Route::get('/documents', [DocumentController::class, 'index'])->middleware('role:manager,admin');
     Route::post('/documents', [DocumentController::class, 'store'])->middleware('role:manager,admin');

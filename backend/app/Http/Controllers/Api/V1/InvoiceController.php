@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Support\CurrentUser;
 use App\Support\InvoicePdf;
+use App\Support\MailSettings;
 use App\Support\Settings;
 use App\Support\TimeLedger;
 use Illuminate\Http\JsonResponse;
@@ -239,7 +240,7 @@ class InvoiceController extends Controller
             'message' => ['nullable', 'string', 'max:5000'],
         ]);
 
-        if (in_array(config('mail.default'), ['log', 'array', null], true)) {
+        if (!MailSettings::ready()) {
             return response()->json(['message' => __('E-mail sending is not configured on the server. Download the PDF and send it yourself.')], 422);
         }
 

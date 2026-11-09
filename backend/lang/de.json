@@ -116,5 +116,10 @@
   "No text was recognised in this file.": "In dieser Datei wurde kein Text erkannt.",
   "Text recognised.": "Text erkannt.",
   "The offline time of this action is not plausible.": "Die offline erfasste Zeit dieser Aktion ist nicht plausibel.",
-  "Text recognition has started. The result will appear in about a minute.": "Die Texterkennung wurde gestartet. Das Ergebnis erscheint in etwa einer Minute."
+  "Text recognition has started. The result will appear in about a minute.": "Die Texterkennung wurde gestartet. Das Ergebnis erscheint in etwa einer Minute.",
+  "E-mail settings saved.": "E-Mail-Einstellungen gespeichert.",
+  "E-mail is not set up yet. Save the SMTP settings and switch sending on.": "E-Mail ist noch nicht eingerichtet. Speichern Sie die SMTP-Daten und aktivieren Sie den Versand.",
+  "This is a test message from Rail CRM. E-mail sending works.": "Dies ist eine Testnachricht von Rail CRM. Der E-Mail-Versand funktioniert.",
+  "Rail CRM test e-mail": "Rail CRM Test-E-Mail",
+  "Test e-mail sent to :email. Check the inbox (and the spam folder).": "Test-E-Mail an :email gesendet. Bitte Posteingang (und Spam-Ordner) prüfen."
 }

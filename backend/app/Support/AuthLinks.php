@@ -64,7 +64,7 @@ class AuthLinks
         $subject = __($type === self::INVITE ? 'Invitation to Rail CRM' : 'Reset your Rail CRM password', [], $locale);
         $body = __($type === self::INVITE ? 'mail.invite' : 'mail.reset', ['name' => $user->name, 'url' => $url], $locale);
 
-        if (in_array(config('mail.default'), ['log', 'array', null], true)) {
+        if (!MailSettings::ready()) {
             Log::info('Auth link mail not sent (mailer is not configured)', ['user_id' => $user->id, 'type' => $type]);
 
             return false;

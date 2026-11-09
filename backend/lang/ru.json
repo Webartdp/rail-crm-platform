@@ -116,5 +116,10 @@
   "No text was recognised in this file.": "В этом файле текст не найден.",
   "Text recognised.": "Текст распознан.",
   "The offline time of this action is not plausible.": "Время, записанное без сети, неправдоподобно.",
-  "Text recognition has started. The result will appear in about a minute.": "Распознавание текста запущено. Результат появится примерно через минуту."
+  "Text recognition has started. The result will appear in about a minute.": "Распознавание текста запущено. Результат появится примерно через минуту.",
+  "E-mail settings saved.": "Настройки почты сохранены.",
+  "E-mail is not set up yet. Save the SMTP settings and switch sending on.": "Почта ещё не настроена. Сохраните данные SMTP и включите отправку.",
+  "This is a test message from Rail CRM. E-mail sending works.": "Это тестовое письмо от Rail CRM. Отправка почты работает.",
+  "Rail CRM test e-mail": "Тестовое письмо Rail CRM",
+  "Test e-mail sent to :email. Check the inbox (and the spam folder).": "Тестовое письмо отправлено на :email. Проверьте входящие (и папку «Спам»)."
 }

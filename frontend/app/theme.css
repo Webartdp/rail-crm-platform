@@ -500,3 +500,10 @@ body.auth-body { background: var(--ink); }
 
 .ts-table td:nth-child(2) { min-width: 220px; }
 .data-table .row-actions { flex-wrap: nowrap; }
+
+/* Mail settings */
+.choice input[type='checkbox'] { width: 18px; height: 18px; accent-color: var(--ink); flex: none; }
+.link-button { background: none; border: 0; padding: 0; color: var(--ink); font: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.link-button:hover { color: var(--brass); }
+.mail-test-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px; }
+.mail-test-row input { flex: 1 1 240px; max-width: 360px; }
