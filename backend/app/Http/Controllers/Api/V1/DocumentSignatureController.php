@@ -14,7 +14,7 @@ class DocumentSignatureController extends Controller
     {
         $document = DB::table('documents')->where('id', $documentId)->first();
         if (!$document) {
-            return response()->json(['message' => 'Document not found.'], 404);
+            return response()->json(['message' => __('Document not found.')], 404);
         }
 
         return response()->json([
@@ -29,17 +29,17 @@ class DocumentSignatureController extends Controller
     {
         $user = CurrentUser::fromRequest($request);
         if (!CurrentUser::hasRole($user, ['manager', 'admin'])) {
-            return response()->json(['message' => 'Only manager or admin can request document signatures.'], 403);
+            return response()->json(['message' => __('Only manager or admin can request document signatures.')], 403);
         }
 
         $document = DB::table('documents')->where('id', $documentId)->first();
         if (!$document) {
-            return response()->json(['message' => 'Document not found.'], 404);
+            return response()->json(['message' => __('Document not found.')], 404);
         }
 
         $signerName = trim((string) $request->input('signer_name', ''));
         if ($signerName === '') {
-            return response()->json(['message' => 'Signer name is required.'], 422);
+            return response()->json(['message' => __('Signer name is required.')], 422);
         }
 
         $signatureType = $this->signatureType($request->input('signature_type', 'typed'));
@@ -64,7 +64,7 @@ class DocumentSignatureController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Document signature requested.',
+            'message' => __('Document signature requested.'),
             'data' => DB::table('document_signatures')->where('id', $id)->first(),
         ], 201);
     }
@@ -73,21 +73,21 @@ class DocumentSignatureController extends Controller
     {
         $user = CurrentUser::fromRequest($request);
         if (!$user) {
-            return response()->json(['message' => 'Authenticated user is required to sign documents.'], 401);
+            return response()->json(['message' => __('Authenticated user is required to sign documents.')], 401);
         }
 
         $signature = $this->signature($documentId, $signatureId);
         if (!$signature) {
-            return response()->json(['message' => 'Signature request not found.'], 404);
+            return response()->json(['message' => __('Signature request not found.')], 404);
         }
 
         if ($signature->status !== 'pending') {
-            return response()->json(['message' => 'Only pending signature requests can be signed.'], 409);
+            return response()->json(['message' => __('Only pending signature requests can be signed.')], 409);
         }
 
         $signatureData = trim((string) $request->input('signature_data', ''));
         if ($signatureData === '') {
-            return response()->json(['message' => 'Signature data is required.'], 422);
+            return response()->json(['message' => __('Signature data is required.')], 422);
         }
 
         $signatureType = $this->signatureType($request->input('signature_type', $signature->signature_type));
@@ -114,7 +114,7 @@ class DocumentSignatureController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Document signed.',
+            'message' => __('Document signed.'),
             'data' => DB::table('document_signatures')->where('id', $signatureId)->first(),
         ]);
     }
@@ -123,16 +123,16 @@ class DocumentSignatureController extends Controller
     {
         $user = CurrentUser::fromRequest($request);
         if (!$user) {
-            return response()->json(['message' => 'Authenticated user is required to reject signatures.'], 401);
+            return response()->json(['message' => __('Authenticated user is required to reject signatures.')], 401);
         }
 
         $signature = $this->signature($documentId, $signatureId);
         if (!$signature) {
-            return response()->json(['message' => 'Signature request not found.'], 404);
+            return response()->json(['message' => __('Signature request not found.')], 404);
         }
 
         if ($signature->status !== 'pending') {
-            return response()->json(['message' => 'Only pending signature requests can be rejected.'], 409);
+            return response()->json(['message' => __('Only pending signature requests can be rejected.')], 409);
         }
 
         $now = now();
@@ -147,7 +147,7 @@ class DocumentSignatureController extends Controller
         $this->audit($user->id, 'document_signature_rejected', $documentId, ['signature_id' => $signatureId]);
 
         return response()->json([
-            'message' => 'Document signature rejected.',
+            'message' => __('Document signature rejected.'),
             'data' => DB::table('document_signatures')->where('id', $signatureId)->first(),
         ]);
     }

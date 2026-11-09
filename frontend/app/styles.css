@@ -2290,3 +2290,43 @@ textarea { min-height: 96px; resize: vertical; }
 
 /* WORKDAY FILTER BEAUTY END */
 
+
+/* ---- Shared UI added with i18n / users (2026-11) ---- */
+.notice { margin: 0 0 18px; padding: 12px 16px; border-radius: 14px; border: 1px solid var(--line); font-weight: 700; line-height: 1.4; }
+.notice.success { border-color: #a6f4c5; background: #ecfdf3; color: var(--success); }
+.notice.error { border-color: #fecaca; background: #fff1f2; color: var(--danger); }
+.compact-button { width: auto; padding: 12px 18px; white-space: nowrap; }
+.checkbox-label { flex-direction: row; align-items: center; gap: 10px; font-weight: 600; }
+.checkbox-label input { width: auto; }
+.search-input { max-width: 320px; }
+.link-box { margin-bottom: 24px; border-color: #93c5fd; background: #eff6ff; }
+.link-box-row { display: flex; gap: 12px; }
+.link-box-row input { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
+.data-table-scroll { width: 100%; overflow-x: auto; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.data-table th { text-align: left; padding: 10px 12px; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.data-table td { padding: 12px; border-bottom: 1px solid #eaecf0; vertical-align: middle; }
+.data-table td select { min-width: 150px; padding: 8px 10px; border-radius: 10px; }
+.data-table tr:hover td { background: #f9fafb; }
+.data-table .num { text-align: right; white-space: nowrap; }
+.row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.small-button { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; background: #fff; color: var(--text); font-weight: 700; cursor: pointer; white-space: nowrap; }
+.small-button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.small-button.danger { color: var(--danger); }
+.small-button.danger:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
+.small-button:disabled { opacity: .5; cursor: not-allowed; }
+.dialog-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 16px; background: rgba(15, 23, 42, .55); }
+.dialog-card { width: min(460px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; padding: 24px; border-radius: 20px; background: #fff; color: var(--text); box-shadow: 0 30px 80px rgba(15, 23, 42, .35); }
+.dialog-form { display: grid; gap: 14px; }
+.dialog-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.auth-language { margin-bottom: 18px; background: #f2f4f7; }
+.auth-language span { color: var(--muted); }
+.auth-language button { color: var(--text); border-color: var(--line); background: #fff; }
+.auth-language button:hover { color: var(--accent); background: #fff; }
+.auth-hint { margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.4; }
+.auth-bottom a.auth-mode-button { display: inline-block; text-align: center; }
+@media (max-width: 760px) {
+  .link-box-row { flex-direction: column; }
+  .search-input { max-width: none; }
+  .dialog-actions { grid-template-columns: 1fr; }
+}

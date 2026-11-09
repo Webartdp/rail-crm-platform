@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\DocumentSignatureController;
 use App\Http\Controllers\Api\V1\EmployeeFieldStateController;
 use App\Http\Controllers\Api\V1\EmployeeProfileController;
 use App\Http\Controllers\Api\V1\InvoiceController;
+use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\ManagerDashboardController;
 use App\Http\Controllers\Api\V1\WorkEventApprovalController;
 use App\Http\Controllers\Api\V1\WorkEventController;
@@ -18,10 +19,23 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
-    Route::post('/auth/register', [AuthController::class, 'register']);
+    // Public auth. Self-registration is closed: only an admin creates accounts.
     Route::post('/auth/login', [AuthController::class, 'login']);
+    Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::get('/auth/link', [AuthController::class, 'linkInfo']);
+    Route::post('/auth/set-password', [AuthController::class, 'setPassword']);
+
     Route::get('/auth/me', [AuthController::class, 'me'])->middleware('role:employee,manager,admin');
     Route::post('/auth/logout', [AuthController::class, 'logout'])->middleware('role:employee,manager,admin');
+    Route::post('/auth/change-password', [AuthController::class, 'changePassword'])->middleware('role:employee,manager,admin');
+    Route::put('/auth/locale', [AuthController::class, 'updateLocale'])->middleware('role:employee,manager,admin');
+    Route::post('/auth/register', [AuthController::class, 'register'])->middleware('role:admin');
+
+    Route::get('/users', [UserController::class, 'index'])->middleware('role:admin');
+    Route::post('/users', [UserController::class, 'store'])->middleware('role:admin');
+    Route::put('/users/{id}', [UserController::class, 'update'])->middleware('role:admin');
+    Route::post('/users/{id}/invite', [UserController::class, 'invite'])->middleware('role:admin');
+    Route::post('/users/{id}/reset-link', [UserController::class, 'resetLink'])->middleware('role:admin');
 
     Route::get('/dashboard/manager', ManagerDashboardController::class)->middleware('role:manager,admin');
 
@@ -45,7 +59,7 @@ Route::prefix('v1')->group(function () {
             'employee_id' => $employeeId,
             'deleted' => $deleted,
         ]);
-    });
+    })->middleware('role:admin');
 
     Route::post('/dev/field-demo-seed', function (Request $request) use ($allowDemoTools) {
         abort_unless($allowDemoTools($request), 404);
@@ -171,7 +185,7 @@ Route::prefix('v1')->group(function () {
                 ->orderBy('planned_start_at')
                 ->get(),
         ]);
-    });
+    })->middleware('role:admin');
 
     Route::get('/employee-profiles', [EmployeeProfileController::class, 'index'])->middleware('role:manager,admin');
     Route::post('/employee-profiles', [EmployeeProfileController::class, 'store'])->middleware('role:admin');

@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { AUTH_CHANGED_EVENT, me, logout, type AuthUser } from '../../lib/auth';
-import { useI18n } from '../i18n';
+import { AUTH_CHANGED_EVENT, me, logout, saveUserLocale, type AuthUser } from '../../lib/auth';
+import ChangePasswordDialog from './ChangePasswordDialog';
+import { LanguageSwitcher, useI18n } from '../i18n';
 type NavItem = {
   href: string;
   labelKey: string;
@@ -66,7 +67,8 @@ function isAuthPage(pathname: string) {
 
 export default function MainNav() {
   const pathname = usePathname();
-  const { locale, setLocale, t } = useI18n();
+  const { locale, t, fmt } = useI18n();
+  const [passwordOpen, setPasswordOpen] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const hideNav = isAuthPage(pathname) || (!loadingUser && !user);
@@ -120,6 +122,13 @@ export default function MainNav() {
     };
   }, [pathname]);
 
+  useEffect(() => {
+    if (user && user.locale !== locale) {
+      saveUserLocale(locale);
+      setUser({ ...user, locale });
+    }
+  }, [locale, user]);
+
   async function signOut() {
     await logout();
     setUser(null);
@@ -130,14 +139,8 @@ export default function MainNav() {
     return null;
   }
 
-  const roleLabel: Record<string, string> = {
-    employee: t('employeeRole'),
-    manager: t('managerRole'),
-    admin: t('adminRole'),
-  };
-
   return (
-    <aside className="main-nav" aria-label="CRM navigation">
+    <aside className="main-nav" aria-label={t('navAria')}>
       <a className="nav-brand" href="/">
         <span className="nav-logo">CRM</span>
         <span>
@@ -167,19 +170,15 @@ export default function MainNav() {
       </nav>
 
       <div className="nav-footer">
-        <div className="language-switcher" aria-label={t('language')}>
-          <span>{t('language')}</span>
-          <div>
-            <button className={locale === 'ru' ? 'active' : ''} onClick={() => setLocale('ru')} type="button">RU</button>
-            <button className={locale === 'de' ? 'active' : ''} onClick={() => setLocale('de')} type="button">DE</button>
-          </div>
-        </div>
+        <LanguageSwitcher />
 
         <div className="nav-user">
           <span>{user.name || user.email}</span>
-          <small>{roleLabel[user.role] || user.role}</small>
+          <small>{fmt.role(user.role)}</small>
         </div>
+        <button className="nav-button nav-button-light" onClick={() => setPasswordOpen(true)} type="button">{t('changePasswordTitle')}</button>
         <button className="nav-button" onClick={signOut} type="button">{t('logout')}</button>
+        {passwordOpen ? <ChangePasswordDialog onClose={() => setPasswordOpen(false)} /> : null}
       </div>
     </aside>
   );

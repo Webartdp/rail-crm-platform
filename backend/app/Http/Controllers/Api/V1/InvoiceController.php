@@ -28,7 +28,7 @@ class InvoiceController extends Controller
         $invoice = DB::table('invoices')->where('id', $id)->first();
 
         if (!$invoice) {
-            return response()->json(['message' => 'Invoice not found.'], 404);
+            return response()->json(['message' => __('Invoice not found.')], 404);
         }
 
         return response()->json([
@@ -41,13 +41,13 @@ class InvoiceController extends Controller
     {
         $user = CurrentUser::fromRequest($request);
         if (!CurrentUser::hasRole($user, ['manager', 'admin'])) {
-            return response()->json(['message' => 'Only manager or admin can create invoice drafts.'], 403);
+            return response()->json(['message' => __('Only manager or admin can create invoice drafts.')], 403);
         }
 
         $items = $this->approvedCostItems();
 
         if ($items === []) {
-            return response()->json(['message' => 'No approved cost items to invoice.'], 422);
+            return response()->json(['message' => __('No approved cost items to invoice.')], 422);
         }
 
         $now = now();
@@ -89,7 +89,7 @@ class InvoiceController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Invoice draft created.',
+            'message' => __('Invoice draft created.'),
             'data' => DB::table('invoices')->where('id', $invoiceId)->first(),
             'items' => DB::table('invoice_items')->where('invoice_id', $invoiceId)->get(),
         ], 201);

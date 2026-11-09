@@ -39,13 +39,13 @@ class WorkEventApprovalController extends Controller
     {
         $user = CurrentUser::fromRequest($request);
         if (!CurrentUser::hasRole($user, ['manager', 'admin'])) {
-            return response()->json(['message' => 'Only manager or admin can approve work event pairs.'], 403);
+            return response()->json(['message' => __('Only manager or admin can approve work event pairs.')], 403);
         }
 
         $approval = DB::table('work_event_approvals')->where('id', $id)->first();
 
         if (!$approval) {
-            return response()->json(['message' => 'Approval not found.'], 404);
+            return response()->json(['message' => __('Approval not found.')], 404);
         }
 
         $now = now();
@@ -71,7 +71,7 @@ class WorkEventApprovalController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Work event pair '.$status.'.',
+            'message' => $status === 'approved' ? __('Work event pair approved.') : __('Work event pair rejected.'),
             'data' => DB::table('work_event_approvals')->where('id', $id)->first(),
         ]);
     }

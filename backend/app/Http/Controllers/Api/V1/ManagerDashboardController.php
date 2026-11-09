@@ -14,7 +14,7 @@ class ManagerDashboardController extends Controller
     {
         $user = CurrentUser::fromRequest($request);
         if (!CurrentUser::hasRole($user, ['manager', 'admin'])) {
-            return response()->json(['message' => 'Only manager or admin can view manager dashboard.'], 403);
+            return response()->json(['message' => __('Only manager or admin can view manager dashboard.')], 403);
         }
 
         $pendingApprovalsQuery = DB::table('work_event_approvals')->where('status', 'pending');

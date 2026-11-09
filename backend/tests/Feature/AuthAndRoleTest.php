@@ -11,27 +11,55 @@ class AuthAndRoleTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_register_returns_sanctum_token_and_current_user(): void
+    public function test_public_registration_is_closed(): void
     {
-        $response = $this->postJson('/api/v1/auth/register', [
-            'name' => 'Admin User',
-            'email' => 'admin@example.com',
-            'password' => 'password',
+        $this->postJson('/api/v1/auth/register', [
+            'name' => 'Intruder',
+            'email' => 'intruder@example.com',
+            'password' => 'Password123',
             'role' => 'admin',
-            'employee_profile_id' => 1,
-        ]);
+        ])->assertUnauthorized();
 
-        $response->assertCreated()
-            ->assertJsonPath('token_type', 'sanctum')
-            ->assertJsonPath('data.email', 'admin@example.com')
-            ->assertJsonPath('data.role', 'admin');
+        $this->assertDatabaseMissing('app_users', ['email' => 'intruder@example.com']);
+    }
 
-        $token = $response->json('token');
+    public function test_admin_can_register_user_and_user_can_log_in(): void
+    {
+        $adminToken = $this->tokenForRole('admin');
+
+        $this->withHeader('Authorization', 'Bearer '.$adminToken)
+            ->postJson('/api/v1/auth/register', [
+                'name' => 'New Manager',
+                'email' => 'new.manager@example.com',
+                'password' => 'Password123',
+                'role' => 'manager',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.role', 'manager');
+
+        $this->flushHeaders();
+        $token = $this->postJson('/api/v1/auth/login', [
+            'email' => 'new.manager@example.com',
+            'password' => 'Password123',
+        ])->assertOk()->json('token');
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/v1/auth/me')
             ->assertOk()
-            ->assertJsonPath('data.email', 'admin@example.com');
+            ->assertJsonPath('data.email', 'new.manager@example.com');
+    }
+
+    public function test_manager_cannot_register_users(): void
+    {
+        $token = $this->tokenForRole('manager');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/v1/auth/register', [
+                'email' => 'x@example.com',
+                'password' => 'Password123',
+                'role' => 'admin',
+            ])
+            ->assertForbidden();
     }
 
     public function test_logout_deletes_sanctum_token(): void

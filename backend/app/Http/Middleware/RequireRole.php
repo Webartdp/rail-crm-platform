@@ -26,12 +26,12 @@ class RequireRole
         $user = CurrentUser::fromRequest($request);
 
         if (!$user) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+            return response()->json(['message' => __('Unauthenticated.')], 401);
         }
 
         if (!CurrentUser::hasRole($user, $roles)) {
             return response()->json([
-                'message' => 'Forbidden.',
+                'message' => __('Forbidden.'),
                 'required_roles' => $roles,
                 'current_role' => $user->role,
             ], 403);

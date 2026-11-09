@@ -2,13 +2,8 @@
 
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
-import { login, register } from '../../lib/auth';
-import { useI18n } from '../i18n';
-const roleKeys: Record<string, string> = {
-  employee: 'roleEmployee',
-  manager: 'roleManager',
-  admin: 'roleAdmin',
-};
+import { forgotPassword, login } from '../../lib/auth';
+import { LanguageSwitcher, useI18n } from '../i18n';
 
 function homeForRole(role: string) {
   if (role === 'admin') return '/admin/';
@@ -16,14 +11,16 @@ function homeForRole(role: string) {
   return '/employee/';
 }
 
+type Mode = 'login' | 'forgot';
+type Tone = 'neutral' | 'error' | 'success';
+
 export default function LoginPage() {
-  const { t } = useI18n();
-  const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [name, setName] = useState('Admin User');
-  const [email, setEmail] = useState('admin@example.com');
-  const [password, setPassword] = useState('Admin12345!');
-  const [role, setRole] = useState('admin');
-  const [message, setMessage] = useState(t('loginReady'));
+  const { t, fmt } = useI18n();
+  const [mode, setMode] = useState<Mode>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [message, setMessage] = useState('');
+  const [tone, setTone] = useState<Tone>('neutral');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -34,25 +31,44 @@ export default function LoginPage() {
     };
   }, []);
 
+  function switchMode(next: Mode) {
+    setMode(next);
+    setMessage('');
+    setTone('neutral');
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (saving) return;
 
     setSaving(true);
-    setMessage(mode === 'login' ? t('loginChecking') : t('loginCreating'));
+    setTone('neutral');
+
+    if (mode === 'forgot') {
+      setMessage(t('loginSendingLink'));
+      try {
+        const response = await forgotPassword(email);
+        setMessage(response.message);
+        setTone('success');
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : t('commonUnknownError'));
+        setTone('error');
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
+    setMessage(t('loginChecking'));
 
     try {
-      const response = mode === 'login'
-        ? await login(email, password)
-        : await register({ name, email, password, role });
-
-      const target = homeForRole(response.data.role);
-      setMessage(t('loginLoggedAs', { name: response.data.name, role: t(roleKeys[response.data.role] || response.data.role), open: t('loginOpening') }));
-
-      window.location.href = target;
+      const response = await login(email, password);
+      setMessage(t('loginLoggedAs', { name: response.data.name, role: fmt.role(response.data.role), open: t('loginOpening') }));
+      setTone('success');
+      window.location.href = homeForRole(response.data.role);
     } catch (error) {
-      const fallback = mode === 'login' ? t('loginFailed') : t('loginRegisterFailed');
-      setMessage(error instanceof Error && error.message ? `${fallback} ${error.message}` : fallback);
+      setMessage(error instanceof Error && error.message ? error.message : t('loginFailed'));
+      setTone('error');
       setSaving(false);
     }
   }
@@ -60,52 +76,54 @@ export default function LoginPage() {
   return (
     <main className="auth-page">
       <section className="auth-card" style={{ width: 'min(520px, 100%)' }}>
+        <LanguageSwitcher className="auth-language" />
+
         <div className="auth-card-head">
           <p className="eyebrow">{t('loginSecureAccess')}</p>
-          <h2>{mode === 'login' ? t('loginTitle') : t('loginRegisterTitle')}</h2>
-          <p>{mode === 'login' ? t('loginSubtitle') : t('loginRegisterSubtitle')}</p>
+          <h2>{mode === 'login' ? t('loginTitle') : t('loginForgotTitle')}</h2>
+          <p>{mode === 'login' ? t('loginSubtitle') : t('loginForgotSubtitle')}</p>
         </div>
 
         <form className="auth-form" onSubmit={submit}>
-          {mode === 'register' ? (
-            <label className="auth-field">
-              <span>{t('loginName')}</span>
-              <input value={name} onChange={(event) => setName(event.target.value)} placeholder={t('loginNamePlaceholder')} />
-            </label>
-          ) : null}
-
           <label className="auth-field">
-            <span>Email</span>
-            <input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" autoComplete="email" />
+            <span>{t('commonEmail')}</span>
+            <input
+              autoComplete="email"
+              inputMode="email"
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="name@firma.de"
+              required
+              type="email"
+              value={email}
+            />
           </label>
 
-          <label className="auth-field">
-            <span>{t('loginPassword')}</span>
-            <input value={password} onChange={(event) => setPassword(event.target.value)} placeholder={t('loginPasswordPlaceholder')} type="password" autoComplete="current-password" />
-          </label>
-
-          {mode === 'register' ? (
+          {mode === 'login' ? (
             <label className="auth-field">
-              <span>{t('loginRole')}</span>
-              <select value={role} onChange={(event) => setRole(event.target.value)}>
-                <option value="employee">{t('roleEmployee')}</option>
-                <option value="manager">{t('roleManager')}</option>
-                <option value="admin">{t('roleAdmin')}</option>
-              </select>
+              <span>{t('loginPassword')}</span>
+              <input
+                autoComplete="current-password"
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder={t('loginPasswordPlaceholder')}
+                required
+                type="password"
+                value={password}
+              />
             </label>
           ) : null}
 
           <button className="auth-submit" type="submit" disabled={saving}>
-            <span>{saving ? t('loginPleaseWait') : mode === 'login' ? t('loginButton') : t('loginCreateUserButton')}</span>
+            <span>{saving ? t('loginPleaseWait') : mode === 'login' ? t('loginButton') : t('loginSendLink')}</span>
             <small>→</small>
           </button>
         </form>
 
         <div className="auth-bottom">
-          <button className="auth-mode-button" onClick={() => setMode(mode === 'login' ? 'register' : 'login')} type="button" disabled={saving}>
-            {mode === 'login' ? t('loginCreateAccount') : t('loginBackToLogin')}
+          <button className="auth-mode-button" onClick={() => switchMode(mode === 'login' ? 'forgot' : 'login')} type="button" disabled={saving}>
+            {mode === 'login' ? t('loginForgotLink') : t('loginBackToLogin')}
           </button>
-          <p className={`auth-message ${message.includes(t('loginFailed')) || message.includes(t('loginRegisterFailed')) ? 'error' : ''}`}>{message}</p>
+          {message ? <p className={`auth-message ${tone === 'error' ? 'error' : ''}`} role={tone === 'error' ? 'alert' : 'status'}>{message}</p> : null}
+          {mode === 'login' ? <p className="auth-hint">{t('loginNoAccountHint')}</p> : null}
         </div>
       </section>
     </main>

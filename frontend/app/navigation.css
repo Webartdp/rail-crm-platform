@@ -324,3 +324,6 @@ body.auth-body .main-nav {
     display: flex;
   }
 }
+
+.nav-button.nav-button-light { color: #e2e8f0; background: rgba(255, 255, 255, .08); }
+.nav-button.nav-button-light:hover { background: rgba(255, 255, 255, .14); }

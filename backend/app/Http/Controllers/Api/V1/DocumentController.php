@@ -24,7 +24,7 @@ class DocumentController extends Controller
         $document = DB::table('documents')->where('id', $id)->first();
 
         if (!$document) {
-            return response()->json(['message' => 'Document not found.'], 404);
+            return response()->json(['message' => __('Document not found.')], 404);
         }
 
         return response()->json(['data' => $document]);
@@ -34,14 +34,14 @@ class DocumentController extends Controller
     {
         $user = CurrentUser::fromRequest($request);
         if (!CurrentUser::hasRole($user, ['manager', 'admin'])) {
-            return response()->json(['message' => 'Only manager or admin can create documents.'], 403);
+            return response()->json(['message' => __('Only manager or admin can create documents.')], 403);
         }
 
         $title = trim((string) $request->input('title', ''));
 
         if ($title === '') {
             return response()->json([
-                'message' => 'Document title is required.',
+                'message' => __('Document title is required.'),
                 'errors' => ['title' => ['Title is required.']],
             ], 422);
         }
@@ -88,18 +88,18 @@ class DocumentController extends Controller
     {
         $user = CurrentUser::fromRequest($request);
         if (!CurrentUser::hasRole($user, ['manager', 'admin'])) {
-            return response()->json(['message' => 'Only manager or admin can download documents.'], 403);
+            return response()->json(['message' => __('Only manager or admin can download documents.')], 403);
         }
 
         $document = DB::table('documents')->where('id', $id)->first();
 
         if (!$document || !$document->file_path) {
-            return response()->json(['message' => 'Document file not found.'], 404);
+            return response()->json(['message' => __('Document file not found.')], 404);
         }
 
         $path = storage_path('app/'.$document->file_path);
         if (!is_file($path)) {
-            return response()->json(['message' => 'Stored file is missing.'], 404);
+            return response()->json(['message' => __('Stored file is missing.')], 404);
         }
 
         return response()->download($path, $document->original_filename ?: basename($path));
@@ -109,12 +109,12 @@ class DocumentController extends Controller
     {
         $user = CurrentUser::fromRequest($request);
         if (!CurrentUser::hasRole($user, ['manager', 'admin'])) {
-            return response()->json(['message' => 'Only manager or admin can print documents.'], 403);
+            return response()->json(['message' => __('Only manager or admin can print documents.')], 403);
         }
 
         $document = DB::table('documents')->where('id', $id)->first();
         if (!$document) {
-            return response()->json(['message' => 'Document not found.'], 404);
+            return response()->json(['message' => __('Document not found.')], 404);
         }
 
         $workOrder = $document->work_order_id
@@ -146,12 +146,12 @@ class DocumentController extends Controller
     {
         $user = CurrentUser::fromRequest($request);
         if (!CurrentUser::hasRole($user, ['manager', 'admin'])) {
-            return response()->json(['message' => 'Only manager or admin can start OCR.'], 403);
+            return response()->json(['message' => __('Only manager or admin can start OCR.')], 403);
         }
 
         $document = DB::table('documents')->where('id', $id)->first();
         if (!$document) {
-            return response()->json(['message' => 'Document not found.'], 404);
+            return response()->json(['message' => __('Document not found.')], 404);
         }
 
         $now = now();
@@ -163,7 +163,7 @@ class DocumentController extends Controller
         $this->audit($user->id, 'document_ocr_pending', $id, ['document_id' => $id]);
 
         return response()->json([
-            'message' => 'Document OCR marked as pending.',
+            'message' => __('Document OCR marked as pending.'),
             'data' => DB::table('documents')->where('id', $id)->first(),
         ]);
     }
@@ -172,17 +172,17 @@ class DocumentController extends Controller
     {
         $user = CurrentUser::fromRequest($request);
         if (!CurrentUser::hasRole($user, ['manager', 'admin'])) {
-            return response()->json(['message' => 'Only manager or admin can save OCR text.'], 403);
+            return response()->json(['message' => __('Only manager or admin can save OCR text.')], 403);
         }
 
         $document = DB::table('documents')->where('id', $id)->first();
         if (!$document) {
-            return response()->json(['message' => 'Document not found.'], 404);
+            return response()->json(['message' => __('Document not found.')], 404);
         }
 
         $text = trim((string) $request->input('extracted_text', ''));
         if ($text === '') {
-            return response()->json(['message' => 'Extracted text is required.'], 422);
+            return response()->json(['message' => __('Extracted text is required.')], 422);
         }
 
         $now = now();
@@ -196,7 +196,7 @@ class DocumentController extends Controller
         $this->audit($user->id, 'document_ocr_saved', $id, ['document_id' => $id]);
 
         return response()->json([
-            'message' => 'Document OCR text saved.',
+            'message' => __('Document OCR text saved.'),
             'data' => DB::table('documents')->where('id', $id)->first(),
         ]);
     }
@@ -209,17 +209,17 @@ class DocumentController extends Controller
 
         $file = $request->file('file');
         if (!$file->isValid()) {
-            return response()->json(['message' => 'Uploaded file is invalid.'], 422);
+            return response()->json(['message' => __('Uploaded file is invalid.')], 422);
         }
 
         $allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
         $mime = (string) $file->getMimeType();
         if (!in_array($mime, $allowed, true)) {
-            return response()->json(['message' => 'Only PDF, JPG, PNG and WebP files are allowed.'], 422);
+            return response()->json(['message' => __('Only PDF, JPG, PNG and WebP files are allowed.')], 422);
         }
 
         if ($file->getSize() > 10 * 1024 * 1024) {
-            return response()->json(['message' => 'Document file must be smaller than 10 MB.'], 422);
+            return response()->json(['message' => __('Document file must be smaller than 10 MB.')], 422);
         }
 
         $directory = storage_path('app/documents');

@@ -26,13 +26,13 @@ class WorkOrderController extends Controller
         $user = CurrentUser::fromRequest($request);
 
         if (!CurrentUser::hasRole($user, ['manager', 'admin'])) {
-            return response()->json(['message' => 'Only manager or admin can view work order details.'], 403);
+            return response()->json(['message' => __('Only manager or admin can view work order details.')], 403);
         }
 
         $workOrder = DB::table('work_orders')->where('id', $id)->first();
 
         if (!$workOrder) {
-            return response()->json(['message' => 'Work order not found.'], 404);
+            return response()->json(['message' => __('Work order not found.')], 404);
         }
 
         return response()->json(['data' => $workOrder]);
@@ -43,14 +43,14 @@ class WorkOrderController extends Controller
         $user = CurrentUser::fromRequest($request);
 
         if (!CurrentUser::hasRole($user, ['manager', 'admin'])) {
-            return response()->json(['message' => 'Only manager or admin can create work orders.'], 403);
+            return response()->json(['message' => __('Only manager or admin can create work orders.')], 403);
         }
 
         $title = trim((string) $request->input('title', ''));
 
         if ($title === '') {
             return response()->json([
-                'message' => 'Work order title is required.',
+                'message' => __('Work order title is required.'),
                 'errors' => ['title' => ['Title is required.']],
             ], 422);
         }
@@ -83,7 +83,7 @@ class WorkOrderController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Work order created.',
+            'message' => __('Work order created.'),
             'data' => DB::table('work_orders')->where('id', $id)->first(),
         ], 201);
     }
@@ -93,20 +93,20 @@ class WorkOrderController extends Controller
         $user = CurrentUser::fromRequest($request);
 
         if (!CurrentUser::hasRole($user, ['manager', 'admin'])) {
-            return response()->json(['message' => 'Only manager or admin can update work orders.'], 403);
+            return response()->json(['message' => __('Only manager or admin can update work orders.')], 403);
         }
 
         $workOrder = DB::table('work_orders')->where('id', $id)->first();
 
         if (!$workOrder) {
-            return response()->json(['message' => 'Work order not found.'], 404);
+            return response()->json(['message' => __('Work order not found.')], 404);
         }
 
         $title = trim((string) $request->input('title', ''));
 
         if ($title === '') {
             return response()->json([
-                'message' => 'Work order title is required.',
+                'message' => __('Work order title is required.'),
                 'errors' => ['title' => ['Title is required.']],
             ], 422);
         }
@@ -139,7 +139,7 @@ class WorkOrderController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Work order updated.',
+            'message' => __('Work order updated.'),
             'data' => DB::table('work_orders')->where('id', $id)->first(),
         ]);
     }
@@ -150,13 +150,13 @@ class WorkOrderController extends Controller
         $user = CurrentUser::fromRequest($request);
 
         if (!CurrentUser::hasRole($user, ['manager', 'admin'])) {
-            return response()->json(['message' => 'Only manager or admin can delete work orders.'], 403);
+            return response()->json(['message' => __('Only manager or admin can delete work orders.')], 403);
         }
 
         $workOrder = DB::table('work_orders')->where('id', $id)->first();
 
         if (!$workOrder) {
-            return response()->json(['message' => 'Work order not found.'], 404);
+            return response()->json(['message' => __('Work order not found.')], 404);
         }
 
         $now = now();
@@ -209,7 +209,7 @@ class WorkOrderController extends Controller
         });
 
         return response()->json([
-            'message' => 'Work order deleted.',
+            'message' => __('Work order deleted.'),
         ]);
     }
 
@@ -218,18 +218,18 @@ class WorkOrderController extends Controller
         $user = CurrentUser::fromRequest($request);
 
         if (!CurrentUser::hasRole($user, ['manager', 'admin'])) {
-            return response()->json(['message' => 'Only manager or admin can close work orders.'], 403);
+            return response()->json(['message' => __('Only manager or admin can close work orders.')], 403);
         }
 
         $workOrder = DB::table('work_orders')->where('id', $id)->first();
 
         if (!$workOrder) {
-            return response()->json(['message' => 'Work order not found.'], 404);
+            return response()->json(['message' => __('Work order not found.')], 404);
         }
 
         if ($workOrder->status === 'closed') {
             return response()->json([
-                'message' => 'Work order is already closed.',
+                'message' => __('Work order is already closed.'),
                 'data' => $workOrder,
             ]);
         }
@@ -256,7 +256,7 @@ class WorkOrderController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Work order closed.',
+            'message' => __('Work order closed.'),
             'data' => DB::table('work_orders')->where('id', $id)->first(),
         ]);
     }

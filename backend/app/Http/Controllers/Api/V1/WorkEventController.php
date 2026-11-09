@@ -56,7 +56,7 @@ class WorkEventController extends Controller
 
         if ($errors !== []) {
             return response()->json([
-                'message' => 'Dienstbeginn required fields are missing.',
+                'message' => __('Dienstbeginn required fields are missing.'),
                 'errors' => $errors,
             ], 422);
         }
@@ -68,7 +68,7 @@ class WorkEventController extends Controller
     {
         if (!$this->assignmentId($request)) {
             return response()->json([
-                'message' => 'Work order is required before stopping work.',
+                'message' => __('Work order is required before stopping work.'),
                 'errors' => ['assignment_id' => ['Work order is required.']],
             ], 422);
         }
@@ -78,7 +78,7 @@ class WorkEventController extends Controller
 
         if ($plannedExceeded && $bemerkung === '') {
             return response()->json([
-                'message' => 'Bemerkung is required when planned time is exceeded.',
+                'message' => __('Bemerkung is required when planned time is exceeded.'),
                 'errors' => ['bemerkung' => ['Bemerkung is required.']],
                 'planned_exceeded' => true,
             ], 422);
@@ -105,12 +105,12 @@ class WorkEventController extends Controller
             $workOrder = DB::table('work_orders')->where('id', $assignmentId)->first();
 
             if (!$workOrder) {
-                return response()->json(['message' => 'Work order not found.'], 404);
+                return response()->json(['message' => __('Work order not found.')], 404);
             }
 
             if (in_array((string) $workOrder->status, ['approved', 'invoiced', 'rejected', 'cancelled', 'closed'], true)) {
                 return response()->json([
-                    'message' => 'Work order is closed for field events.',
+                    'message' => __('Work order is closed for field events.'),
                     'status' => $workOrder->status,
                 ], 422);
             }
@@ -122,7 +122,7 @@ class WorkEventController extends Controller
 
         if ($allowed !== $eventType) {
             return response()->json([
-                'message' => 'Action is not allowed in current workflow state.',
+                'message' => __('Action is not allowed in current workflow state.'),
                 'allowed_action' => $allowed,
                 'requested_action' => $eventType,
             ], 409);

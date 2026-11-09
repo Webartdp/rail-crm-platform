@@ -22,7 +22,7 @@ class EmployeeProfileController extends Controller
         $user = CurrentUser::fromRequest($request);
 
         if (!$user) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+            return response()->json(['message' => __('Unauthenticated.')], 401);
         }
 
         $role = is_array($user) ? ($user['role'] ?? null) : ($user->role ?? null);
@@ -30,7 +30,7 @@ class EmployeeProfileController extends Controller
 
         if ($role === 'employee' && (int) $employeeProfileId !== (int) $id) {
             return response()->json([
-                'message' => 'Forbidden.',
+                'message' => __('Forbidden.'),
                 'reason' => 'Employees may only view their own profile.',
             ], 403);
         }
@@ -38,7 +38,7 @@ class EmployeeProfileController extends Controller
         $profile = DB::table('employee_profiles')->where('id', $id)->first();
 
         if (!$profile) {
-            return response()->json(['message' => 'Employee profile not found.'], 404);
+            return response()->json(['message' => __('Employee profile not found.')], 404);
         }
 
         return response()->json(['data' => $profile]);
@@ -55,7 +55,7 @@ class EmployeeProfileController extends Controller
         $id = DB::table('employee_profiles')->insertGetId($this->payload($request, $now));
 
         return response()->json([
-            'message' => 'Employee profile created.',
+            'message' => __('Employee profile created.'),
             'data' => DB::table('employee_profiles')->where('id', $id)->first(),
         ], 201);
     }
@@ -70,13 +70,13 @@ class EmployeeProfileController extends Controller
         $profile = DB::table('employee_profiles')->where('id', $id)->first();
 
         if (!$profile) {
-            return response()->json(['message' => 'Employee profile not found.'], 404);
+            return response()->json(['message' => __('Employee profile not found.')], 404);
         }
 
         DB::table('employee_profiles')->where('id', $id)->update($this->payload($request, now(), false));
 
         return response()->json([
-            'message' => 'Employee profile updated.',
+            'message' => __('Employee profile updated.'),
             'data' => DB::table('employee_profiles')->where('id', $id)->first(),
         ]);
     }
@@ -86,7 +86,7 @@ class EmployeeProfileController extends Controller
         $user = CurrentUser::fromRequest($request);
 
         if (!CurrentUser::hasRole($user, ['admin'])) {
-            return response()->json(['message' => 'Only admin can change employee tariff settings.'], 403);
+            return response()->json(['message' => __('Only admin can change employee tariff settings.')], 403);
         }
 
         return null;

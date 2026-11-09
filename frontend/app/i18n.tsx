@@ -1,20 +1,39 @@
 'use client';
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { pageMessages } from './messages';
 
-export type Locale = 'ru' | 'de';
+import { DEFAULT_LOCALE, LOCALE_COOKIE, LOCALE_STORAGE_KEY, LOCALES, isLocale, type Locale } from './locale-config';
+
+export type { Locale } from './locale-config';
 
 type Dictionary = Record<string, string>;
+type Params = Record<string, string | number>;
+type DateInput = string | number | Date | null | undefined;
+
+export type Formatters = {
+  date: (value: DateInput) => string;
+  dateTime: (value: DateInput) => string;
+  time: (value: DateInput) => string;
+  money: (value: number | string | null | undefined, currency?: string) => string;
+  number: (value: number | string | null | undefined, digits?: number) => string;
+  hours: (value: number | string | null | undefined) => string;
+  duration: (minutes: number | null | undefined) => string;
+  status: (status: string | null | undefined) => string;
+  role: (role: string | null | undefined) => string;
+  eventType: (type: string | null | undefined) => string;
+};
 
 type I18nContextValue = {
   locale: Locale;
+  localeCode: string;
   setLocale: (locale: Locale) => void;
-  t: (key: string, params?: Record<string, string | number>) => string;
+  t: (key: string, params?: Params) => string;
+  has: (key: string) => boolean;
+  fmt: Formatters;
 };
 
-const localeStorageKey = 'rail-crm-locale';
-
-const dictionaries: Record<Locale, Dictionary> = {
+const baseDictionaries: Record<Locale, Dictionary> = {
   ru: {
     commonLoading: 'Загрузка...',
     commonRefresh: 'Обновить',
@@ -108,11 +127,7 @@ const dictionaries: Record<Locale, Dictionary> = {
     woRequired: 'Сотрудник, название работы и Referenznummer обязательны.',
     loginSecureAccess: 'Безопасный доступ',
     loginTitle: 'Вход в CRM',
-    loginRegisterTitle: 'Создать пользователя',
     loginSubtitle: 'Введите данные администратора или сотрудника.',
-    loginRegisterSubtitle: 'Временное создание пользователей для разработки.',
-    loginName: 'Имя',
-    loginNamePlaceholder: 'Имя пользователя',
     loginPassword: 'Пароль',
     loginPasswordPlaceholder: 'Введите пароль',
     loginRole: 'Роль',
@@ -121,17 +136,12 @@ const dictionaries: Record<Locale, Dictionary> = {
     roleAdmin: 'Администратор',
     loginPleaseWait: 'Подождите...',
     loginButton: 'Войти в систему',
-    loginCreateUserButton: 'Создать пользователя',
-    loginCreateAccount: 'Создать аккаунт',
     loginBackToLogin: 'Вернуться ко входу',
-    loginReady: 'Готово к входу.',
     loginChecking: 'Проверяем доступ...',
-    loginCreating: 'Создаём пользователя...',
     loginOpening: 'Открываю кабинет...',
     loginFailed: 'Не удалось войти.',
-    loginRegisterFailed: 'Не удалось создать пользователя.',
     loginLoggedAs: '{name} вошёл как {role}. {open}',
-    brandSubtitle: 'режим разработки',
+    brandSubtitle: 'Выездные работы и учёт времени',
     groupWork: 'Работа',
     groupOperations: 'Операции',
     groupDirectories: 'Справочники',
@@ -184,7 +194,7 @@ const dictionaries: Record<Locale, Dictionary> = {
     stateDienstfahrtActive: 'Служебный переезд',
     stateDienstfahrtFinished: 'Прибыл на следующее место',
 
-    fieldEyebrow: 'Field CRM / русский dev-режим',
+    fieldEyebrow: 'Рабочий день',
     fieldTitle: 'Рабочий день сотрудника',
     fieldHeroText: 'Gasfahrt → Gasfahrt beendet → Dienstbeginn → Stop → Dienstfahrt. Один объект может иметь несколько заказчиков и несколько работ.',
     object: 'Объект',
@@ -341,11 +351,7 @@ const dictionaries: Record<Locale, Dictionary> = {
     woRequired: 'Mitarbeiter, Arbeitstitel und Referenznummer sind Pflichtfelder.',
     loginSecureAccess: 'Sicherer Zugang',
     loginTitle: 'CRM-Anmeldung',
-    loginRegisterTitle: 'Benutzer erstellen',
     loginSubtitle: 'Geben Sie die Zugangsdaten des Administrators oder Mitarbeiters ein.',
-    loginRegisterSubtitle: 'Temporäre Benutzererstellung für die Entwicklung.',
-    loginName: 'Name',
-    loginNamePlaceholder: 'Benutzername',
     loginPassword: 'Passwort',
     loginPasswordPlaceholder: 'Passwort eingeben',
     loginRole: 'Rolle',
@@ -354,17 +360,12 @@ const dictionaries: Record<Locale, Dictionary> = {
     roleAdmin: 'Administrator',
     loginPleaseWait: 'Bitte warten...',
     loginButton: 'Einloggen',
-    loginCreateUserButton: 'Benutzer erstellen',
-    loginCreateAccount: 'Konto erstellen',
     loginBackToLogin: 'Zur Anmeldung zurück',
-    loginReady: 'Bereit zur Anmeldung.',
     loginChecking: 'Zugang wird geprüft...',
-    loginCreating: 'Benutzer wird erstellt...',
     loginOpening: 'Dashboard wird geöffnet...',
     loginFailed: 'Anmeldung fehlgeschlagen.',
-    loginRegisterFailed: 'Benutzer konnte nicht erstellt werden.',
     loginLoggedAs: '{name} ist als {role} angemeldet. {open}',
-    brandSubtitle: 'Entwicklungsmodus',
+    brandSubtitle: 'Außendienst & Zeiterfassung',
     groupWork: 'Arbeit',
     groupOperations: 'Operationen',
     groupDirectories: 'Stammdaten',
@@ -417,7 +418,7 @@ const dictionaries: Record<Locale, Dictionary> = {
     stateDienstfahrtActive: 'Dienstfahrt läuft',
     stateDienstfahrtFinished: 'Am nächsten Einsatzort angekommen',
 
-    fieldEyebrow: 'Field CRM / deutscher Dev-Modus',
+    fieldEyebrow: 'Arbeitstag',
     fieldTitle: 'Arbeitstag des Mitarbeiters',
     fieldHeroText: 'Gasfahrt → Gasfahrt beendet → Dienstbeginn → Stop → Dienstfahrt. Ein Objekt kann mehrere Kunden und mehrere Arbeiten haben.',
     object: 'Objekt',
@@ -483,35 +484,154 @@ const dictionaries: Record<Locale, Dictionary> = {
   },
 };
 
-function getInitialLocale(): Locale {
-  if (typeof window === 'undefined') return 'de';
-  return window.localStorage.getItem(localeStorageKey) === 'ru' ? 'ru' : 'de';
+const dictionaries: Record<Locale, Dictionary> = {
+  ru: { ...baseDictionaries.ru, ...pageMessages.ru },
+  de: { ...baseDictionaries.de, ...pageMessages.de },
+};
+
+export function localeCodeOf(locale: Locale) {
+  return locale === 'ru' ? 'ru-RU' : 'de-DE';
+}
+
+let activeLocale: Locale = DEFAULT_LOCALE;
+
+/** Current UI locale for non-React code (API helpers, CSV export). */
+export function getActiveLocale(): Locale {
+  return activeLocale;
+}
+
+export function translate(locale: Locale, key: string, params: Params = {}) {
+  const template = dictionaries[locale][key] ?? dictionaries.de[key] ?? dictionaries.ru[key] ?? key;
+  return Object.entries(params).reduce(
+    (text, [paramKey, paramValue]) => text.split(`{${paramKey}}`).join(String(paramValue)),
+    template,
+  );
+}
+
+function toDate(value: DateInput): Date | null {
+  if (value === null || value === undefined || value === '') return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function toNumber(value: number | string | null | undefined): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const number = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+export function createFormatters(locale: Locale): Formatters {
+  const code = localeCodeOf(locale);
+  const t = (key: string, params?: Params) => translate(locale, key, params);
+  const lookup = (prefix: string, value: string | null | undefined) => {
+    if (!value) return '—';
+    const key = `${prefix}${value}`;
+    return dictionaries[locale][key] ?? dictionaries.de[key] ?? value;
+  };
+
+  return {
+    date: (value) => {
+      const date = toDate(value);
+      return date ? new Intl.DateTimeFormat(code, { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date) : '—';
+    },
+    dateTime: (value) => {
+      const date = toDate(value);
+      return date
+        ? new Intl.DateTimeFormat(code, { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(date)
+        : '—';
+    },
+    time: (value) => {
+      const date = toDate(value);
+      return date ? new Intl.DateTimeFormat(code, { hour: '2-digit', minute: '2-digit' }).format(date) : '—';
+    },
+    money: (value, currency = 'EUR') => {
+      const number = toNumber(value);
+      return new Intl.NumberFormat(code, { style: 'currency', currency }).format(number ?? 0);
+    },
+    number: (value, digits = 2) => {
+      const number = toNumber(value);
+      return number === null ? '—' : new Intl.NumberFormat(code, { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(number);
+    },
+    hours: (value) => {
+      const number = toNumber(value);
+      return t('fmtHours', { value: new Intl.NumberFormat(code, { maximumFractionDigits: 2 }).format(number ?? 0) });
+    },
+    duration: (minutes) => {
+      const total = Math.max(0, Math.round(minutes || 0));
+      if (total < 60) return t('minutesShort', { count: total });
+      const hours = Math.floor(total / 60);
+      const rest = total % 60;
+      return rest ? t('hoursMinutesShort', { hours, minutes: rest }) : t('hoursShort', { hours });
+    },
+    status: (status) => lookup('status_', status),
+    role: (role) => lookup('role_', role),
+    eventType: (type) => lookup('event_', type),
+  };
+}
+
+function writeLocaleCookie(locale: Locale) {
+  document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=31536000; SameSite=Lax`;
+}
+
+/** Adds Accept-Language to every request so the API answers in the UI language. */
+function installLocaleFetch() {
+  const marker = '__railCrmLocaleFetch';
+  const globalWindow = window as unknown as Record<string, unknown>;
+  if (globalWindow[marker]) return;
+  globalWindow[marker] = true;
+
+  const originalFetch = window.fetch.bind(window);
+  window.fetch = (input: RequestInfo | URL, init: RequestInit = {}) => {
+    const headers = new Headers(init.headers ?? (input instanceof Request ? input.headers : undefined));
+    if (!headers.has('Accept-Language')) {
+      headers.set('Accept-Language', activeLocale);
+    }
+    return originalFetch(input, { ...init, headers });
+  };
 }
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
-export function I18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>('de');
+export function I18nProvider({ children, initialLocale }: { children: ReactNode; initialLocale?: Locale }) {
+  const [locale, setLocaleState] = useState<Locale>(initialLocale ?? DEFAULT_LOCALE);
+  activeLocale = locale;
 
   useEffect(() => {
-    setLocaleState(getInitialLocale());
+    installLocaleFetch();
+
+    // Older sessions stored the choice only in localStorage: move it to the cookie once.
+    let stored: string | null = null;
+    try {
+      stored = window.localStorage.getItem(LOCALE_STORAGE_KEY);
+    } catch {
+      stored = null;
+    }
+    if (!initialLocale && isLocale(stored) && stored !== locale) {
+      setLocaleState(stored);
+    }
   }, []);
 
   useEffect(() => {
+    activeLocale = locale;
     document.documentElement.lang = locale;
-    window.localStorage.setItem(localeStorageKey, locale);
+    writeLocaleCookie(locale);
+    try {
+      window.localStorage.setItem(LOCALE_STORAGE_KEY, locale);
+    } catch {
+      // storage can be unavailable (private mode); the cookie still keeps the choice
+    }
   }, [locale]);
 
   const value = useMemo<I18nContextValue>(() => ({
     locale,
-    setLocale: setLocaleState,
-    t: (key, params = {}) => {
-      const template = dictionaries[locale][key] || dictionaries.ru[key] || key;
-      return Object.entries(params).reduce(
-        (text, [paramKey, paramValue]) => text.replaceAll(`{${paramKey}}`, String(paramValue)),
-        template,
-      );
+    localeCode: localeCodeOf(locale),
+    setLocale: (next: Locale) => {
+      activeLocale = next;
+      setLocaleState(next);
     },
+    t: (key, params) => translate(locale, key, params),
+    has: (key) => key in dictionaries[locale],
+    fmt: createFormatters(locale),
   }), [locale]);
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
@@ -524,4 +644,27 @@ export function useI18n() {
   }
 
   return context;
+}
+
+export function LanguageSwitcher({ className = '' }: { className?: string }) {
+  const { locale, setLocale, t } = useI18n();
+
+  return (
+    <div className={`language-switcher ${className}`.trim()} role="group" aria-label={t('language')}>
+      <span>{t('language')}</span>
+      <div>
+        {LOCALES.map((item) => (
+          <button
+            aria-pressed={locale === item}
+            className={locale === item ? 'active' : ''}
+            key={item}
+            onClick={() => setLocale(item)}
+            type="button"
+          >
+            {item.toUpperCase()}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
