@@ -50,7 +50,13 @@ class InvoicePdf
         $pdf->line($left, 104, $left + 40, 104, 1.5, self::BRASS);
 
         // Recipient
-        $pdf->font('regular', 7.5)->text($left, 136, trim(($company['company_name'] ?: '').' · '.str_replace(["\r\n", "\n"], ', ', $company['company_address'])), 'left', self::SLATE);
+        $senderLine = implode(' · ', array_filter([
+            trim((string) $company['company_name']),
+            trim(str_replace(["\r\n", "\n"], ', ', (string) $company['company_address'])),
+        ]));
+        if ($senderLine !== '') {
+            $pdf->font('regular', 7.5)->text($left, 136, $senderLine, 'left', self::SLATE);
+        }
         $pdf->font('regular', 10.5);
         $y = 156;
         foreach (array_filter([$client->name ?? '', $client->contact_person ?? null, ...preg_split('/\R/u', (string) ($client->address ?? '')), $client->city ?? null]) as $line) {
