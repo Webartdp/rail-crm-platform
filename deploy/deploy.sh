@@ -23,6 +23,9 @@ fail() { log "ERROR: $*"; exit 1; }
 
 cd "$APP_DIR"
 
+# next build rewrites these two files for the side build folder; they are not hand edits.
+git checkout -q -- frontend/next-env.d.ts frontend/tsconfig.json 2>/dev/null || true
+
 # 1. Never overwrite hand edits made directly on the server.
 if ! git diff --quiet || ! git diff --cached --quiet; then
   git status --short | grep -v '^??' || true
@@ -87,6 +90,8 @@ if [ "$FRONTEND_CODE" = "1" ] || [ "${FORCE:-0}" = "1" ]; then
     rm -rf .next-build
     fail "frontend build failed, site keeps running the previous version"
   fi
+
+  git -C "$APP_DIR" checkout -q -- frontend/next-env.d.ts frontend/tsconfig.json 2>/dev/null || true
 
   rm -rf .next.prev
   [ -d .next ] && mv .next .next.prev
