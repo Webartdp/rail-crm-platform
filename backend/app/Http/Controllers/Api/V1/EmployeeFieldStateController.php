@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Support\CurrentUser;
+use App\Support\FieldWorkflow;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,13 +19,10 @@ class EmployeeFieldStateController extends Controller
 
         // Workflow is employee-wide: one work day has one event chain.
         // The selected assignment/work order is still used for planned time and payload data.
-        $lastEvent = DB::table('work_events')
-            ->where('employee_id', $employeeId)
-            ->orderByDesc('event_time')
-            ->orderByDesc('id')
-            ->first();
+        $lastEvent = FieldWorkflow::lastEvent($employeeId);
 
-        $state = $this->stateFromEvent($lastEvent?->event_type);
+        // After a finished job and a long break the next day starts again with Gasfahrt.
+        $state = $this->stateFromEvent(FieldWorkflow::effectiveLastType($lastEvent));
         $planned = $this->plannedStatus($assignmentId);
         $requiresBemerkung = $state['action'] === 'arbeit_stop' && $planned['planned_exceeded'];
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Support\CurrentUser;
+use App\Support\FieldWorkflow;
 use App\Support\TimeLedger;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -138,7 +139,11 @@ class WorkEventController extends Controller
             return response()->json(['message' => __('This work order is not assigned to you.')], 403);
         }
 
-        $allowed = $this->allowedAction($employeeId);
+        // Offline presses are checked against the moment they were made.
+        $pressedAt = $request->filled('recorded_at')
+            ? rescue(fn () => Carbon::parse((string) $request->input('recorded_at'))->setTimezone(config('app.timezone')), null, false)
+            : null;
+        $allowed = $this->allowedAction($employeeId, $pressedAt);
 
         if ($allowed !== $eventType) {
             return response()->json([
@@ -252,25 +257,9 @@ class WorkEventController extends Controller
         return now()->greaterThan(Carbon::parse($workOrder->planned_end_at));
     }
 
-    private function allowedAction(int $employeeId): string
+    private function allowedAction(int $employeeId, ?Carbon $at = null): string
     {
-        // Workflow is employee-wide. Assignment/work order can change after Dienstfahrt stop.
-        $last = DB::table('work_events')
-            ->where('employee_id', $employeeId)
-            ->orderByDesc('event_time')
-            ->orderByDesc('id')
-            ->first();
-
-        return match ($last?->event_type) {
-            null => 'gasfahrt_start',
-            'gasfahrt_start' => 'gasfahrt_stop',
-            'gasfahrt_stop' => 'dienstbeginn',
-            'dienstbeginn' => 'arbeit_stop',
-            'arbeit_stop' => 'dienstfahrt_start',
-            'dienstfahrt_start' => 'dienstfahrt_stop',
-            'dienstfahrt_stop' => 'dienstbeginn',
-            default => 'gasfahrt_start',
-        };
+        return FieldWorkflow::allowedAction($employeeId, $at);
     }
 
     private function employeeId(Request $request): ?int
