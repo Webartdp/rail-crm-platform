@@ -80,17 +80,17 @@ if [ "$FRONTEND_CODE" = "1" ] || [ "${FORCE:-0}" = "1" ]; then
     npm install --no-audit --no-fund
   fi
 
-  rm -rf .next.prev
-  [ -d .next ] && cp -a .next .next.prev
-
+  # Build next to the live build; the running site keeps serving .next meanwhile.
+  rm -rf .next-build
   log "next build"
-  if ! npm run build; then
-    if [ -d .next.prev ]; then
-      rm -rf .next && mv .next.prev .next
-      log "build failed, previous build restored (site keeps running old frontend)"
-    fi
-    fail "frontend build failed"
+  if ! NEXT_DIST_DIR=.next-build npm run build; then
+    rm -rf .next-build
+    fail "frontend build failed, site keeps running the previous version"
   fi
+
+  rm -rf .next.prev
+  [ -d .next ] && mv .next .next.prev
+  mv .next-build .next
 
   log "restarting $PM2_NAME"
   pm2 reload "$PM2_NAME" --update-env || pm2 restart "$PM2_NAME" --update-env
@@ -109,4 +109,9 @@ for i in $(seq 1 15); do
   fi
   sleep 2
 done
-fail "site did not answer 200 after deploy (last code: $CODE). Previous build kept in frontend/.next.prev"
+# Roll the frontend back to the previous build.
+if [ -d "$APP_DIR/frontend/.next.prev" ]; then
+  cd "$APP_DIR/frontend" && rm -rf .next && mv .next.prev .next && pm2 reload "$PM2_NAME" >/dev/null 2>&1 || true
+  log "frontend rolled back to previous build"
+fi
+fail "site did not answer 200 after deploy (last code: $CODE)"

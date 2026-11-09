@@ -40,3 +40,7 @@ build/
 # Uploads / generated files
 storage/app/public/*
 !storage/app/public/.gitkeep
+
+# Frontend deploy build folders
+.next-build/
+.next.prev/
