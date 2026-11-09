@@ -86,7 +86,7 @@ const de = {
   gpsDeniedText: 'Ohne Standortfreigabe wird die Zeit ohne Kartenpunkt gespeichert. Sie können den Zugriff in den Einstellungen des Telefons erlauben.',
   confirmTitle: 'Bestätigen',
   confirmAction: '„{action}“ jetzt erfassen?',
-  confirmYes: 'Erfassen',
+  confirmYes: 'Ja, bestätigen',
 
   // Offline
   offlinePending: 'Ohne Verbindung gespeichert: {count}. Wird automatisch gesendet, sobald Internet verfügbar ist.',
@@ -272,7 +272,7 @@ const ru: Messages = {
   gpsDeniedText: 'Без доступа к геолокации время сохраняется без точки на карте. Доступ можно разрешить в настройках телефона.',
   confirmTitle: 'Подтверждение',
   confirmAction: 'Отметить «{action}» сейчас?',
-  confirmYes: 'Отметить',
+  confirmYes: 'Да, подтвердить',
 
   offlinePending: 'Сохранено без сети: {count}. Отправится автоматически, когда появится интернет.',
   offlineSendNow: 'Отправить сейчас',
