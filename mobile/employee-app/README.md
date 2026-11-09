@@ -1,6 +1,6 @@
 # Rail CRM — mobile app for field staff
 
-Expo (SDK 57) app for employees. It uses the same API as the website
+Expo (SDK 58) app for employees. It uses the same API as the website
 (`src/config.ts` → `https://rlci.ridnovir.in.ua/api/api/v1`). Managers and
 administrators work on the website.
 

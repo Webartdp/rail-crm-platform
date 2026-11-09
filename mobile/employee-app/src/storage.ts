@@ -50,7 +50,8 @@ export function writeJson(name: string, value: unknown) {
   try {
     const file = jsonFile(name);
     if (!file.exists) file.create();
-    file.write(JSON.stringify(value));
+    // write() is synchronous in older SDKs and returns a promise in newer ones.
+    Promise.resolve(file.write(JSON.stringify(value)) as unknown).catch(() => {});
   } catch {
     // storage full or unavailable: the app keeps working online
   }
