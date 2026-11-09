@@ -85,6 +85,8 @@ if [ "$FRONTEND_CODE" = "1" ] || [ "${FORCE:-0}" = "1" ]; then
 
   # Build next to the live build; the running site keeps serving .next meanwhile.
   rm -rf .next-build
+  # Route types of the live/previous build would make the type check see deleted pages.
+  rm -rf .next/types .next.prev/types
   log "next build"
   if ! NEXT_DIST_DIR=.next-build npm run build; then
     rm -rf .next-build
