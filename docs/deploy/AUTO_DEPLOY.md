@@ -1,9 +1,12 @@
-# Auto deploy (GitHub Actions → rlci.ridnovir.in.ua)
+# Auto deploy (pull-based) → rlci.ridnovir.in.ua
 
-Push to `main` → GitHub Actions connects to the server as `admin` with a
-restricted SSH key → server runs `deploy/deploy.sh` from `origin/main`.
+The hosting provider firewall blocks inbound SSH from GitHub, so deploy is pull-based:
+a cron job on the server (user `admin`) checks GitHub every minute and runs
+`deploy/deploy.sh` from `origin/main` when `main` has a new commit.
 
-Manual run: GitHub → Actions → "Deploy production" → Run workflow.
+Flow: push / merge to `main` → within ~1 minute the server deploys it.
+
+Log: `/home/admin/backups/rail-crm/deploy.log`
 
 ## What deploy.sh does
 
@@ -21,21 +24,11 @@ Manual run: GitHub → Actions → "Deploy production" → Run workflow.
 - Frontend runs under PM2 as `admin` only, never as `root`.
 - Use `php8.3` for artisan (only 8.3 has `pdo_sqlite`).
 
-## One-time server setup
-
-Run as `admin`:
+## One-time server setup (as admin)
 
 ```bash
-ssh-keygen -t ed25519 -N "" -C "github-actions-deploy" -f ~/.ssh/github_actions_deploy
-APP=/home/admin/web/rlci.ridnovir.in.ua/public_html/_source
-echo "command=\"cd $APP && git fetch -q origin main && git show origin/main:deploy/deploy.sh | bash -s\",no-port-forwarding,no-X11-forwarding,no-agent-forwarding,no-pty $(cat ~/.ssh/github_actions_deploy.pub)" >> ~/.ssh/authorized_keys
-chmod 600 ~/.ssh/authorized_keys
+mkdir -p ~/backups/rail-crm
+(crontab -l 2>/dev/null | grep -v rail-crm-autodeploy; echo '* * * * * flock -n /home/admin/backups/rail-crm/deploy.lock bash -c '"'"'cd /home/admin/web/rlci.ridnovir.in.ua/public_html/_source && git fetch -q origin main && [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ] && git show origin/main:deploy/deploy.sh | bash -s >> /home/admin/backups/rail-crm/deploy.log 2>&1'"'"' # rail-crm-autodeploy') | crontab -
 ```
 
-GitHub → Settings → Secrets and variables → Actions → New repository secret:
-
-| Secret | Value |
-|---|---|
-| `DEPLOY_HOST` | `77.42.56.171` |
-| `DEPLOY_SSH_KEY` | contents of `~/.ssh/github_actions_deploy` (private key) |
-| `DEPLOY_KNOWN_HOSTS` | output of `ssh-keyscan -t ed25519 77.42.56.171` |
+Disable: `crontab -l | grep -v rail-crm-autodeploy | crontab -`
