@@ -115,5 +115,6 @@
   "Text recognition is not installed on the server. Enter the text manually.": "Распознавание текста не установлено на сервере. Введите текст вручную.",
   "No text was recognised in this file.": "В этом файле текст не найден.",
   "Text recognised.": "Текст распознан.",
-  "The offline time of this action is not plausible.": "Время, записанное без сети, неправдоподобно."
+  "The offline time of this action is not plausible.": "Время, записанное без сети, неправдоподобно.",
+  "Text recognition has started. The result will appear in about a minute.": "Распознавание текста запущено. Результат появится примерно через минуту."
 }

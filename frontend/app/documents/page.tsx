@@ -113,9 +113,30 @@ export default function DocumentsPage() {
       setMessage(response.message);
       if (response.data.extracted_text) setOcrText(response.data.extracted_text);
       await load();
+      if (response.data.ocr_status === 'queued') waitForOcr(item.id);
     } catch (error) {
       setMessage(errorText(error, t('docOcrStartFailed')));
     }
+  }
+
+  // OCR may run in the background on the server; poll until it is finished (max ~3 minutes).
+  function waitForOcr(id: number, attempt = 0) {
+    if (attempt >= 12) return;
+    window.setTimeout(async () => {
+      try {
+        const response = await getDocuments();
+        setItems(response.data);
+        const row = response.data.find((entry) => entry.id === id);
+        if (row && row.ocr_status !== 'queued') {
+          if (row.extracted_text) setOcrText(row.extracted_text);
+          setMessage(row.ocr_status === 'done' ? t('docOcrDone') : t('docOcrNoText'));
+          return;
+        }
+      } catch {
+        // keep waiting
+      }
+      waitForOcr(id, attempt + 1);
+    }, 15000);
   }
 
   async function saveOcr(item: DocumentRow) {

@@ -20,6 +20,9 @@ class Ocr
     /** @return array{tesseract: bool, pdftotext: bool, pdftoppm: bool, languages: string[]} */
     public static function capabilities(): array
     {
+        if (!self::canRunHere()) {
+            return ['tesseract' => false, 'pdftotext' => false, 'pdftoppm' => false, 'languages' => []];
+        }
         $tesseract = self::binary('tesseract');
 
         return [
@@ -30,9 +33,23 @@ class Ocr
         ];
     }
 
+    /**
+     * Whether external programs can be started from this PHP process.
+     * HestiaCP disables proc_open for the web (FPM) PHP; the CLI usually allows it,
+     * so OCR then runs from the scheduler command `documents:ocr`.
+     */
+    public static function canRunHere(): bool
+    {
+        return function_exists('proc_open');
+    }
+
     /** Recognised text, or null when no tool can read this file. */
     public static function extract(string $path, ?string $mime): ?string
     {
+        if (!self::canRunHere()) {
+            return null;
+        }
+
         $isPdf = $mime === 'application/pdf' || str_ends_with(strtolower($path), '.pdf');
 
         if ($isPdf && ($pdftotext = self::binary('pdftotext'))) {

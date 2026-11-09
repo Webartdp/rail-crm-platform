@@ -115,5 +115,6 @@
   "Text recognition is not installed on the server. Enter the text manually.": "Die Texterkennung ist auf dem Server nicht installiert. Bitte Text manuell eingeben.",
   "No text was recognised in this file.": "In dieser Datei wurde kein Text erkannt.",
   "Text recognised.": "Text erkannt.",
-  "The offline time of this action is not plausible.": "Die offline erfasste Zeit dieser Aktion ist nicht plausibel."
+  "The offline time of this action is not plausible.": "Die offline erfasste Zeit dieser Aktion ist nicht plausibel.",
+  "Text recognition has started. The result will appear in about a minute.": "Die Texterkennung wurde gestartet. Das Ergebnis erscheint in etwa einer Minute."
 }

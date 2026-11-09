@@ -180,6 +180,19 @@ class DocumentController extends Controller
             return response()->json(['message' => __('Document file not found.')], 404);
         }
 
+        if (!Ocr::canRunHere()) {
+            // Web PHP may not start programs; the scheduler command picks this up within a minute.
+            DB::table('documents')->where('id', $id)->update(['ocr_status' => 'queued', 'updated_at' => $now]);
+            $this->audit($user->id, 'document_ocr_queued', $id, ['document_id' => $id]);
+
+            return response()->json([
+                'message' => __('Text recognition has started. The result will appear in about a minute.'),
+                'data' => DB::table('documents')->where('id', $id)->first(),
+                'ocr_available' => true,
+                'queued' => true,
+            ], 202);
+        }
+
         $text = Ocr::extract($path, $document->mime_type);
 
         if ($text === null) {
