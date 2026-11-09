@@ -77,19 +77,6 @@ function minutesBetween(start?: string | null, stop?: string | null) {
   return Math.round((stopTime - startTime) / 60000);
 }
 
-function durationLabel(minutes: number | null | undefined) {
-  if (!minutes) return '0 мин';
-
-  if (minutes < 60) {
-    return `${minutes} мин`;
-  }
-
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-
-  return rest ? `${hours} ч ${rest} мин` : `${hours} ч`;
-}
-
 function assignmentIdFromEvent(event: WorkEvent) {
   return event.assignment_id ? Number(event.assignment_id) : null;
 }
@@ -142,16 +129,16 @@ function buildMyTimeRows(events: WorkEvent[], orders: DemoWorkOrder[]): MyTimeRo
     const workMinutes = minutesBetween(dienstbeginn?.event_time, arbeitStop?.event_time) || 0;
     const travelMinutes = gasfahrtMinutes + dienstfahrtMinutes;
 
-    let status = 'В процессе';
+    let status = 'started';
 
     if (arbeitStop) {
-      status = 'Завершено';
+      status = 'done';
     } else if (dienstbeginn) {
-      status = 'В работе';
+      status = 'working';
     } else if (gasfahrtStop) {
-      status = 'На объекте';
+      status = 'on_site';
     } else if (gasfahrtStart) {
-      status = 'В дороге';
+      status = 'travelling';
     }
 
     rows.push({
@@ -159,7 +146,7 @@ function buildMyTimeRows(events: WorkEvent[], orders: DemoWorkOrder[]): MyTimeRo
       date,
       assignmentId,
       reference: order?.reference_number || (assignmentId ? `#${assignmentId}` : '—'),
-      title: details.work_title || order?.title || (assignmentId ? `Задание #${assignmentId}` : '—'),
+      title: details.work_title || order?.title || (assignmentId ? `#${assignmentId}` : '—'),
       objectName: details.object_name || '—',
       customerName: details.customer_name || '—',
       workMinutes,
@@ -206,12 +193,13 @@ const rowStyle = {
 } as const;
 
 export default function MyTimePage() {
-  const { t } = useI18n();
+  const { t, fmt } = useI18n();
+  const durationLabel = (minutes: number | null | undefined) => fmt.duration(minutes);
   const [employeeId, setEmployeeId] = useState<number | null>(null);
   const [orders, setOrders] = useState<DemoWorkOrder[]>([]);
   const [events, setEvents] = useState<WorkEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState('Загрузка времени...');
+  const [message, setMessage] = useState('');
 
   const [dateFrom, setDateFrom] = useState(today());
   const [dateTo, setDateTo] = useState(today());
@@ -247,7 +235,7 @@ export default function MyTimePage() {
 
   async function load() {
     setLoading(true);
-    setMessage('Загрузка времени...');
+    setMessage(t('mtLoading'));
 
     try {
       const current = await me();
@@ -258,7 +246,7 @@ export default function MyTimePage() {
       if (!profileId) {
         setOrders([]);
         setEvents([]);
-        setMessage('К пользователю не привязан профиль сотрудника.');
+        setMessage(t('empNoProfile'));
         return;
       }
 
@@ -269,12 +257,12 @@ export default function MyTimePage() {
 
       setOrders(ordersResponse.data);
       setEvents(eventsResponse.data);
-      setMessage(eventsResponse.data.length ? 'Время рассчитано по событиям рабочего дня.' : 'Пока нет событий рабочего дня.');
+      setMessage(eventsResponse.data.length ? t('mtCalculated') : t('mtNoEvents'));
     } catch (error) {
-      const errorText = error instanceof Error ? error.message : 'Неизвестная ошибка';
+      const errorText = error instanceof Error ? error.message : t('commonUnknownError');
       setOrders([]);
       setEvents([]);
-      setMessage(`Ошибка загрузки: ${errorText}`);
+      setMessage(t('commonLoadFailed', { error: errorText }));
     } finally {
       setLoading(false);
     }
@@ -389,7 +377,7 @@ export default function MyTimePage() {
               <span>{row.customerName}</span>
               <span>{durationLabel(row.workMinutes)}</span>
               <span>{durationLabel(row.travelMinutes)}</span>
-              <span>{row.status}</span>
+              <span>{t(`shiftState_${row.status}`)}</span>
             </div>
           ))}
 

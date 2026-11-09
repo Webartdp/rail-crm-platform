@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import RoleGuard from '../../../components/RoleGuard';
+import { useI18n } from '../../../i18n';
 import { getInvoice, type Invoice, type InvoiceItem } from '../../../../lib/invoices';
 import { getEmployeeProfiles, employeeProfileName, type EmployeeProfile } from '../../../../lib/employee-profiles';
 import { getWorkOrders, type WorkOrder } from '../../../../lib/work-orders';
@@ -12,45 +13,6 @@ type WorkDetails = {
   customer_name?: string;
   work_title?: string;
 };
-
-function formatMoney(value: string | number | null | undefined) {
-  const amount = Number(value || 0);
-
-  return new Intl.NumberFormat('de-DE', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-}
-
-function formatHours(value: string | number | null | undefined) {
-  const hours = Number(value || 0);
-
-  return new Intl.NumberFormat('de-DE', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(hours);
-}
-
-function typeLabel(type: string) {
-  const labels: Record<string, string> = {
-    gasfahrt: 'Дорога к объекту',
-    arbeit: 'Работа',
-    dienstfahrt: 'Служебная поездка',
-  };
-
-  return labels[type] || type;
-}
-
-function statusLabel(status: string) {
-  const labels: Record<string, string> = {
-    draft: 'Черновик',
-    sent: 'Отправлен',
-    paid: 'Оплачен',
-    cancelled: 'Отменён',
-  };
-
-  return labels[status] || status || '—';
-}
 
 function parseDetails(order?: WorkOrder | null): WorkDetails {
   const details = order?.details;
@@ -102,6 +64,10 @@ const rowStyle = {
 } as const;
 
 export default function InvoiceViewPage() {
+  const { t, fmt } = useI18n();
+  const formatMoney = (value: string | number | null | undefined) => fmt.money(value);
+  const formatHours = (value: string | number | null | undefined) => fmt.number(value, 2);
+  const typeLabel = (type: string) => t(`costType_${type}`);
   const params = useParams();
   const invoiceId = Number(params.id);
 
@@ -109,7 +75,7 @@ export default function InvoiceViewPage() {
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [employees, setEmployees] = useState<EmployeeProfile[]>([]);
   const [orders, setOrders] = useState<WorkOrder[]>([]);
-  const [message, setMessage] = useState('Загрузка счёта...');
+  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
 
   const employeeMap = useMemo(() => {
@@ -144,7 +110,7 @@ export default function InvoiceViewPage() {
 
   async function load() {
     setLoading(true);
-    setMessage('Загрузка счёта...');
+    setMessage(t('invLoading'));
 
     try {
       const [invoiceResponse, employeesResponse, ordersResponse] = await Promise.all([
@@ -157,14 +123,14 @@ export default function InvoiceViewPage() {
       setItems(invoiceResponse.items);
       setEmployees(employeesResponse.data);
       setOrders(ordersResponse.data);
-      setMessage('Счёт загружен.');
+      setMessage(t('invLoaded'));
     } catch (error) {
-      const text = error instanceof Error ? error.message : 'Неизвестная ошибка';
+      const text = error instanceof Error ? error.message : t('commonUnknownError');
       setInvoice(null);
       setItems([]);
       setEmployees([]);
       setOrders([]);
-      setMessage(`Ошибка загрузки счёта: ${text}`);
+      setMessage(t('commonLoadFailed', { error: text }));
     } finally {
       setLoading(false);
     }
@@ -178,63 +144,63 @@ export default function InvoiceViewPage() {
 
   return (
     <main className="page-shell">
-      <RoleGuard allowedRoles={['manager', 'admin']} title="Invoice access">
+      <RoleGuard allowedRoles={['manager', 'admin']} title={t('invTitle')}>
         <section className="hero-card">
           <div>
-            <p className="eyebrow">Invoice</p>
-            <h1>{invoice?.number || `Счёт #${invoiceId}`}</h1>
-            <p className="hero-text">Детальный просмотр строк счёта по подтверждённому времени сотрудников.</p>
-            <p className="hint">{loading ? 'Загрузка...' : message}</p>
+            <p className="eyebrow">{t('invEyebrow')}</p>
+            <h1>{invoice?.number || t('invNumberFallback', { id: invoiceId })}</h1>
+            <p className="hero-text">{t('invHero')}</p>
+            <p className="hint">{loading ? t('commonLoadingDots') : message}</p>
           </div>
 
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-            <a className="action-button secondary" href="/billing">Назад к billing</a>
-            <button className="action-button primary" onClick={load} type="button">Обновить</button>
+            <a className="action-button secondary" href="/billing">{t('invBack')}</a>
+            <button className="action-button primary" onClick={load} type="button">{t('commonRefresh')}</button>
           </div>
         </section>
 
         <section style={cardGridStyle}>
           <div style={metricCardStyle}>
-            <p className="eyebrow">Статус</p>
-            <h2 style={metricValueStyle}>{statusLabel(invoice?.status || '')}</h2>
-            <p className="hint">Текущий статус счёта.</p>
+            <p className="eyebrow">{t('commonStatus')}</p>
+            <h2 style={metricValueStyle}>{fmt.status(invoice?.status)}</h2>
+            <p className="hint">{t('invStatusHint')}</p>
           </div>
 
           <div style={metricCardStyle}>
-            <p className="eyebrow">Работа</p>
+            <p className="eyebrow">{t('commonWork')}</p>
             <h2 style={metricValueStyle}>{formatMoney(workAmount)}</h2>
-            <p className="hint">Рабочие позиции.</p>
+            <p className="hint">{t('invWorkHint')}</p>
           </div>
 
           <div style={metricCardStyle}>
-            <p className="eyebrow">Дорога</p>
+            <p className="eyebrow">{t('durTravel')}</p>
             <h2 style={metricValueStyle}>{formatMoney(travelAmount)}</h2>
-            <p className="hint">Дорожные позиции.</p>
+            <p className="hint">{t('invTravelHint')}</p>
           </div>
 
           <div style={metricCardStyle}>
-            <p className="eyebrow">Итого</p>
+            <p className="eyebrow">{t('commonTotal')}</p>
             <h2 style={metricValueStyle}>{formatMoney(invoice?.total_amount || 0)}</h2>
-            <p className="hint">{formatHours(totalHours)} часов.</p>
+            <p className="hint">{fmt.hours(totalHours)}</p>
           </div>
         </section>
 
         <section className="panel">
           <div className="field-panel-head">
-            <p className="eyebrow">Invoice items</p>
-            <h2>Строки счёта</h2>
-            <p className="hint">Ставки и коэффициенты зафиксированы в момент создания счёта.</p>
+            <p className="eyebrow">{t('invItemsEyebrow')}</p>
+            <h2>{t('invItemsTitle')}</h2>
+            <p className="hint">{t('invItemsHint')}</p>
           </div>
 
           <div className="report-table-scroll">
             <div style={rowStyle}>
-              <strong>Сотрудник</strong>
-              <strong>Задание</strong>
-              <strong>Тип</strong>
-              <strong>Часы</strong>
-              <strong>Ставка</strong>
-              <strong>Коэф.</strong>
-              <strong>Сумма</strong>
+              <strong>{t('commonEmployee')}</strong>
+              <strong>{t('commonAssignment')}</strong>
+              <strong>{t('commonType')}</strong>
+              <strong>{t('billHours')}</strong>
+              <strong>{t('billRate')}</strong>
+              <strong>{t('billCoefficient')}</strong>
+              <strong>{t('billAmount')}</strong>
             </div>
 
             {items.map((item) => {
@@ -243,10 +209,10 @@ export default function InvoiceViewPage() {
 
               return (
                 <div style={rowStyle} key={item.id}>
-                  <span>{employeeMap.get(Number(item.employee_id)) || `Сотрудник #${item.employee_id}`}</span>
+                  <span>{employeeMap.get(Number(item.employee_id)) || t('commonEmployeeNumber', { id: item.employee_id })}</span>
 
                   <span>
-                    <strong>{details.work_title || order?.title || `Задание #${item.assignment_id}`}</strong><br />
+                    <strong>{details.work_title || order?.title || t('commonAssignmentNumber', { id: item.assignment_id })}</strong><br />
                     <small>{details.object_name || '—'} · {details.customer_name || '—'}</small>
                   </span>
 
@@ -261,7 +227,7 @@ export default function InvoiceViewPage() {
           </div>
 
           {!items.length ? (
-            <p className="hint">В этом счёте пока нет строк.</p>
+            <p className="hint">{t('invNoItems')}</p>
           ) : null}
         </section>
       </RoleGuard>

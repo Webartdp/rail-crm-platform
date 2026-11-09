@@ -2,13 +2,18 @@
 
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import RoleGuard from '../components/RoleGuard';
+import { useI18n } from '../i18n';
 import { getDocumentSignatures, rejectDocumentSignature, requestDocumentSignature, signDocumentSignature, type DocumentSignature, type SignatureType } from '../../lib/document-signatures';
 import { createDocument, downloadDocument, getDocuments, saveDocumentOcrText, startDocumentOcr, uploadDocument, type DocumentRow } from '../../lib/documents';
 
-function sizeLabel(size?: number | null) {
+function sizeLabel(size: number | null | undefined, t: (key: string, params?: Record<string, string | number>) => string) {
   if (!size) return '—';
-  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
-  return `${(size / 1024 / 1024).toFixed(1)} MB`;
+  if (size < 1024 * 1024) return t('docSizeKb', { value: Math.round(size / 1024) });
+  return t('docSizeMb', { value: (size / 1024 / 1024).toFixed(1) });
+}
+
+function errorText(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? `${fallback} ${error.message}` : fallback;
 }
 
 function canPreview(item: DocumentRow) {
@@ -16,32 +21,33 @@ function canPreview(item: DocumentRow) {
 }
 
 export default function DocumentsPage() {
+  const { t, fmt } = useI18n();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawingRef = useRef(false);
   const [items, setItems] = useState<DocumentRow[]>([]);
-  const [title, setTitle] = useState('Report REF-2026-001');
+  const [title, setTitle] = useState('');
   const [type, setType] = useState('report');
-  const [workOrderId, setWorkOrderId] = useState('1');
+  const [workOrderId, setWorkOrderId] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [ocrText, setOcrText] = useState('');
   const [previewItem, setPreviewItem] = useState<DocumentRow | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [signatureDocument, setSignatureDocument] = useState<DocumentRow | null>(null);
   const [signatures, setSignatures] = useState<DocumentSignature[]>([]);
-  const [signerName, setSignerName] = useState('Max Müller');
-  const [signerEmail, setSignerEmail] = useState('max@example.com');
+  const [signerName, setSignerName] = useState('');
+  const [signerEmail, setSignerEmail] = useState('');
   const [signatureType, setSignatureType] = useState<SignatureType>('typed');
-  const [signatureText, setSignatureText] = useState('Signed by Max Müller');
+  const [signatureText, setSignatureText] = useState('');
   const [canvasHasDrawing, setCanvasHasDrawing] = useState(false);
-  const [message, setMessage] = useState('Loading documents...');
+  const [message, setMessage] = useState('');
 
   async function load() {
     try {
       const response = await getDocuments();
       setItems(response.data);
-      setMessage(response.data.length ? 'Loaded from API.' : 'No documents yet.');
+      setMessage(response.data.length ? '' : t('docNone'));
     } catch (error) {
-      setMessage('API not available.');
+      setMessage(errorText(error, t('docLoadFailed')));
     }
   }
 
@@ -51,14 +57,14 @@ export default function DocumentsPage() {
       if (upload && file) {
         await uploadDocument(payload, file);
         setFile(null);
-        setMessage('Document uploaded.');
+        setMessage(t('docUploaded'));
       } else {
         await createDocument(payload);
-        setMessage('Document metadata created.');
+        setMessage(t('docCreated'));
       }
       await load();
     } catch (error) {
-      setMessage(upload ? 'Could not upload document. Check login/role and file type.' : 'Could not create document. Check login/role.');
+      setMessage(errorText(error, upload ? t('docUploadFailed') : t('docCreateFailed')));
     }
   }
 
@@ -72,13 +78,13 @@ export default function DocumentsPage() {
       link.click();
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      setMessage('Could not download document. Check login/role.');
+      setMessage(errorText(error, t('docDownloadFailed')));
     }
   }
 
   async function preview(item: DocumentRow) {
     if (!item.file_path || !canPreview(item)) {
-      setMessage('Preview is available only for PDF and image files.');
+      setMessage(t('docPreviewOnlyPdf'));
       return;
     }
 
@@ -88,9 +94,9 @@ export default function DocumentsPage() {
       const url = window.URL.createObjectURL(blob);
       setPreviewItem(item);
       setPreviewUrl(url);
-      setMessage(`Preview opened for ${item.original_filename || item.title}.`);
+      setMessage('');
     } catch (error) {
-      setMessage('Could not preview document. Check login/role.');
+      setMessage(errorText(error, t('docPreviewFailed')));
     }
   }
 
@@ -103,21 +109,25 @@ export default function DocumentsPage() {
   async function markOcrPending(item: DocumentRow) {
     try {
       await startDocumentOcr(item.id);
-      setMessage('OCR marked as pending.');
+      setMessage(t('docOcrStarted'));
       await load();
     } catch (error) {
-      setMessage('Could not start OCR. Check login/role.');
+      setMessage(errorText(error, t('docOcrStartFailed')));
     }
   }
 
   async function saveOcr(item: DocumentRow) {
     try {
-      await saveDocumentOcrText(item.id, ocrText || `OCR text for ${item.title}`);
+      if (!ocrText.trim()) {
+        setMessage(t('docOcrTextEmpty'));
+        return;
+      }
+      await saveDocumentOcrText(item.id, ocrText);
       setOcrText('');
-      setMessage('OCR text saved.');
+      setMessage(t('docOcrSaved'));
       await load();
     } catch (error) {
-      setMessage('Could not save OCR text. Check login/role and text.');
+      setMessage(errorText(error, t('docOcrSaveFailed')));
     }
   }
 
@@ -126,9 +136,9 @@ export default function DocumentsPage() {
       const response = await getDocumentSignatures(item.id);
       setSignatureDocument(item);
       setSignatures(response.data);
-      setMessage(`Loaded signatures for ${item.title}.`);
+      setMessage('');
     } catch (error) {
-      setMessage('Could not load signatures.');
+      setMessage(errorText(error, t('docSignaturesLoadFailed')));
     }
   }
 
@@ -138,13 +148,13 @@ export default function DocumentsPage() {
       await requestDocumentSignature(signatureDocument.id, {
         signer_name: signerName,
         signer_email: signerEmail,
-        comment: 'Please sign this document.',
+        comment: t('docSignComment'),
         signature_type: signatureType,
       });
       await openSignatures(signatureDocument);
-      setMessage('Signature requested.');
+      setMessage(t('docSignatureRequested'));
     } catch (error) {
-      setMessage('Could not request signature. Manager/admin role required.');
+      setMessage(errorText(error, t('docSignatureRequestFailed')));
     }
   }
 
@@ -153,11 +163,11 @@ export default function DocumentsPage() {
 
     try {
       const typeToSave = signatureType;
-      let dataToSave = signatureText || `Signed by ${signature.signer_name || 'user'}`;
+      let dataToSave = signatureText || signature.signer_name || '';
 
       if (typeToSave === 'canvas') {
         if (!canvasRef.current || !canvasHasDrawing) {
-          setMessage('Draw a signature on the canvas before signing.');
+          setMessage(t('docDrawFirst'));
           return;
         }
         dataToSave = canvasRef.current.toDataURL('image/png');
@@ -167,20 +177,20 @@ export default function DocumentsPage() {
       clearCanvasSignature();
       await openSignatures(signatureDocument);
       await load();
-      setMessage(typeToSave === 'canvas' ? 'Document signed with canvas signature.' : 'Document signed.');
+      setMessage(t('docSigned'));
     } catch (error) {
-      setMessage('Could not sign document. Check login and pending status.');
+      setMessage(errorText(error, t('docSignFailed')));
     }
   }
 
   async function rejectSignature(signature: DocumentSignature) {
     if (!signatureDocument) return;
     try {
-      await rejectDocumentSignature(signatureDocument.id, signature.id, 'Rejected from CRM UI.');
+      await rejectDocumentSignature(signatureDocument.id, signature.id, t('docRejectedReason'));
       await openSignatures(signatureDocument);
-      setMessage('Signature rejected.');
+      setMessage(t('docSignatureRejected'));
     } catch (error) {
-      setMessage('Could not reject signature. Check login and pending status.');
+      setMessage(errorText(error, t('docRejectFailed')));
     }
   }
 
@@ -246,34 +256,34 @@ export default function DocumentsPage() {
 
   return (
     <main className="page-shell">
-      <RoleGuard allowedRoles={['manager', 'admin']} title="Documents access">
+      <RoleGuard allowedRoles={['manager', 'admin']} title={t('docTitle')}>
         <section className="hero-card">
           <div>
-            <p className="eyebrow">Documents</p>
-            <h1>Documents</h1>
-            <p className="hero-text">Reports, acts, PDF files, OCR and signature workflow.</p>
+            <p className="eyebrow">{t('docEyebrow')}</p>
+            <h1>{t('docTitle')}</h1>
+            <p className="hero-text">{t('docHero')}</p>
           </div>
-          <div className="status-pill">Belege</div>
+          
         </section>
 
         <section className="panel">
-          <h2>New document</h2>
+          <h2>{t('docNew')}</h2>
           <div className="form-grid">
-            <label>Title<input value={title} onChange={(event) => setTitle(event.target.value)} /></label>
-            <label>Type<input value={type} onChange={(event) => setType(event.target.value)} /></label>
-            <label>Work order ID<input value={workOrderId} onChange={(event) => setWorkOrderId(event.target.value)} /></label>
-            <label>File<input accept="application/pdf,image/jpeg,image/png,image/webp" onChange={(event) => setFile(event.target.files?.[0] || null)} type="file" /></label>
+            <label>{t('docFieldTitle')}<input value={title} onChange={(event) => setTitle(event.target.value)} /></label>
+            <label>{t('commonType')}<select value={type} onChange={(event) => setType(event.target.value)}>{['report', 'act', 'receipt', 'delivery_note', 'brake_test', 'other'].map((value) => <option key={value} value={value}>{t(`docType_${value}`)}</option>)}</select></label>
+            <label>{t('docWorkOrderId')}<input inputMode="numeric" value={workOrderId} onChange={(event) => setWorkOrderId(event.target.value)} /></label>
+            <label>{t('docFile')}<input accept="application/pdf,image/jpeg,image/png,image/webp" onChange={(event) => setFile(event.target.files?.[0] || null)} type="file" /></label>
           </div>
-          <button className="action-button primary" onClick={() => submit(Boolean(file))} type="button">{file ? 'Upload document' : 'Create metadata'}</button>
-          <button className="action-link" onClick={() => submit(false)} type="button">Create metadata only</button>
+          <button className="action-button primary" onClick={() => submit(Boolean(file))} type="button">{file ? t('docUpload') : t('docCreateEntry')}</button>
+          <button className="action-link" onClick={() => submit(false)} type="button">{t('docCreateEntryOnly')}</button>
         </section>
 
         {previewItem && previewUrl ? (
           <section className="panel">
-            <h2>Preview: {previewItem.original_filename || previewItem.title}</h2>
-            <button className="action-link" onClick={closePreview} type="button">Close preview</button>
+            <h2>{t('docPreviewTitle', { name: previewItem.original_filename || previewItem.title })}</h2>
+            <button className="action-link" onClick={closePreview} type="button">{t('commonClose')}</button>
             {previewItem.mime_type === 'application/pdf' ? (
-              <iframe title="Document preview" src={previewUrl} width="100%" height="640" />
+              <iframe title={t('docPreview')} src={previewUrl} width="100%" height="640" />
             ) : (
               <img alt={previewItem.title} src={previewUrl} style={{ maxWidth: '100%', height: 'auto' }} />
             )}
@@ -282,12 +292,12 @@ export default function DocumentsPage() {
 
         {signatureDocument ? (
           <section className="panel">
-            <h2>Signatures: {signatureDocument.title}</h2>
+            <h2>{t('docSignaturesTitle', { name: signatureDocument.title })}</h2>
             <div className="form-grid">
-              <label>Signer name<input value={signerName} onChange={(event) => setSignerName(event.target.value)} /></label>
-              <label>Signer email<input value={signerEmail} onChange={(event) => setSignerEmail(event.target.value)} /></label>
-              <label>Signature type<select value={signatureType} onChange={(event) => setSignatureType(event.target.value as SignatureType)}><option value="typed">Typed</option><option value="canvas">Canvas</option></select></label>
-              {signatureType === 'typed' ? <label className="wide-field">Typed signature<textarea value={signatureText} onChange={(event) => setSignatureText(event.target.value)} /></label> : null}
+              <label>{t('docSignerName')}<input value={signerName} onChange={(event) => setSignerName(event.target.value)} /></label>
+              <label>{t('docSignerEmail')}<input type="email" value={signerEmail} onChange={(event) => setSignerEmail(event.target.value)} /></label>
+              <label>{t('docSignatureType')}<select value={signatureType} onChange={(event) => setSignatureType(event.target.value as SignatureType)}><option value="typed">{t('docSignatureTyped')}</option><option value="canvas">{t('docSignatureCanvas')}</option></select></label>
+              {signatureType === 'typed' ? <label className="wide-field">{t('docSignatureTyped')}<textarea value={signatureText} onChange={(event) => setSignatureText(event.target.value)} /></label> : null}
             </div>
             {signatureType === 'canvas' ? (
               <div>
@@ -302,20 +312,20 @@ export default function DocumentsPage() {
                   style={{ width: '100%', maxWidth: '720px', height: '220px', background: '#fff', border: '1px solid #cbd5e1', touchAction: 'none' }}
                 />
                 <br />
-                <button className="action-link" onClick={clearCanvasSignature} type="button">Clear canvas</button>
+                <button className="action-link" onClick={clearCanvasSignature} type="button">{t('docClearCanvas')}</button>
               </div>
             ) : null}
-            <button className="action-button primary" onClick={requestSignature} type="button">Request signature</button>
-            <button className="action-link" onClick={() => setSignatureDocument(null)} type="button">Close signatures</button>
-            <div className="table-row"><strong>Signer</strong><strong>Status</strong><strong>Action</strong></div>
-            {signatures.length === 0 ? <p className="hint">No signature requests yet.</p> : null}
+            <button className="action-button primary" onClick={requestSignature} type="button">{t('docRequestSignature')}</button>
+            <button className="action-link" onClick={() => setSignatureDocument(null)} type="button">{t('commonClose')}</button>
+            <div className="table-row"><strong>{t('docSigner')}</strong><strong>{t('commonStatus')}</strong><strong>{t('commonActions')}</strong></div>
+            {signatures.length === 0 ? <p className="hint">{t('docNoSignatures')}</p> : null}
             {signatures.map((signature) => (
               <div className="table-row" key={signature.id}>
-                <span>{signature.signer_name || '—'}<br /><small>{signature.signer_email || '—'} / {signature.signature_type}</small></span>
-                <span>{signature.status}<br /><small>{signature.signed_at || signature.rejected_at || signature.requested_at || '—'}</small>{signature.status === 'signed' && signature.signature_type === 'canvas' && signature.signature_data ? <img alt="Saved signature" src={signature.signature_data} style={{ maxWidth: '180px', display: 'block', background: '#fff' }} /> : null}</span>
+                <span>{signature.signer_name || '—'}<br /><small>{signature.signer_email || '—'} / {signature.signature_type === 'canvas' ? t('docSignatureCanvas') : t('docSignatureTyped')}</small></span>
+                <span>{fmt.status(signature.status)}<br /><small>{fmt.dateTime(signature.signed_at || signature.rejected_at || signature.requested_at)}</small>{signature.status === 'signed' && signature.signature_type === 'canvas' && signature.signature_data ? <img alt={t('docSavedSignature')} src={signature.signature_data} style={{ maxWidth: '180px', display: 'block', background: '#fff' }} /> : null}</span>
                 <span>
-                  {signature.status === 'pending' ? <button className="action-link" onClick={() => signSignature(signature)} type="button">Sign</button> : null}
-                  {signature.status === 'pending' ? <button className="action-link" onClick={() => rejectSignature(signature)} type="button">Reject</button> : null}
+                  {signature.status === 'pending' ? <button className="action-link" onClick={() => signSignature(signature)} type="button">{t('docSign')}</button> : null}
+                  {signature.status === 'pending' ? <button className="action-link" onClick={() => rejectSignature(signature)} type="button">{t('apprReject')}</button> : null}
                 </span>
               </div>
             ))}
@@ -323,25 +333,25 @@ export default function DocumentsPage() {
         ) : null}
 
         <section className="panel">
-          <h2>OCR text</h2>
-          <textarea value={ocrText} onChange={(event) => setOcrText(event.target.value)} placeholder="Paste or edit extracted text here before saving to a document" />
+          <h2>{t('docOcrText')}</h2>
+          <textarea value={ocrText} onChange={(event) => setOcrText(event.target.value)} placeholder={t('docOcrPlaceholder')} />
         </section>
 
         <section className="panel">
-          <p className="hint">{message}</p>
-          <div className="table-row"><strong>Document</strong><strong>File</strong><strong>Status</strong></div>
+          {message ? <p className="hint">{message}</p> : null}
+          <div className="table-row"><strong>{t('docDocument')}</strong><strong>{t('docFile')}</strong><strong>{t('commonStatus')}</strong></div>
           {items.map((item) => (
             <div className="table-row" key={item.id}>
-              <span>{item.title}<br /><small>{item.type} / Auftrag #{item.work_order_id || '—'}</small></span>
-              <span>{item.original_filename || 'No file'}<br /><small>{item.mime_type || '—'} / {sizeLabel(item.size_bytes)}</small></span>
+              <span>{item.title}<br /><small>{t(`docType_${item.type}`)} / {item.work_order_id ? t('commonAssignmentNumber', { id: item.work_order_id }) : '—'}</small></span>
+              <span>{item.original_filename || t('docNoFile')}<br /><small>{item.mime_type || '—'} / {sizeLabel(item.size_bytes, t)}</small></span>
               <span>
-                {item.status} / OCR: {item.ocr_status || 'not_started'}
-                {item.file_path && canPreview(item) ? <button className="action-link" onClick={() => preview(item)} type="button">Preview</button> : null}
-                {item.file_path ? <button className="action-link" onClick={() => download(item)} type="button">Download</button> : null}
-                <a className="action-link" href={`/documents/${item.id}/print`}>Print</a>
-                <button className="action-link" onClick={() => markOcrPending(item)} type="button">OCR pending</button>
-                <button className="action-link" onClick={() => saveOcr(item)} type="button">Save OCR text</button>
-                <button className="action-link" onClick={() => openSignatures(item)} type="button">Signatures</button>
+                {fmt.status(item.status)} / {t('docOcr')}: {fmt.status(item.ocr_status || 'not_started')}
+                {item.file_path && canPreview(item) ? <button className="action-link" onClick={() => preview(item)} type="button">{t('docPreview')}</button> : null}
+                {item.file_path ? <button className="action-link" onClick={() => download(item)} type="button">{t('docDownload')}</button> : null}
+                <a className="action-link" href={`/documents/${item.id}/print`}>{t('commonPrint')}</a>
+                <button className="action-link" onClick={() => markOcrPending(item)} type="button">{t('docStartOcr')}</button>
+                <button className="action-link" onClick={() => saveOcr(item)} type="button">{t('docSaveOcr')}</button>
+                <button className="action-link" onClick={() => openSignatures(item)} type="button">{t('docSignatures')}</button>
               </span>
             </div>
           ))}

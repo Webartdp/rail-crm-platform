@@ -52,25 +52,6 @@ function formatDateTime(value?: string | null) {
   }).format(date);
 }
 
-function pairLabel(pairType: WorkEventApproval['pair_type']) {
-  if (pairType === 'gasfahrt') return 'An-/Abfahrt';
-  if (pairType === 'arbeit') return 'Arbeitszeit';
-  if (pairType === 'dienstfahrt') return 'Dienstfahrt';
-  return pairType;
-}
-
-function eventLabel(type: string) {
-  const labels: Record<string, string> = {
-    gasfahrt_start: 'Anfahrt Start',
-    gasfahrt_stop: 'Anfahrt Stop',
-    dienstbeginn: 'Dienstbeginn',
-    arbeit_stop: 'Arbeit Stop',
-    dienstfahrt_start: 'Dienstfahrt Start',
-    dienstfahrt_stop: 'Dienstfahrt Stop',
-  };
-
-  return labels[type] || type;
-}
 
 const smallButtonStyle = {
   width: 'auto',
@@ -163,7 +144,8 @@ const listItemStyle = {
 } as const;
 
 export default function ManagerDashboardPage() {
-  const { t } = useI18n();
+  const { t, fmt } = useI18n();
+  const eventLabel = (type: string) => fmt.eventType(type);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [orders, setOrders] = useState<WorkOrder[]>([]);
   const [events, setEvents] = useState<WorkEvent[]>([]);
@@ -211,10 +193,10 @@ export default function ManagerDashboardPage() {
       setApprovals(approvalsResponse.data);
       setEvents(eventsResponse.data);
       setEmployees(employeesResponse.data);
-      setMessage(t('mgrLoaded', { name: currentUser.name || currentUser.email, role: currentUser.role }));
+      setMessage(t('mgrLoaded', { name: currentUser.name || currentUser.email, role: fmt.role(currentUser.role) }));
     } catch (error) {
-      const errorText = error instanceof Error ? error.message : 'Unbekannter Fehler';
-      setMessage(`API-Fehler: ${errorText}`);
+      const errorText = error instanceof Error ? error.message : t('commonUnknownError');
+      setMessage(t('commonLoadFailed', { error: errorText }));
     } finally {
       setLoading(false);
     }
@@ -315,7 +297,7 @@ export default function ManagerDashboardPage() {
                 <div style={listItemStyle} key={approval.id}>
                   <strong>{employeeName}</strong>
                   <span>{details.work_title || order?.title || `Auftrag #${approval.assignment_id}`}</span>
-                  <small>{pairLabel(approval.pair_type)} · {approval.status}</small>
+                  <small>{t(`costType_${approval.pair_type}`)} · {fmt.status(approval.status)}</small>
                 </div>
               );
             })}
@@ -342,7 +324,7 @@ export default function ManagerDashboardPage() {
               return (
                 <div style={listItemStyle} key={order.id}>
                   <strong>{details.work_title || order.title}</strong>
-                  <span>{order.reference_number || `#${order.id}`} · {order.status || 'planned'}</span>
+                  <span>{order.reference_number || `#${order.id}`} · {fmt.status(order.status || 'planned')}</span>
                   <small>{employeeName} · {details.customer_name || '—'} · {details.object_name || '—'}</small>
                 </div>
               );

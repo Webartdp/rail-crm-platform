@@ -19,23 +19,6 @@ function parseDetails(item?: WorkOrder | null): Record<string, string> {
   }
 }
 
-function formatDateTime(value?: string | null) {
-  if (!value) return '—';
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date);
-}
 
 const rowStyle = {
   display: 'grid',
@@ -118,11 +101,12 @@ const modalFieldStyle = {
 } as const;
 
 export default function AssignmentsPage() {
-  const { t } = useI18n();
+  const { t, fmt } = useI18n();
+  const formatDateTime = (value?: string | null) => fmt.dateTime(value);
   const [items, setItems] = useState<WorkOrder[]>([]);
   const [employees, setEmployees] = useState<EmployeeProfile[]>([]);
   const [selectedItem, setSelectedItem] = useState<WorkOrder | null>(null);
-  const [message, setMessage] = useState('Lade Aufträge...');
+  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
 
   const employeeMap = useMemo(() => {
@@ -146,11 +130,11 @@ export default function AssignmentsPage() {
 
       setItems(ordersResponse.data);
       setEmployees(employeesResponse.data);
-      setMessage(ordersResponse.data.length ? 'Aufträge aus API geladen.' : 'Noch keine Aufträge vorhanden.');
+      setMessage(ordersResponse.data.length ? '' : t('asgNoItems'));
     } catch (error) {
-      const errorText = error instanceof Error ? error.message : 'Unbekannter Fehler';
+      const errorText = error instanceof Error ? error.message : t('commonUnknownError');
       setItems([]);
-      setMessage(`API-Fehler: ${errorText}`);
+      setMessage(t('commonLoadFailed', { error: errorText }));
     } finally {
       setLoading(false);
     }
@@ -168,7 +152,7 @@ export default function AssignmentsPage() {
       setMessage(t('asgDeleted', { label }));
       await load();
     } catch (error) {
-      const errorText = error instanceof Error ? error.message : 'Unbekannter Fehler';
+      const errorText = error instanceof Error ? error.message : t('commonUnknownError');
       setMessage(t('asgDeleteFailed', { error: errorText }));
     }
   }
@@ -183,7 +167,7 @@ export default function AssignmentsPage() {
 
   const selectedDetails = parseDetails(selectedItem);
   const selectedEmployeeName = selectedItem?.employee_id
-    ? employeeMap.get(selectedItem.employee_id) || `Mitarbeiter #${selectedItem.employee_id}`
+    ? employeeMap.get(selectedItem.employee_id) || t('commonEmployeeNumber', { id: selectedItem.employee_id })
     : '—';
 
   return (
@@ -196,8 +180,8 @@ export default function AssignmentsPage() {
             <p className="hero-text">{t('asgHero')}</p>
           </div>
           <div className="field-status-stack">
-            <div className="status-pill">{items.length} total</div>
-            <span>planned: {pending} · waiting: {waiting} · approved: {approved}</span>
+            <div className="status-pill">{t('apprTotal', { count: items.length })}</div>
+            <span>{fmt.status('planned')}: {pending} · {fmt.status('waiting_approval')}: {waiting} · {fmt.status('approved')}: {approved}</span>
           </div>
         </section>
 
@@ -239,7 +223,7 @@ export default function AssignmentsPage() {
           </div>
 
           <div style={rowStyle}>
-            <strong>Referenz</strong>
+            <strong>{t('asgReferenceNumber')}</strong>
             <strong>{t('commonAssignment')}</strong>
             <strong>{t('commonEmployee')}</strong>
             <strong>{t('commonStatus')}</strong>
@@ -248,7 +232,7 @@ export default function AssignmentsPage() {
 
           {items.map((item) => {
             const details = parseDetails(item);
-            const employeeName = item.employee_id ? employeeMap.get(item.employee_id) || `Mitarbeiter #${item.employee_id}` : '—';
+            const employeeName = item.employee_id ? employeeMap.get(item.employee_id) || t('commonEmployeeNumber', { id: item.employee_id }) : '—';
 
             return (
               <div style={rowStyle} key={item.id}>
@@ -265,7 +249,7 @@ export default function AssignmentsPage() {
 
                 <span>{employeeName}</span>
 
-                <span>{item.status || 'planned'}</span>
+                <span>{fmt.status(item.status || 'planned')}</span>
 
                 <span style={actionsWrapStyle}>
                   <button style={actionStyle} onClick={() => setSelectedItem(item)} type="button" aria-label={t('commonView')} title={t('commonView')}>
@@ -296,7 +280,7 @@ export default function AssignmentsPage() {
                 <div>
                   <p className="eyebrow">{t('asgShow')}</p>
                   <h2>{selectedDetails.work_title || selectedItem.title}</h2>
-                  <p className="hint">{selectedItem.reference_number || `#${selectedItem.id}`} · {selectedItem.status || 'planned'}</p>
+                  <p className="hint">{selectedItem.reference_number || `#${selectedItem.id}`} · {fmt.status(selectedItem.status || 'planned')}</p>
                 </div>
 
                 <span style={actionsWrapStyle}>
@@ -312,13 +296,13 @@ export default function AssignmentsPage() {
 
               <div style={modalGridStyle}>
                 <div style={modalFieldStyle}>
-                  <strong>Referenznummer</strong>
+                  <strong>{t('asgReferenceNumber')}</strong>
                   <span>{selectedItem.reference_number || '—'}</span>
                 </div>
 
                 <div style={modalFieldStyle}>
                   <strong>{t('commonStatus')}</strong>
-                  <span>{selectedItem.status || 'planned'}</span>
+                  <span>{fmt.status(selectedItem.status || 'planned')}</span>
                 </div>
 
                 <div style={modalFieldStyle}>
@@ -347,17 +331,17 @@ export default function AssignmentsPage() {
                 </div>
 
                 <div style={modalFieldStyle}>
-                  <strong>Leistungsart</strong>
+                  <strong>{t('asgServiceType')}</strong>
                   <span>{selectedDetails.leistungsart || '—'}</span>
                 </div>
 
                 <div style={modalFieldStyle}>
-                  <strong>Zugnummer</strong>
+                  <strong>{t('wdTrainNumber')}</strong>
                   <span>{selectedDetails.zugnummer || '—'}</span>
                 </div>
 
                 <div style={modalFieldStyle}>
-                  <strong>Einsatzort</strong>
+                  <strong>{t('wdWorkLocation')}</strong>
                   <span>{selectedDetails.einsatzort || '—'}</span>
                 </div>
 

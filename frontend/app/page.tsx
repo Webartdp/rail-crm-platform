@@ -3,9 +3,11 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { me } from '../lib/auth';
+import { useI18n } from './i18n';
 
 export default function HomePage() {
   const router = useRouter();
+  const { t } = useI18n();
 
   useEffect(() => {
     async function redirectByRole() {
@@ -37,8 +39,8 @@ export default function HomePage() {
       <section className="hero-card">
         <div>
           <p className="eyebrow">Rail CRM</p>
-          <h1>Загрузка кабинета...</h1>
-          <p className="hero-text">Открываем нужный раздел по вашей роли.</p>
+          <h1>{t('homeLoading')}</h1>
+          <p className="hero-text">{t('homeHint')}</p>
         </div>
       </section>
     </main>

@@ -283,16 +283,16 @@ function buildMyTimeRows(events: WorkEvent[], orders: DemoWorkOrder[]): MyTimeRo
     const workMinutes = minutesBetween(dienstbeginn?.event_time, arbeitStop?.event_time) || 0;
     const travelMinutes = gasfahrtMinutes + dienstfahrtMinutes;
 
-    let status = 'В процессе';
+    let status = 'started';
 
     if (arbeitStop) {
-      status = 'Завершено';
+      status = 'done';
     } else if (dienstbeginn) {
-      status = 'В работе';
+      status = 'working';
     } else if (gasfahrtStop) {
-      status = 'На объекте';
+      status = 'on_site';
     } else if (gasfahrtStart) {
-      status = 'В дороге';
+      status = 'travelling';
     }
 
     rows.push({
@@ -300,7 +300,7 @@ function buildMyTimeRows(events: WorkEvent[], orders: DemoWorkOrder[]): MyTimeRo
       date,
       assignmentId,
       reference: order?.reference_number || (assignmentId ? `#${assignmentId}` : '—'),
-      title: details.work_title || order?.title || (assignmentId ? `Задание #${assignmentId}` : '—'),
+      title: details.work_title || order?.title || (assignmentId ? `#${assignmentId}` : '—'),
       objectName: details.object_name || '—',
       customerName: details.customer_name || '—',
       workMinutes,
@@ -459,7 +459,7 @@ export default function WorkdayPage() {
 
     sortedOrders.forEach((order) => {
       const details = parseDetails(order);
-      const objectName = details.object_name || 'Objekt ohne Namen';
+      const objectName = details.object_name || '';
       const objectAddress = details.object_address || '';
       const customerName = details.customer_name || t('customerNotSelected');
       const objectKey = `${objectName}__${objectAddress}`;
@@ -602,7 +602,7 @@ export default function WorkdayPage() {
         setSelectedOrderId(null);
         setFieldState(null);
         setEvents([]);
-        setMessage('К пользователю не привязан профиль сотрудника. Сначала создайте сотрудника в справочнике и привяжите его к пользователю.');
+        setMessage(t('wdNoProfileLinked'));
         return;
       }
 
@@ -625,7 +625,7 @@ const first = response.data[0];
       } else {
         setSelectedOrderId(null);
         setFieldState(null);
-        setMessage('Для этого сотрудника пока нет назначенных заданий.');
+        setMessage(t('wdNoAssignments'));
       }
 
       await refreshEvents(profileId);
@@ -649,7 +649,7 @@ const first = response.data[0];
 
   async function next() {
     if (!employeeId) {
-      setMessage('К пользователю не привязан профиль сотрудника.');
+      setMessage(t('empNoProfile'));
       return;
     }
 
@@ -844,7 +844,7 @@ const first = response.data[0];
 
               <div>
                 <p className="eyebrow">{t('wdObject')}</p>
-                <h2>{objectGroup.objectName}</h2>
+                <h2>{objectGroup.objectName || t('wdObjectWithoutName')}</h2>
                 {objectGroup.objectAddress ? <span>{objectGroup.objectAddress}</span> : null}
               </div>
             </header>
@@ -964,9 +964,9 @@ const first = response.data[0];
 
                                   {leistungsart === '' ? <label>{t('customWorkType')}<input value={leistungsartCustom} onChange={(event) => setLeistungsartCustom(event.target.value)} placeholder={t('customWorkTypePlaceholder')} /></label> : null}
 
-                                  <label>Referenznummer<input value={referenznummer} onChange={(event) => setReferenznummer(event.target.value)} /></label>
-                                  <label>Zugnummer<input value={zugnummer} onChange={(event) => setZugnummer(event.target.value)} /></label>
-                                  <label>Einsatzort<input value={einsatzort} onChange={(event) => setEinsatzort(event.target.value)} /></label>
+                                  <label>{t('wdReferenceNumber')}<input value={referenznummer} onChange={(event) => setReferenznummer(event.target.value)} /></label>
+                                  <label>{t('wdTrainNumber')}<input value={zugnummer} onChange={(event) => setZugnummer(event.target.value)} /></label>
+                                  <label>{t('wdWorkLocation')}<input value={einsatzort} onChange={(event) => setEinsatzort(event.target.value)} /></label>
                                   <label>{t('plannedStart')}<input value={plannedStart} onChange={(event) => setPlannedStart(event.target.value)} type="time" /></label>
                                   <label>{t('plannedStop')}<input value={plannedStop} onChange={(event) => setPlannedStop(event.target.value)} type="time" /></label>
 

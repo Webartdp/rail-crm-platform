@@ -1,44 +1,74 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import RoleGuard from '../components/RoleGuard';
+import { useI18n } from '../i18n';
 import { getWorkEvents, type WorkEvent } from '../../lib/api';
+import { getEmployeeProfiles, employeeProfileName, type EmployeeProfile } from '../../lib/employee-profiles';
 
 export default function WorkEventsPage() {
+  const { t, fmt } = useI18n();
   const [events, setEvents] = useState<WorkEvent[]>([]);
-  const [message, setMessage] = useState('Loading events...');
+  const [employees, setEmployees] = useState<EmployeeProfile[]>([]);
+  const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getWorkEvents()
-      .then((response) => {
-        setEvents(response.data);
-        setMessage(response.data.length === 0 ? 'No events stored yet.' : '');
+    Promise.all([getWorkEvents(), getEmployeeProfiles().catch(() => ({ data: [] as EmployeeProfile[] }))])
+      .then(([eventsResponse, employeesResponse]) => {
+        setEvents(eventsResponse.data);
+        setEmployees(employeesResponse.data);
+        setMessage(eventsResponse.data.length === 0 ? t('evNone') : '');
       })
-      .catch(() => setMessage('API not available or events table is empty.'));
+      .catch((error) => setMessage(t('commonLoadFailed', { error: error instanceof Error ? error.message : t('commonUnknownError') })))
+      .finally(() => setLoading(false));
   }, []);
+
+  const names = useMemo(() => new Map(employees.map((employee) => [employee.id, employeeProfileName(employee)])), [employees]);
+  const sorted = useMemo(() => [...events].sort((a, b) => String(b.event_time).localeCompare(String(a.event_time))), [events]);
 
   return (
     <main className="page-shell">
-      <RoleGuard allowedRoles={['manager', 'admin']} title="Work events access">
+      <RoleGuard allowedRoles={['manager', 'admin']} title={t('workEvents')}>
         <section className="hero-card">
           <div>
-            <p className="eyebrow">Work Events</p>
-            <h1>Work Events</h1>
-            <p className="hero-text">Stored employee button actions from Gasfahrt, Dienstbeginn, Stop and Dienstfahrt.</p>
+            <p className="eyebrow">{t('evEyebrow')}</p>
+            <h1>{t('workEvents')}</h1>
+            <p className="hero-text">{t('evHero')}</p>
           </div>
-          <div className="status-pill">API data</div>
         </section>
 
         <section className="panel">
+          {loading ? <p className="hint">{t('commonLoadingDots')}</p> : null}
           {message ? <p className="hint">{message}</p> : null}
-          <div className="table-row"><strong>Time</strong><strong>Event</strong><strong>Location</strong></div>
-          {events.map((event) => (
-            <div className="table-row" key={event.id}>
-              <span>{event.event_time}</span>
-              <span>{event.event_type}</span>
-              <span>{event.latitude && event.longitude ? `${event.latitude}, ${event.longitude}` : 'No location'}</span>
-            </div>
-          ))}
+          <div className="data-table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>{t('commonTime')}</th>
+                  <th>{t('commonEmployee')}</th>
+                  <th>{t('mapsEvent')}</th>
+                  <th>{t('commonAssignment')}</th>
+                  <th>{t('evLocation')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.map((event) => (
+                  <tr key={event.id}>
+                    <td>{fmt.dateTime(event.event_time)}</td>
+                    <td>{event.employee_id ? names.get(Number(event.employee_id)) || t('commonEmployeeNumber', { id: event.employee_id }) : '—'}</td>
+                    <td>{fmt.eventType(event.event_type)}</td>
+                    <td>{event.assignment_id ? `#${event.assignment_id}` : '—'}</td>
+                    <td>
+                      {event.latitude && event.longitude ? (
+                        <a className="small-button" href={`https://www.google.com/maps?q=${event.latitude},${event.longitude}`} rel="noreferrer" target="_blank">{t('mapsShow')}</a>
+                      ) : t('mapsNoCoordinates')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
       </RoleGuard>
     </main>

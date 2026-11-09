@@ -1,91 +1,53 @@
 'use client';
 
 import { use, useEffect, useState } from 'react';
+import EmployeeForm from '../../../components/EmployeeForm';
 import RoleGuard from '../../../components/RoleGuard';
-import { getEmployeeProfile, updateEmployeeProfile } from '../../../../lib/employee-profiles';
+import { useI18n } from '../../../i18n';
+import { employeeProfileName, getEmployeeProfile, updateEmployeeProfile, type EmployeeProfile } from '../../../../lib/employee-profiles';
 
 type PageProps = {
   params: Promise<{ id: string }>;
 };
 
 export default function EditEmployeePage({ params }: PageProps) {
+  const { t } = useI18n();
   const resolvedParams = use(params);
   const id = Number(resolvedParams.id);
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [rate, setRate] = useState('0');
-  const [travelRate, setTravelRate] = useState('0');
-  const [night, setNight] = useState('1');
-  const [sunday, setSunday] = useState('1');
-  const [holiday, setHoliday] = useState('1');
-  const [homeLocation, setHomeLocation] = useState('');
-  const [message, setMessage] = useState('Loading employee...');
+  const [profile, setProfile] = useState<EmployeeProfile | null>(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     getEmployeeProfile(id)
-      .then((response) => {
-        const item = response.data;
-        setFirstName(item.first_name || '');
-        setLastName(item.last_name || '');
-        setPhone(item.phone || '');
-        setRate(String(item.standard_hourly_rate || '0'));
-        setTravelRate(String(item.travel_hourly_rate || '0'));
-        setNight(String(item.night_coefficient || '1'));
-        setSunday(String(item.sunday_coefficient || '1'));
-        setHoliday(String(item.holiday_coefficient || '1'));
-        setHomeLocation(item.home_location || '');
-        setMessage('Loaded from API.');
-      })
-      .catch(() => setMessage('API not available.'));
+      .then((response) => setProfile(response.data))
+      .catch((loadError) => setError(t('commonLoadFailed', { error: loadError instanceof Error ? loadError.message : t('commonUnknownError') })));
   }, [id]);
-
-  async function submit() {
-    try {
-      await updateEmployeeProfile(id, {
-        first_name: firstName,
-        last_name: lastName,
-        phone,
-        standard_hourly_rate: Number(rate),
-        travel_hourly_rate: Number(travelRate),
-        night_coefficient: Number(night),
-        sunday_coefficient: Number(sunday),
-        holiday_coefficient: Number(holiday),
-        home_location: homeLocation,
-      });
-      setMessage('Employee profile updated.');
-    } catch (error) {
-      setMessage('API not available or admin role missing. Employee profile was not updated.');
-    }
-  }
 
   return (
     <main className="page-shell">
-      <RoleGuard allowedRoles={['admin']} title="Edit employee access">
+      <RoleGuard allowedRoles={['admin']} title={t('empEditTitle')}>
         <section className="hero-card">
           <div>
-            <p className="eyebrow">Employee</p>
-            <h1>Edit Employee #{id}</h1>
-            <p className="hero-text">Update employee rates and coefficients.</p>
+            <p className="eyebrow">{t('empEyebrow')}</p>
+            <h1>{profile ? employeeProfileName(profile) : t('empEditTitleId', { id })}</h1>
+            <p className="hero-text">{t('empEditHero')}</p>
           </div>
-          <div className="status-pill">Editable</div>
+          <a className="action-link" href="/employees">{t('empBackToList')}</a>
         </section>
 
-        <section className="panel">
-          <div className="form-grid">
-            <label>First name<input value={firstName} onChange={(event) => setFirstName(event.target.value)} /></label>
-            <label>Last name<input value={lastName} onChange={(event) => setLastName(event.target.value)} /></label>
-            <label>Phone<input value={phone} onChange={(event) => setPhone(event.target.value)} /></label>
-            <label>Work hourly rate<input value={rate} onChange={(event) => setRate(event.target.value)} /></label>
-            <label>Travel hourly rate<input value={travelRate} onChange={(event) => setTravelRate(event.target.value)} /></label>
-            <label>Night coefficient<input value={night} onChange={(event) => setNight(event.target.value)} /></label>
-            <label>Sunday coefficient<input value={sunday} onChange={(event) => setSunday(event.target.value)} /></label>
-            <label>Holiday coefficient<input value={holiday} onChange={(event) => setHoliday(event.target.value)} /></label>
-            <label>Home location<input value={homeLocation} onChange={(event) => setHomeLocation(event.target.value)} /></label>
-          </div>
-          <button className="action-button primary" onClick={submit} type="button">Save changes</button>
-          <p className="hint">{message}</p>
-        </section>
+        {error ? <p className="notice error" role="alert">{error}</p> : null}
+        {!profile && !error ? <section className="panel"><p className="hint">{t('commonLoadingDots')}</p></section> : null}
+        {profile ? (
+          <EmployeeForm
+            initial={profile}
+            submitLabel={t('commonSave')}
+            onSubmit={async (input) => {
+              const response = await updateEmployeeProfile(id, input);
+              const updated = (response as { data?: EmployeeProfile })?.data;
+              if (updated) setProfile(updated);
+            }}
+          />
+        ) : null}
       </RoleGuard>
     </main>
   );

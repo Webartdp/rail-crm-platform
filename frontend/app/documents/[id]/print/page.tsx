@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from 'react';
 import RoleGuard from '../../../components/RoleGuard';
+import { useI18n } from '../../../i18n';
 import { getDocumentPrintData, type DocumentPrintData } from '../../../../lib/document-print';
 import { closeWorkOrder } from '../../../../lib/work-orders';
 
@@ -14,18 +15,19 @@ function formatValue(value?: string | number | null) {
 }
 
 export default function DocumentPrintPage({ params }: PageProps) {
+  const { t, fmt } = useI18n();
   const resolvedParams = use(params);
   const documentId = Number(resolvedParams.id);
   const [data, setData] = useState<DocumentPrintData | null>(null);
-  const [message, setMessage] = useState('Loading document print data...');
+  const [message, setMessage] = useState('');
 
   async function load() {
     try {
       const response = await getDocumentPrintData(documentId);
       setData(response.data);
-      setMessage('Ready to print.');
+      setMessage('');
     } catch (error) {
-      setMessage('Could not load print data. Check login/role.');
+      setMessage(t('docPrintLoadFailed'));
     }
   }
 
@@ -34,10 +36,10 @@ export default function DocumentPrintPage({ params }: PageProps) {
 
     try {
       await closeWorkOrder(data.work_order.id, 'document_print_page');
-      setMessage('Related work order closed.');
+      setMessage(t('docPrintOrderClosed'));
       await load();
     } catch (error) {
-      setMessage('Could not close related work order. Manager/admin token required.');
+      setMessage(error instanceof Error && error.message ? error.message : t('docPrintCloseFailed'));
     }
   }
 
@@ -46,73 +48,73 @@ export default function DocumentPrintPage({ params }: PageProps) {
   }, [documentId]);
 
   if (!data) {
-    return <main className="page-shell"><RoleGuard allowedRoles={['manager', 'admin']} title="Document print access"><section className="panel"><p className="hint">{message}</p></section></RoleGuard></main>;
+    return <main className="page-shell"><RoleGuard allowedRoles={['manager', 'admin']} title={t('docPrintTitle')}><section className="panel"><p className="hint">{message || t('commonLoadingDots')}</p></section></RoleGuard></main>;
   }
 
   const { document, work_order, signatures, printed_by, printed_at } = data;
 
   return (
     <main className="page-shell print-document">
-      <RoleGuard allowedRoles={['manager', 'admin']} title="Document print access">
+      <RoleGuard allowedRoles={['manager', 'admin']} title={t('docPrintTitle')}>
         <section className="hero-card no-print">
           <div>
-            <p className="eyebrow">Print</p>
+            <p className="eyebrow">{t('commonPrint')}</p>
             <h1>{document.title}</h1>
-            <p className="hero-text">Printable document summary with OCR and signatures.</p>
-            <p className="hint">{message}</p>
+            <p className="hero-text">{t('docPrintHero')}</p>
+            {message ? <p className="hint">{message}</p> : null}
           </div>
           <div>
-            <button className="action-button primary" onClick={() => window.print()} type="button">Print</button>
-            {work_order?.id && work_order.status !== 'closed' ? <button className="action-link" onClick={closeRelatedWorkOrder} type="button">Close Auftrag</button> : null}
+            <button className="action-button primary" onClick={() => window.print()} type="button">{t('commonPrint')}</button>
+            {work_order?.id && work_order.status !== 'closed' ? <button className="action-link" onClick={closeRelatedWorkOrder} type="button">{t('docPrintCloseOrder')}</button> : null}
           </div>
         </section>
 
         <section className="panel print-sheet">
           <header>
-            <p className="eyebrow">Rail CRM Document</p>
+            <p className="eyebrow">Rail CRM</p>
             <h1>{document.title}</h1>
-            <p>Status: {document.status} / Type: {document.type}</p>
+            <p>{t('commonStatus')}: {fmt.status(document.status)} / {t('commonType')}: {t(`docType_${document.type}`)}</p>
           </header>
 
-          <h2>Document</h2>
+          <h2>{t('docDocument')}</h2>
           <table>
             <tbody>
               <tr><th>ID</th><td>{document.id}</td></tr>
-              <tr><th>File</th><td>{formatValue(document.original_filename)}</td></tr>
-              <tr><th>MIME</th><td>{formatValue(document.mime_type)}</td></tr>
-              <tr><th>OCR status</th><td>{formatValue(document.ocr_status)}</td></tr>
-              <tr><th>Uploaded by</th><td>{formatValue(document.uploaded_by)}</td></tr>
+              <tr><th>{t('docFile')}</th><td>{formatValue(document.original_filename)}</td></tr>
+              <tr><th>{t('docFileType')}</th><td>{formatValue(document.mime_type)}</td></tr>
+              <tr><th>{t('docOcr')}</th><td>{fmt.status(document.ocr_status || 'not_started')}</td></tr>
+              <tr><th>{t('docUploadedBy')}</th><td>{formatValue(document.uploaded_by)}</td></tr>
             </tbody>
           </table>
 
-          <h2>Work Order</h2>
+          <h2>{t('commonAssignment')}</h2>
           <table>
             <tbody>
               <tr><th>ID</th><td>{formatValue(work_order?.id)}</td></tr>
-              <tr><th>Title</th><td>{formatValue(work_order?.title)}</td></tr>
-              <tr><th>Reference</th><td>{formatValue(work_order?.reference_number)}</td></tr>
-              <tr><th>Status</th><td>{formatValue(work_order?.status)}</td></tr>
+              <tr><th>{t('docFieldTitle')}</th><td>{formatValue(work_order?.title)}</td></tr>
+              <tr><th>{t('asgReferenceNumber')}</th><td>{formatValue(work_order?.reference_number)}</td></tr>
+              <tr><th>{t('commonStatus')}</th><td>{work_order?.status ? fmt.status(work_order.status) : '—'}</td></tr>
             </tbody>
           </table>
 
-          <h2>OCR / Extracted Text</h2>
+          <h2>{t('docOcrText')}</h2>
           <div className="print-box whitespace-pre-wrap">{document.extracted_text || '—'}</div>
 
-          <h2>Signatures</h2>
-          {signatures.length === 0 ? <p>No signatures.</p> : null}
+          <h2>{t('docSignatures')}</h2>
+          {signatures.length === 0 ? <p>{t('docNoSignatures')}</p> : null}
           {signatures.map((signature) => (
             <div className="print-signature" key={signature.id}>
               <p><strong>{signature.signer_name || '—'}</strong> / {signature.signer_email || '—'}</p>
-              <p>Status: {signature.status} / Type: {signature.signature_type}</p>
-              <p>Requested: {formatValue(signature.requested_at)} / Signed: {formatValue(signature.signed_at)} / Rejected: {formatValue(signature.rejected_at)}</p>
+              <p>{t('commonStatus')}: {fmt.status(signature.status)} / {t('docSignatureType')}: {signature.signature_type === 'canvas' ? t('docSignatureCanvas') : t('docSignatureTyped')}</p>
+              <p>{t('docRequestedAt')}: {fmt.dateTime(signature.requested_at)} / {t('docSignedAt')}: {fmt.dateTime(signature.signed_at)} / {t('docRejectedAt')}: {fmt.dateTime(signature.rejected_at)}</p>
               {signature.signature_type === 'canvas' && signature.signature_data ? (
-                <img alt="Canvas signature" src={signature.signature_data} style={{ maxWidth: '260px', background: '#fff' }} />
-              ) : <p>Signature: {formatValue(signature.signature_data)}</p>}
+                <img alt={t('docSavedSignature')} src={signature.signature_data} style={{ maxWidth: '260px', background: '#fff' }} />
+              ) : <p>{t('docSignature')}: {formatValue(signature.signature_data)}</p>}
             </div>
           ))}
 
           <footer>
-            <p>Printed by {printed_by.name} ({printed_by.role}) at {printed_at}</p>
+            <p>{t('docPrintedBy', { name: printed_by.name, role: fmt.role(printed_by.role), date: fmt.dateTime(printed_at) })}</p>
           </footer>
         </section>
       </RoleGuard>

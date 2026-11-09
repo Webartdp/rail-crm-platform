@@ -191,7 +191,7 @@ export default function EmployeeProfilePage() {
       setProfile(response.data as unknown as ProfileData);
       setMessage(t('empProfileLoaded'));
     } catch (error) {
-      const errorText = error instanceof Error ? error.message : 'Неизвестная ошибка';
+      const errorText = error instanceof Error ? error.message : t('commonUnknownError');
       setUser(null);
       setProfile(null);
       setMessage(t('empLoadError', { error: errorText }));
@@ -291,7 +291,7 @@ export default function EmployeeProfilePage() {
             </div>
 
             <div style={rowStyle}>
-              <strong>Email</strong>
+              <strong>{t('commonEmail')}</strong>
               <span style={valueStyle}>{user?.email || '—'}</span>
             </div>
 

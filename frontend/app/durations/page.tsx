@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import RoleGuard from '../components/RoleGuard';
+import { useI18n } from '../i18n';
 import { getEmployeeProfiles, employeeProfileName, type EmployeeProfile } from '../../lib/employee-profiles';
 import { getWorkOrders, type WorkOrder } from '../../lib/work-orders';
 import { getWorkEvents, type WorkEvent } from '../../lib/work-events';
@@ -97,31 +98,6 @@ function minutesBetween(start?: string | null, stop?: string | null) {
   return Math.round((stopTime - startTime) / 60000);
 }
 
-function durationLabel(minutes: number) {
-  if (!minutes) return '0 мин';
-
-  if (minutes < 60) {
-    return `${minutes} мин`;
-  }
-
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-
-  return rest ? `${hours} ч ${rest} мин` : `${hours} ч`;
-}
-
-function statusLabel(status: string) {
-  const labels: Record<string, string> = {
-    planned: 'Запланировано',
-    in_progress: 'В работе',
-    waiting_approval: 'На согласовании',
-    approved: 'Подтверждено',
-    rejected: 'Отклонено',
-  };
-
-  return labels[status] || status || '—';
-}
-
 function statusClass(status: string) {
   if (status === 'approved') return 'report-status-badge is-approved';
   if (status === 'waiting_approval') return 'report-status-badge is-waiting';
@@ -136,7 +112,7 @@ function csvCell(value: string | number | null | undefined) {
   return `"${text.replace(/"/g, '""')}"`;
 }
 
-function buildRows(events: WorkEvent[], orders: WorkOrder[], employees: EmployeeProfile[]): DurationRow[] {
+function buildRows(events: WorkEvent[], orders: WorkOrder[], employees: EmployeeProfile[], t: (key: string, params?: Record<string, string | number>) => string): DurationRow[] {
   const orderMap = new Map<number, WorkOrder>();
   const employeeMap = new Map<number, string>();
 
@@ -194,10 +170,10 @@ function buildRows(events: WorkEvent[], orders: WorkOrder[], employees: Employee
       key,
       date: eventDate(eventTime(first)),
       employeeId,
-      employeeName: employeeId ? employeeMap.get(Number(employeeId)) || `Сотрудник #${employeeId}` : '—',
+      employeeName: employeeId ? employeeMap.get(Number(employeeId)) || t('commonEmployeeNumber', { id: employeeId }) : '—',
       assignmentId: orderId ? Number(orderId) : null,
       reference: order?.reference_number || (orderId ? `#${orderId}` : '—'),
-      title: details.work_title || order?.title || (orderId ? `Задание #${orderId}` : '—'),
+      title: details.work_title || order?.title || (orderId ? t('commonAssignmentNumber', { id: orderId }) : '—'),
       objectName: details.object_name || '—',
       customerName: details.customer_name || '—',
       workMinutes,
@@ -266,11 +242,12 @@ const rowStyle = {
 } as const;
 
 export default function DurationsPage() {
+  const { t, fmt } = useI18n();
   const [events, setEvents] = useState<WorkEvent[]>([]);
   const [orders, setOrders] = useState<WorkOrder[]>([]);
   const [employees, setEmployees] = useState<EmployeeProfile[]>([]);
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState('Загрузка отчёта...');
+  const [message, setMessage] = useState('');
 
   const [dateFrom, setDateFrom] = useState(last7Days());
   const [dateTo, setDateTo] = useState(today());
@@ -281,7 +258,7 @@ export default function DurationsPage() {
   const [filterTimeType, setFilterTimeType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
 
-  const rows = useMemo(() => buildRows(events, orders, employees), [events, orders, employees]);
+  const rows = useMemo(() => buildRows(events, orders, employees, t), [events, orders, employees, t]);
 
   const objectOptions = useMemo(() => {
     return Array.from(new Set(rows.map((row) => row.objectName).filter((item) => item && item !== '—'))).sort();
@@ -318,7 +295,7 @@ export default function DurationsPage() {
 
   async function load() {
     setLoading(true);
-    setMessage('Загрузка отчёта...');
+    setMessage(t('durLoading'));
 
     try {
       const [eventsResponse, ordersResponse, employeesResponse] = await Promise.all([
@@ -330,13 +307,13 @@ export default function DurationsPage() {
       setEvents(eventsResponse.data);
       setOrders(ordersResponse.data);
       setEmployees(employeesResponse.data);
-      setMessage(eventsResponse.data.length ? 'Отчёт рассчитан по событиям сотрудников.' : 'Пока нет событий для отчёта.');
+      setMessage(eventsResponse.data.length ? t('durCalculated') : t('durNoEvents'));
     } catch (error) {
-      const errorText = error instanceof Error ? error.message : 'Неизвестная ошибка';
+      const errorText = error instanceof Error ? error.message : t('commonUnknownError');
       setEvents([]);
       setOrders([]);
       setEmployees([]);
-      setMessage(`Ошибка загрузки отчёта: ${errorText}`);
+      setMessage(t('commonLoadFailed', { error: errorText }));
     } finally {
       setLoading(false);
     }
@@ -355,27 +332,27 @@ export default function DurationsPage() {
 
   function exportCsv() {
     const header = [
-      'Сотрудник',
-      'Дата',
-      'Задание',
-      'Объект',
-      'Заказчик',
-      'Работа',
-      'Дорога',
-      'Всего',
-      'Статус',
+      t('commonEmployee'),
+      t('commonDate'),
+      t('commonAssignment'),
+      t('commonObject'),
+      t('commonCustomer'),
+      t('commonWork'),
+      t('durTravel'),
+      t('commonTotal'),
+      t('commonStatus'),
     ];
 
     const body = filteredRows.map((row) => [
       row.employeeName,
-      row.date,
+      fmt.date(row.date),
       row.title,
       row.objectName,
       row.customerName,
-      durationLabel(row.workMinutes),
-      durationLabel(row.travelMinutes),
-      durationLabel(row.totalMinutes),
-      statusLabel(row.status),
+      fmt.duration(row.workMinutes),
+      fmt.duration(row.travelMinutes),
+      fmt.duration(row.totalMinutes),
+      fmt.status(row.status),
     ]);
 
     const csv = [header, ...body]
@@ -399,86 +376,86 @@ export default function DurationsPage() {
 
   return (
     <main className="page-shell">
-      <RoleGuard allowedRoles={['manager', 'admin']} title="Durations access">
+      <RoleGuard allowedRoles={['manager', 'admin']} title={t('durTitle')}>
         <section className="hero-card">
           <div>
-            <p className="eyebrow">DU / Dauer</p>
-            <h1>Время сотрудников</h1>
-            <p className="hero-text">Отчёт по рабочему времени, дороге и итоговой длительности по сотрудникам.</p>
-            <p className="hint">{loading ? 'Загрузка...' : message}</p>
+            <p className="eyebrow">{t('durEyebrow')}</p>
+            <h1>{t('durTitle')}</h1>
+            <p className="hero-text">{t('durHero')}</p>
+            <p className="hint">{loading ? t('commonLoadingDots') : message}</p>
           </div>
 
           <div className="report-actions">
-            <button className="action-button secondary" onClick={resetFilters} type="button">Сбросить</button>
-            <button className="action-button secondary" onClick={exportCsv} type="button">Экспорт CSV</button>
-            <button style={refreshButtonStyle} onClick={load} type="button">Обновить</button>
+            <button className="action-button secondary" onClick={resetFilters} type="button">{t('commonReset')}</button>
+            <button className="action-button secondary" onClick={exportCsv} type="button">{t('commonExportCsv')}</button>
+            <button style={refreshButtonStyle} onClick={load} type="button">{t('commonRefresh')}</button>
           </div>
         </section>
 
         <section style={cardGridStyle}>
           <div style={metricCardStyle}>
-            <p className="eyebrow">Работа</p>
-            <h2 style={metricValueStyle}>{durationLabel(workMinutes)}</h2>
-            <p className="hint">Время на объекте.</p>
+            <p className="eyebrow">{t('commonWork')}</p>
+            <h2 style={metricValueStyle}>{fmt.duration(workMinutes)}</h2>
+            <p className="hint">{t('durWorkHint')}</p>
           </div>
 
           <div style={metricCardStyle}>
-            <p className="eyebrow">Дорога</p>
-            <h2 style={metricValueStyle}>{durationLabel(travelMinutes)}</h2>
-            <p className="hint">Дорога и служебные поездки.</p>
+            <p className="eyebrow">{t('durTravel')}</p>
+            <h2 style={metricValueStyle}>{fmt.duration(travelMinutes)}</h2>
+            <p className="hint">{t('durTravelHint')}</p>
           </div>
 
           <div style={metricCardStyle}>
-            <p className="eyebrow">Всего</p>
-            <h2 style={metricValueStyle}>{durationLabel(totalMinutes)}</h2>
-            <p className="hint">Работа + дорога.</p>
+            <p className="eyebrow">{t('commonTotal')}</p>
+            <h2 style={metricValueStyle}>{fmt.duration(totalMinutes)}</h2>
+            <p className="hint">{t('durTotalHint')}</p>
           </div>
 
           <div style={metricCardStyle}>
-            <p className="eyebrow">Сотрудники</p>
+            <p className="eyebrow">{t('employees')}</p>
             <h2 style={metricValueStyle}>{employeeCount}</h2>
-            <p className="hint">В выбранном отчёте.</p>
+            <p className="hint">{t('durEmployeesHint')}</p>
           </div>
         </section>
 
         <section className="panel">
           <div className="field-panel-head split-head">
             <div>
-              <h2>Фильтры</h2>
-              <p className="hint">Можно отфильтровать отчёт по сотруднику, периоду, объекту, заказчику и статусу.</p>
+              <h2>{t('commonFilters')}</h2>
+              <p className="hint">{t('durFiltersHint')}</p>
             </div>
           </div>
 
           <div className="form-grid">
-            <label>Дата от<input value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} type="date" /></label>
-            <label>Дата до<input value={dateTo} onChange={(event) => setDateTo(event.target.value)} type="date" /></label>
+            <label>{t('commonDateFrom')}<input value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} type="date" /></label>
+            <label>{t('commonDateTo')}<input value={dateTo} onChange={(event) => setDateTo(event.target.value)} type="date" /></label>
 
-            <label>Сотрудник
+            <label>{t('commonEmployee')}
               <select value={filterEmployeeId} onChange={(event) => setFilterEmployeeId(event.target.value)}>
-                <option value="">Все сотрудники</option>
+                <option value="">{t('durAllEmployees')}</option>
                 {employees.map((employee) => (
                   <option key={employee.id} value={employee.id}>{employeeProfileName(employee)}</option>
                 ))}
               </select>
             </label>
 
-            <label>Объект
+            <label>{t('commonObject')}
               <select value={filterObject} onChange={(event) => setFilterObject(event.target.value)}>
-                <option value="">Все объекты</option>
+                <option value="">{t('durAllObjects')}</option>
                 {objectOptions.map((item) => <option key={item} value={item}>{item}</option>)}
               </select>
             </label>
 
-            <label>Заказчик
+            <label>{t('commonCustomer')}
               <select value={filterCustomer} onChange={(event) => setFilterCustomer(event.target.value)}>
-                <option value="">Все заказчики</option>
+                <option value="">{t('durAllCustomers')}</option>
                 {customerOptions.map((item) => <option key={item} value={item}>{item}</option>)}
               </select>
             </label>
 
-            <label>Задание
+            <label>{t('commonAssignment')}
               <select value={filterAssignmentId} onChange={(event) => setFilterAssignmentId(event.target.value)}>
-                <option value="">Все задания</option>
+                <option value="">{t('durAllAssignments')}</option>
                 {orders.map((order) => {
                   const details = parseDetails(order);
 
@@ -491,43 +468,43 @@ export default function DurationsPage() {
               </select>
             </label>
 
-            <label>Тип времени
+            <label>{t('durTimeType')}
               <select value={filterTimeType} onChange={(event) => setFilterTimeType(event.target.value)}>
-                <option value="">Всё время</option>
-                <option value="work">Только работа</option>
-                <option value="travel">Только дорога</option>
+                <option value="">{t('durAllTime')}</option>
+                <option value="work">{t('durOnlyWork')}</option>
+                <option value="travel">{t('durOnlyTravel')}</option>
               </select>
             </label>
 
-            <label>Статус
+            <label>{t('commonStatus')}
               <select value={filterStatus} onChange={(event) => setFilterStatus(event.target.value)}>
-                <option value="">Все статусы</option>
-                {statusOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+                <option value="">{t('durAllStatuses')}</option>
+                {statusOptions.map((item) => <option key={item} value={item}>{fmt.status(item)}</option>)}
               </select>
             </label>
           </div>
         </section>
 
         <section className="panel">
-          <h2>Расчёт времени</h2>
+          <h2>{t('durCalcTitle')}</h2>
 
           <div className="report-table-scroll">
             <div style={rowStyle}>
-              <strong>Сотрудник</strong>
-              <strong>Дата</strong>
-              <strong>Задание</strong>
-              <strong>Объект</strong>
-              <strong>Заказчик</strong>
-              <strong>Работа</strong>
-              <strong>Дорога</strong>
-              <strong>Всего</strong>
-              <strong>Статус</strong>
+              <strong>{t('commonEmployee')}</strong>
+              <strong>{t('commonDate')}</strong>
+              <strong>{t('commonAssignment')}</strong>
+              <strong>{t('commonObject')}</strong>
+              <strong>{t('commonCustomer')}</strong>
+              <strong>{t('commonWork')}</strong>
+              <strong>{t('durTravel')}</strong>
+              <strong>{t('commonTotal')}</strong>
+              <strong>{t('commonStatus')}</strong>
             </div>
 
             {filteredRows.map((row) => (
               <div style={rowStyle} key={row.key}>
                 <span>{row.employeeName}</span>
-                <span>{row.date || '—'}</span>
+                <span>{row.date ? fmt.date(row.date) : '—'}</span>
 
                 <span>
                   <strong>{row.title}</strong><br />
@@ -536,16 +513,16 @@ export default function DurationsPage() {
 
                 <span>{row.objectName}</span>
                 <span>{row.customerName}</span>
-                <span>{durationLabel(row.workMinutes)}</span>
-                <span>{durationLabel(row.travelMinutes)}</span>
-                <span><strong>{durationLabel(row.totalMinutes)}</strong></span>
-                <span><span className={statusClass(row.status)}>{statusLabel(row.status)}</span></span>
+                <span>{fmt.duration(row.workMinutes)}</span>
+                <span>{fmt.duration(row.travelMinutes)}</span>
+                <span><strong>{fmt.duration(row.totalMinutes)}</strong></span>
+                <span><span className={statusClass(row.status)}>{fmt.status(row.status)}</span></span>
               </div>
             ))}
           </div>
 
           {!filteredRows.length ? (
-            <p className="hint">По выбранным фильтрам пока нет данных.</p>
+            <p className="hint">{t('commonNoDataFiltered')}</p>
           ) : null}
         </section>
       </RoleGuard>

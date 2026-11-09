@@ -24,31 +24,6 @@ function parseDetails(item?: WorkOrder | null): Record<string, string> {
   }
 }
 
-function formatDateTime(value?: string | null) {
-  if (!value) return '—';
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date);
-}
-
-function pairLabel(pairType: WorkEventApproval['pair_type']) {
-  if (pairType === 'gasfahrt') return 'An-/Abfahrt';
-  if (pairType === 'arbeit') return 'Arbeitszeit';
-  if (pairType === 'dienstfahrt') return 'Dienstfahrt';
-  return pairType;
-}
-
 const rowStyle = {
   display: 'grid',
   gridTemplateColumns: '170px minmax(300px, 1fr) 160px 160px 130px 150px',
@@ -83,12 +58,15 @@ const actionStyle = {
   cursor: 'pointer',
 } as const;
 
+
 export default function ApprovalsPage() {
-  const { t } = useI18n();
+  const { t, fmt } = useI18n();
+  const formatDateTime = (value?: string | null) => fmt.dateTime(value);
+  const pairLabel = (pairType: string) => t(`costType_${pairType}`);
   const [items, setItems] = useState<WorkEventApproval[]>([]);
   const [employees, setEmployees] = useState<EmployeeProfile[]>([]);
   const [orders, setOrders] = useState<WorkOrder[]>([]);
-  const [message, setMessage] = useState('Lade Freigaben...');
+  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
 
   const employeeMap = useMemo(() => {
@@ -124,11 +102,11 @@ export default function ApprovalsPage() {
       setItems(approvalResponse.data);
       setEmployees(employeeResponse.data);
       setOrders(orderResponse.data);
-      setMessage(approvalResponse.data.length ? 'Freigaben aus API geladen.' : 'Noch keine Freigaben vorhanden.');
+      setMessage(approvalResponse.data.length ? '' : t('apprNoItems'));
     } catch (error) {
-      const errorText = error instanceof Error ? error.message : 'Unbekannter Fehler';
+      const errorText = error instanceof Error ? error.message : t('commonUnknownError');
       setItems([]);
-      setMessage(`API-Fehler: ${errorText}`);
+      setMessage(t('commonLoadFailed', { error: errorText }));
     } finally {
       setLoading(false);
     }
@@ -137,11 +115,11 @@ export default function ApprovalsPage() {
   async function updateStatus(action: 'approve' | 'reject', approval: WorkEventApproval) {
     try {
       await setWorkEventApprovalStatus(action, approval.id);
-      setMessage(action === 'approve' ? 'Freigabe bestätigt.' : 'Freigabe abgelehnt.');
+      setMessage(action === 'approve' ? t('apprApproved') : t('apprRejected'));
       await load();
     } catch (error) {
-      const errorText = error instanceof Error ? error.message : 'Unbekannter Fehler';
-      setMessage(`Aktion fehlgeschlagen: ${errorText}`);
+      const errorText = error instanceof Error ? error.message : t('commonUnknownError');
+      setMessage(t('apprActionFailed', { error: errorText }));
     }
   }
 
@@ -163,8 +141,8 @@ export default function ApprovalsPage() {
             <p className="hero-text">{t('apprHero')}</p>
           </div>
           <div className="field-status-stack">
-            <div className="status-pill">{items.length} total</div>
-            <span>pending: {pending} · approved: {approved} · rejected: {rejected}</span>
+            <div className="status-pill">{t('apprTotal', { count: items.length })}</div>
+            <span>{fmt.status('pending')}: {pending} · {fmt.status('approved')}: {approved} · {fmt.status('rejected')}: {rejected}</span>
           </div>
         </section>
 
@@ -172,7 +150,7 @@ export default function ApprovalsPage() {
           <div className="field-panel-head split-head">
             <div>
               <h2>{t('apprQueue')}</h2>
-              <p className="hint">{loading ? t('commonLoading') : message}</p>
+              <p className="hint">{loading ? t('commonLoading') : message || t('apprHint')}</p>
             </div>
             <button
               className="small-refresh-button"
@@ -217,7 +195,7 @@ export default function ApprovalsPage() {
           {items.map((item) => {
             const order = orderMap.get(item.assignment_id);
             const details = parseDetails(order);
-            const employeeName = employeeMap.get(item.employee_id) || `Mitarbeiter #${item.employee_id}`;
+            const employeeName = employeeMap.get(item.employee_id) || t('commonEmployeeNumber', { id: item.employee_id });
 
             return (
               <div style={rowStyle} key={item.id}>
@@ -227,7 +205,7 @@ export default function ApprovalsPage() {
                 </span>
 
                 <span>
-                  <strong>{details.work_title || order?.title || `Auftrag #${item.assignment_id}`}</strong><br />
+                  <strong>{details.work_title || order?.title || t('commonAssignmentNumber', { id: item.assignment_id })}</strong><br />
                   <small>{order?.reference_number || `#${item.assignment_id}`}</small><br />
                   <small>{details.customer_name || '—'} · {details.object_name || '—'}</small>
                 </span>
@@ -239,7 +217,7 @@ export default function ApprovalsPage() {
                   <small>{formatDateTime(item.stop_time)}</small>
                 </span>
 
-                <span>{item.status}</span>
+                <span>{fmt.status(item.status)}</span>
 
                 <span style={actionsWrapStyle}>
                   {item.status === 'pending' ? (

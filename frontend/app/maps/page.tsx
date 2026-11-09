@@ -31,7 +31,7 @@ function hasCoordinates(event: WorkEvent) {
 }
 
 export default function MapsPage() {
-  const { t } = useI18n();
+  const { t, fmt } = useI18n();
   const [events, setEvents] = useState<WorkEvent[]>([]);
   const [selected, setSelected] = useState<WorkEvent | null>(null);
   const [message, setMessage] = useState(t('mapsLoading'));
@@ -52,17 +52,16 @@ export default function MapsPage() {
     <main className="page-shell">
       <section className="hero-card">
         <div>
-          <p className="eyebrow">Google Maps</p>
+          <p className="eyebrow">{t('gpsMap')}</p>
           <h1>{t('mapsTitle')}</h1>
           <p className="hero-text">{t('mapsHero')}</p>
         </div>
-        <div className="status-pill">GPS</div>
       </section>
 
       {selectedEmbed ? (
         <section className="panel">
-          <h2>{selected?.event_type}</h2>
-          <iframe title="Selected event map" src={selectedEmbed} width="100%" height="360" loading="lazy" />
+          <h2>{fmt.eventType(selected?.event_type)}</h2>
+          <iframe title={t('mapsMap')} src={selectedEmbed} width="100%" height="360" loading="lazy" />
         </section>
       ) : null}
 
@@ -74,7 +73,7 @@ export default function MapsPage() {
 
           return (
             <div className="table-row" key={event.id}>
-              <span>{event.event_type}</span>
+              <span>{fmt.eventType(event.event_type)}</span>
               <span>{event.event_time}</span>
               <span>{url ? <button className="action-link" onClick={() => setSelected(event)} type="button">{t('mapsShow')}</button> : t('mapsNoCoordinates')} {url ? <a href={url} target="_blank" rel="noreferrer">{t('commonOpen')}</a> : null}</span>
             </div>

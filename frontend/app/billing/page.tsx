@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import RoleGuard from '../components/RoleGuard';
+import { useI18n } from '../i18n';
 import { createInvoiceDraft, getInvoices, type Invoice } from '../../lib/invoices';
 import { getWorkEventCosts, type WorkEventCost } from '../../lib/costs';
 import { getEmployeeProfiles, employeeProfileName, type EmployeeProfile } from '../../lib/employee-profiles';
@@ -13,34 +14,6 @@ type WorkDetails = {
   work_title?: string;
   einsatzort?: string;
 };
-
-function formatMoney(value: string | number | null | undefined) {
-  const amount = Number(value || 0);
-
-  return new Intl.NumberFormat('de-DE', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-}
-
-function formatHours(value: string | number | null | undefined) {
-  const hours = Number(value || 0);
-
-  return new Intl.NumberFormat('de-DE', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(hours);
-}
-
-function typeLabel(type: string) {
-  const labels: Record<string, string> = {
-    gasfahrt: 'Дорога к объекту',
-    arbeit: 'Работа',
-    dienstfahrt: 'Служебная поездка',
-  };
-
-  return labels[type] || type;
-}
 
 function parseDetails(order?: WorkOrder | null): WorkDetails {
   const details = order?.details;
@@ -56,27 +29,6 @@ function parseDetails(order?: WorkOrder | null): WorkDetails {
   } catch {
     return {};
   }
-}
-
-function dateLabel(value?: string | null) {
-  if (!value) return '—';
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) return value;
-
-  return date.toLocaleDateString('de-DE');
-}
-
-function invoiceStatusLabel(status: string) {
-  const labels: Record<string, string> = {
-    draft: 'Черновик',
-    sent: 'Отправлен',
-    paid: 'Оплачен',
-    cancelled: 'Отменён',
-  };
-
-  return labels[status] || status || '—';
 }
 
 const billingActionsStyle = {
@@ -150,11 +102,15 @@ const invoiceRowStyle = {
 } as const;
 
 export default function BillingPage() {
+  const { t, fmt } = useI18n();
+  const formatMoney = (value: string | number | null | undefined) => fmt.money(value);
+  const formatHours = (value: string | number | null | undefined) => fmt.number(value, 2);
+  const typeLabel = (type: string) => t(`costType_${type}`);
   const [costs, setCosts] = useState<WorkEventCost[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [employees, setEmployees] = useState<EmployeeProfile[]>([]);
   const [orders, setOrders] = useState<WorkOrder[]>([]);
-  const [message, setMessage] = useState('Загрузка расчёта...');
+  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
 
@@ -191,7 +147,7 @@ export default function BillingPage() {
 
   async function load() {
     setLoading(true);
-    setMessage('Загрузка расчёта...');
+    setMessage(t('billLoading'));
 
     try {
       const [costsResponse, invoicesResponse, employeesResponse, ordersResponse] = await Promise.all([
@@ -207,11 +163,11 @@ export default function BillingPage() {
       setOrders(ordersResponse.data);
 
       setMessage(costsResponse.data.length
-        ? 'Расчёт готов по подтверждённым и ещё не выставленным в счёт событиям.'
-        : 'Нет подтверждённых событий, готовых к счёту.');
+        ? t('billReady')
+        : t('billNothingReady'));
     } catch (error) {
-      const text = error instanceof Error ? error.message : 'Неизвестная ошибка';
-      setMessage(`Ошибка загрузки billing: ${text}`);
+      const text = error instanceof Error ? error.message : t('commonUnknownError');
+      setMessage(t('commonLoadFailed', { error: text }));
       setCosts([]);
       setInvoices([]);
       setEmployees([]);
@@ -223,15 +179,15 @@ export default function BillingPage() {
 
   async function createDraft() {
     setCreating(true);
-    setMessage('Создаём черновик счёта...');
+    setMessage(t('billCreatingDraft'));
 
     try {
       await createInvoiceDraft();
       await load();
-      setMessage('Черновик счёта создан. Позиции больше не отображаются как готовые к счёту.');
+      setMessage(t('billDraftCreated'));
     } catch (error) {
-      const text = error instanceof Error ? error.message : 'Неизвестная ошибка';
-      setMessage(`Не удалось создать счёт: ${text}`);
+      const text = error instanceof Error ? error.message : t('commonUnknownError');
+      setMessage(t('billCreateFailed', { error: text }));
     } finally {
       setCreating(false);
     }
@@ -243,73 +199,71 @@ export default function BillingPage() {
 
   return (
     <main className="page-shell">
-      <RoleGuard allowedRoles={['manager', 'admin']} title="Billing access">
+      <RoleGuard allowedRoles={['manager', 'admin']} title={t('billTitle')}>
         <section className="hero-card">
           <div>
-            <p className="eyebrow">Billing</p>
-            <h1>Расчёт оплаты</h1>
-            <p className="hero-text">
-              Счёт формируется по подтверждённому времени. Ставки и коэффициенты берутся из профиля сотрудника.
-            </p>
-            <p className="hint">{loading ? 'Загрузка...' : message}</p>
+            <p className="eyebrow">{t('billEyebrow')}</p>
+            <h1>{t('billTitle')}</h1>
+            <p className="hero-text">{t('billHero')}</p>
+            <p className="hint">{loading ? t('commonLoadingDots') : message}</p>
           </div>
 
           <div style={billingActionsStyle}>
-            <button className="action-button secondary" onClick={load} type="button">Обновить</button>
+            <button className="action-button secondary" onClick={load} type="button">{t('commonRefresh')}</button>
             <button
               disabled={creating || costs.length === 0}
               onClick={createDraft}
               style={{ ...billingPrimaryButtonStyle, opacity: creating || costs.length === 0 ? 0.55 : 1 }}
               type="button"
             >
-              {creating ? 'Создаём...' : 'Создать счёт'}
+              {creating ? t('billCreating') : t('billCreateInvoice')}
             </button>
           </div>
         </section>
 
         <section style={cardGridStyle}>
           <div style={metricCardStyle}>
-            <p className="eyebrow">Готово к счёту</p>
+            <p className="eyebrow">{t('billReadyCount')}</p>
             <h2 style={metricValueStyle}>{costs.length}</h2>
-            <p className="hint">Approved + не выставлено.</p>
+            <p className="hint">{t('billReadyCountHint')}</p>
           </div>
 
           <div style={metricCardStyle}>
-            <p className="eyebrow">Работа</p>
+            <p className="eyebrow">{t('commonWork')}</p>
             <h2 style={metricValueStyle}>{formatMoney(workAmount)}</h2>
-            <p className="hint">По стандартной ставке сотрудника.</p>
+            <p className="hint">{t('billWorkHint')}</p>
           </div>
 
           <div style={metricCardStyle}>
-            <p className="eyebrow">Дорога</p>
+            <p className="eyebrow">{t('durTravel')}</p>
             <h2 style={metricValueStyle}>{formatMoney(travelAmount)}</h2>
-            <p className="hint">По ставке дороги сотрудника.</p>
+            <p className="hint">{t('billTravelHint')}</p>
           </div>
 
           <div style={metricCardStyle}>
-            <p className="eyebrow">Итого</p>
+            <p className="eyebrow">{t('commonTotal')}</p>
             <h2 style={metricValueStyle}>{formatMoney(totalAmount)}</h2>
-            <p className="hint">{formatHours(totalHours)} часов.</p>
+            <p className="hint">{fmt.hours(totalHours)}</p>
           </div>
         </section>
 
         <section className="panel">
           <div className="field-panel-head">
-            <p className="eyebrow">Approved / uninvoiced</p>
-            <h2>Позиции к оплате</h2>
-            <p className="hint">Ставка, ставка дороги и коэффициенты подтягиваются из профиля конкретного сотрудника.</p>
+            <p className="eyebrow">{t('billItemsEyebrow')}</p>
+            <h2>{t('billItemsTitle')}</h2>
+            <p className="hint">{t('billItemsHint')}</p>
           </div>
 
           <div className="report-table-scroll">
             <div style={costRowStyle}>
-              <strong>Сотрудник</strong>
-              <strong>Дата</strong>
-              <strong>Задание</strong>
-              <strong>Тип</strong>
-              <strong>Часы</strong>
-              <strong>Ставка</strong>
-              <strong>Коэф.</strong>
-              <strong>Сумма</strong>
+              <strong>{t('commonEmployee')}</strong>
+              <strong>{t('commonDate')}</strong>
+              <strong>{t('commonAssignment')}</strong>
+              <strong>{t('commonType')}</strong>
+              <strong>{t('billHours')}</strong>
+              <strong>{t('billRate')}</strong>
+              <strong>{t('billCoefficient')}</strong>
+              <strong>{t('billAmount')}</strong>
             </div>
 
             {costs.map((item) => {
@@ -321,11 +275,11 @@ export default function BillingPage() {
                   style={costRowStyle}
                   key={`${item.employee_id}-${item.assignment_id}-${item.type}-${item.start_time}-${item.stop_time}`}
                 >
-                  <span>{employeeMap.get(Number(item.employee_id)) || `Сотрудник #${item.employee_id}`}</span>
-                  <span>{dateLabel(item.start_time)}</span>
+                  <span>{employeeMap.get(Number(item.employee_id)) || t('commonEmployeeNumber', { id: item.employee_id })}</span>
+                  <span>{fmt.date(item.start_time)}</span>
 
                   <span>
-                    <strong>{details.work_title || order?.title || `Задание #${item.assignment_id}`}</strong><br />
+                    <strong>{details.work_title || order?.title || t('commonAssignmentNumber', { id: item.assignment_id })}</strong><br />
                     <small>{details.object_name || '—'} · {details.customer_name || '—'}</small>
                   </span>
 
@@ -340,37 +294,37 @@ export default function BillingPage() {
           </div>
 
           {!costs.length ? (
-            <p className="hint">Пока нет подтверждённых позиций для нового счёта.</p>
+            <p className="hint">{t('billNoItems')}</p>
           ) : null}
         </section>
 
         <section className="panel">
           <div className="field-panel-head">
-            <p className="eyebrow">Invoices</p>
-            <h2>Созданные счета</h2>
-            <p className="hint">После создания счёта work orders переходят в статус invoiced.</p>
+            <p className="eyebrow">{t('billInvoicesEyebrow')}</p>
+            <h2>{t('billInvoicesTitle')}</h2>
+            <p className="hint">{t('billInvoicesHint')}</p>
           </div>
 
           <div className="report-table-scroll">
             <div style={invoiceRowStyle}>
-              <strong>Номер</strong>
-              <strong>Дата</strong>
-              <strong>Сумма</strong>
-              <strong>Статус</strong>
+              <strong>{t('billNumber')}</strong>
+              <strong>{t('commonDate')}</strong>
+              <strong>{t('billAmount')}</strong>
+              <strong>{t('commonStatus')}</strong>
             </div>
 
             {invoices.map((invoice) => (
               <div style={invoiceRowStyle} key={invoice.id}>
                 <span><a className="action-link" href={`/billing/invoices/${invoice.id}`}><strong>{invoice.number}</strong></a></span>
-                <span>{invoice.issued_at || '—'}</span>
+                <span>{fmt.date(invoice.issued_at)}</span>
                 <span>{formatMoney(invoice.total_amount)}</span>
-                <span>{invoiceStatusLabel(invoice.status)}</span>
+                <span>{fmt.status(invoice.status)}</span>
               </div>
             ))}
           </div>
 
           {!invoices.length ? (
-            <p className="hint">Счета ещё не создавались.</p>
+            <p className="hint">{t('billNoInvoices')}</p>
           ) : null}
         </section>
       </RoleGuard>
