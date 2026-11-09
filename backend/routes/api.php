@@ -237,6 +237,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/documents', [DocumentController::class, 'store'])->middleware('role:manager,admin');
     Route::get('/documents/{id}', [DocumentController::class, 'show'])->middleware('role:manager,admin');
     Route::get('/documents/{id}/download', [DocumentController::class, 'download'])->middleware('role:manager,admin');
+    Route::get('/documents/{id}/signature-pdf', [DocumentController::class, 'signaturePdf'])->middleware('role:manager,admin');
     Route::get('/documents/{id}/print-data', [DocumentController::class, 'printData'])->middleware('role:manager,admin');
     Route::post('/documents/{id}/ocr/start', [DocumentController::class, 'startOcr'])->middleware('role:manager,admin');
     Route::post('/documents/{id}/ocr/text', [DocumentController::class, 'saveOcrText'])->middleware('role:manager,admin');

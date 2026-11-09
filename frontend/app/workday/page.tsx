@@ -13,6 +13,7 @@ import { me } from '../../lib/auth';
 import { getFieldState, type FieldState } from '../../lib/field-state';
 import { useI18n } from '../i18n';
 import { monthEndIso, monthStartIso } from '../../lib/period';
+import { enqueue, flushQueue, isNetworkError, pendingEvents } from '../../lib/offline-queue';
 const leistungsartOptions = ['', 'WTU', 'WSU', 'E-WU', 'Rb', 'Azf', 'RID-Kontrolle', 'Zugbeschtreifung'];
 
 const workdayAllowedStatuses = ['planned', 'in_progress', 'waiting_approval', 'approved', 'invoiced'];
@@ -59,6 +60,15 @@ function isCompletedOrder(order: any) {
 function isWorkdayAvailableOrder(order: DemoWorkOrder) {
   return !order.status || workdayAllowedStatuses.includes(order.status);
 }
+
+const NEXT_ACTION: Record<string, string> = {
+  gasfahrt_start: 'gasfahrt_stop',
+  gasfahrt_stop: 'dienstbeginn',
+  dienstbeginn: 'arbeit_stop',
+  arbeit_stop: 'dienstfahrt_start',
+  dienstfahrt_start: 'dienstfahrt_stop',
+  dienstfahrt_stop: 'dienstbeginn',
+};
 
 const routeByAction: Record<string, string> = {
   gasfahrt_start: workEventRoutes.gasfahrtStart,
@@ -372,6 +382,35 @@ export default function WorkdayPage() {
   const [geoMessage, setGeoMessage] = useState(t('geoWillAsk'));
   const [saving, setSaving] = useState(false);
   const [employeeId, setEmployeeId] = useState<number | null>(null);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  async function afterFlush(result: { sent: number; rejected: string[] }) {
+    setPendingCount(pendingEvents().length);
+    if (result.sent) {
+      setMessage(t('offlineSynced', { count: result.sent }));
+      await refreshEvents();
+      await refreshState();
+    }
+    if (result.rejected.length) {
+      setMessage(t('offlineRejected', { error: result.rejected.join('; ') }));
+    }
+  }
+
+  useEffect(() => {
+    setPendingCount(pendingEvents().length);
+    const sync = () => { flushQueue().then(afterFlush); };
+    const changed = () => setPendingCount(pendingEvents().length);
+    sync();
+    window.addEventListener('online', sync);
+    window.addEventListener('rail-crm-offline-changed', changed);
+    const timer = window.setInterval(() => { if (pendingEvents().length) sync(); }, 30000);
+    return () => {
+      window.removeEventListener('online', sync);
+      window.removeEventListener('rail-crm-offline-changed', changed);
+      window.clearInterval(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     setGeoMessage(t('geoWillAsk'));
@@ -669,8 +708,7 @@ const first = response.data[0];
       setGeoMessage(t('coordinatesDenied'));
     }
 
-    try {
-      await postWorkEvent(route, {
+    const eventPayload = {
         employee_id: employeeId,
         assignment_id: selectedOrderId || undefined,
         ...position,
@@ -693,17 +731,38 @@ const first = response.data[0];
           bemerkung,
           client_time: timeNow(locale),
         },
-      });
+      };
+
+    try {
+      if (pendingCount > 0) {
+        // Keep the order: older offline presses must reach the server first.
+        throw new TypeError('offline queue not empty');
+      }
+      await postWorkEvent(route, eventPayload);
 
       addLog(t('logSaved', { action: currentLabel }));
       setMessage(t('saved', { action: currentLabel }));
       await refreshEvents();
       await refreshState();
     } catch (error) {
-      const errorText = error instanceof Error ? error.message : t('unknownError');
-      addLog(t('logFailed', { action: currentLabel, error: errorText }));
-      setMessage(t('backendRejected', { error: errorText }));
-      await refreshState();
+      if (isNetworkError(error)) {
+        enqueue(route, eventPayload);
+        setPendingCount(pendingEvents().length);
+        addLog(t('logSavedOffline', { action: currentLabel }));
+        setMessage(t('savedOffline', { action: currentLabel }));
+        // Move the button on locally; the server confirms when the phone is online again.
+        setFieldState((state) => state ? {
+          ...state,
+          allowed_actions: [NEXT_ACTION[currentAction] || currentAction],
+          requires_bemerkung: false,
+        } : state);
+        if (pendingCount === 0) flushQueue().then(afterFlush);
+      } else {
+        const errorText = error instanceof Error ? error.message : t('unknownError');
+        addLog(t('logFailed', { action: currentLabel, error: errorText }));
+        setMessage(t('backendRejected', { error: errorText }));
+        await refreshState();
+      }
     } finally {
       setSaving(false);
     }
@@ -711,6 +770,9 @@ const first = response.data[0];
 
   return (
     <main className="page-shell field-crm-page workday-v2-clean-page">
+      {pendingCount > 0 ? (
+        <p className="notice offline-banner" role="status">{t('offlinePending', { count: pendingCount })}</p>
+      ) : null}
       <section className="workday-v2-clean-top">
         <div>
           <p className="eyebrow">{t('wdEyebrow')}</p>

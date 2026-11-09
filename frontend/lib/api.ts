@@ -12,6 +12,7 @@ export type WorkEventPayload = {
   planned_exceeded?: boolean;
   bemerkung?: string;
   payload?: Record<string, unknown>;
+  recorded_at?: string;
 };
 
 export type WorkEvent = {

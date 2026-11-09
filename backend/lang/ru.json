@@ -111,5 +111,9 @@
   "Invoice deleted.": "Счёт удалён. Время снова доступно для выставления.",
   "E-mail sending is not configured on the server. Download the PDF and send it yourself.": "На сервере не настроена отправка почты. Скачайте PDF и отправьте его сами.",
   "The e-mail could not be sent: :error": "Письмо не отправлено: :error",
-  "Invoice sent to :email.": "Счёт отправлен на :email."
+  "Invoice sent to :email.": "Счёт отправлен на :email.",
+  "Text recognition is not installed on the server. Enter the text manually.": "Распознавание текста не установлено на сервере. Введите текст вручную.",
+  "No text was recognised in this file.": "В этом файле текст не найден.",
+  "Text recognised.": "Текст распознан.",
+  "The offline time of this action is not plausible.": "Время, записанное без сети, неправдоподобно."
 }

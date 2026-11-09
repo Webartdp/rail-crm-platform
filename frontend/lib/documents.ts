@@ -1,3 +1,4 @@
+import { apiRequest } from './http';
 import { getStoredToken } from './auth';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
@@ -102,15 +103,8 @@ export async function downloadDocument(id: number): Promise<Blob> {
   return response.blob();
 }
 
-export async function startDocumentOcr(id: number): Promise<{ data: DocumentRow }> {
-  const response = await fetch(`${API_URL}/documents/${id}/ocr/start`, {
-    method: 'POST',
-    headers: authHeaders(true),
-    body: JSON.stringify({}),
-  });
-
-  if (!response.ok) throw new Error('Could not start OCR');
-  return response.json();
+export async function startDocumentOcr(id: number): Promise<{ data: DocumentRow; message: string }> {
+  return apiRequest(`/documents/${id}/ocr/start`, { body: {} });
 }
 
 export async function saveDocumentOcrText(id: number, extractedText: string): Promise<{ data: DocumentRow }> {

@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Support\CurrentUser;
+use App\Support\Ocr;
+use App\Support\SignatureProtocolPdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -142,6 +144,23 @@ class DocumentController extends Controller
         ]);
     }
 
+    /** Signature protocol PDF (document data, file fingerprint, signatures). */
+    public function signaturePdf(int $id): \Symfony\Component\HttpFoundation\Response
+    {
+        $document = DB::table('documents')->where('id', $id)->first();
+        if (!$document) {
+            return response()->json(['message' => __('Document not found.')], 404);
+        }
+
+        $name = 'Unterschriftsprotokoll_'.preg_replace('/[^A-Za-z0-9\-]+/', '_', (string) $document->title).'.pdf';
+
+        return response(SignatureProtocolPdf::render($id), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$name.'"',
+            'Cache-Control' => 'no-store',
+        ]);
+    }
+
     public function startOcr(Request $request, int $id): JsonResponse
     {
         $user = CurrentUser::fromRequest($request);
@@ -154,17 +173,38 @@ class DocumentController extends Controller
             return response()->json(['message' => __('Document not found.')], 404);
         }
 
+        $path = $document->file_path ? storage_path('app/'.$document->file_path) : null;
         $now = now();
+
+        if (!$path || !is_file($path)) {
+            return response()->json(['message' => __('Document file not found.')], 404);
+        }
+
+        $text = Ocr::extract($path, $document->mime_type);
+
+        if ($text === null) {
+            DB::table('documents')->where('id', $id)->update(['ocr_status' => 'pending', 'updated_at' => $now]);
+            $this->audit($user->id, 'document_ocr_pending', $id, ['document_id' => $id]);
+
+            return response()->json([
+                'message' => __('Text recognition is not installed on the server. Enter the text manually.'),
+                'data' => DB::table('documents')->where('id', $id)->first(),
+                'ocr_available' => false,
+            ], 422);
+        }
+
         DB::table('documents')->where('id', $id)->update([
-            'ocr_status' => 'pending',
+            'ocr_status' => $text === '' ? 'failed' : 'done',
+            'extracted_text' => $text === '' ? $document->extracted_text : $text,
+            'ocr_processed_at' => $now,
             'updated_at' => $now,
         ]);
-
-        $this->audit($user->id, 'document_ocr_pending', $id, ['document_id' => $id]);
+        $this->audit($user->id, 'document_ocr_saved', $id, ['document_id' => $id, 'automatic' => true]);
 
         return response()->json([
-            'message' => __('Document OCR marked as pending.'),
+            'message' => $text === '' ? __('No text was recognised in this file.') : __('Text recognised.'),
             'data' => DB::table('documents')->where('id', $id)->first(),
+            'ocr_available' => true,
         ]);
     }
 

@@ -2,6 +2,11 @@
 export const workday = {
   ru: {
     wdEyebrow: 'Рабочий день',
+    savedOffline: '{action}: нет связи, нажатие сохранено на телефоне и будет отправлено автоматически.',
+    logSavedOffline: '{action} сохранено без сети',
+    offlinePending: 'Без сети сохранено нажатий: {count}. Они отправятся автоматически, когда появится связь.',
+    offlineSynced: 'Отправлено нажатий, сохранённых без сети: {count}.',
+    offlineRejected: 'Сервер не принял нажатие, сохранённое без сети: {error}',
     wdNoProfileLinked: 'К вашему пользователю не привязан профиль сотрудника. Обратитесь к администратору.',
     wdNoAssignments: 'Для вас пока нет назначенных заданий.',
     mtLoading: 'Загрузка времени...',
@@ -102,6 +107,11 @@ export const workday = {
   },
   de: {
     wdEyebrow: 'Arbeitstag',
+    savedOffline: '{action}: keine Verbindung, Tastendruck auf dem Telefon gespeichert und wird automatisch gesendet.',
+    logSavedOffline: '{action} offline gespeichert',
+    offlinePending: 'Offline gespeicherte Tastendrücke: {count}. Sie werden automatisch gesendet, sobald eine Verbindung besteht.',
+    offlineSynced: 'Offline gespeicherte Tastendrücke gesendet: {count}.',
+    offlineRejected: 'Der Server hat einen offline gespeicherten Tastendruck abgelehnt: {error}',
     wdNoProfileLinked: 'Ihrem Benutzer ist kein Mitarbeiterprofil zugeordnet. Bitte wenden Sie sich an den Administrator.',
     wdNoAssignments: 'Für Sie sind noch keine Aufträge geplant.',
     mtLoading: 'Zeiten werden geladen...',

@@ -2,6 +2,7 @@
 export const documents = {
   ru: {
     docEyebrow: 'DC / Документы',
+    docSignaturePdf: 'Протокол подписей (PDF)',
     docTitle: 'Документы',
     docHero: 'Отчёты, акты, PDF и фото, распознавание текста и подписи.',
     docNone: 'Документов пока нет.',
@@ -83,6 +84,7 @@ export const documents = {
   },
   de: {
     docEyebrow: 'DC / Dokumente',
+    docSignaturePdf: 'Unterschriftsprotokoll (PDF)',
     docTitle: 'Dokumente & Belege',
     docHero: 'Berichte, Protokolle, PDFs und Fotos, Texterkennung und Unterschriften.',
     docNone: 'Noch keine Dokumente.',

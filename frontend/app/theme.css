@@ -493,3 +493,4 @@ body.auth-body { background: var(--ink); }
 .invoice-group:first-of-type { border-top: 0; padding-top: 0; }
 .invoice-group h3 { margin: 0; font-size: 15.5px; }
 .choice input[type='radio'] { width: 18px; height: 18px; accent-color: var(--ink); }
+.offline-banner { position: sticky; top: 8px; z-index: 20; border-color: #e5d3ae; background: var(--brass-soft); color: var(--ink); }

@@ -149,7 +149,24 @@ class WorkEventController extends Controller
         }
 
         $now = now();
+        $eventTime = $now;
+
+        // Offline mode: the phone had no connection and sends the button time it recorded.
+        if ($request->filled('recorded_at')) {
+            $recorded = Carbon::parse((string) $request->input('recorded_at'))->setTimezone(config('app.timezone'));
+            $lastTime = DB::table('work_events')->where('employee_id', $employeeId)->max('event_time');
+            if ($recorded->greaterThan($now->copy()->addMinutes(5)) || $recorded->lessThan($now->copy()->subHours(72))
+                || ($lastTime && $recorded->lessThan(Carbon::parse($lastTime)))) {
+                return response()->json(['message' => __('The offline time of this action is not plausible.')], 422);
+            }
+            $eventTime = $recorded;
+        }
+
         $payload = $this->payload($request);
+        if ($eventTime !== $now) {
+            $payload['offline'] = true;
+            $payload['synced_at'] = $now->toDateTimeString();
+        }
         $payload['planned_exceeded'] = $eventType === 'arbeit_stop'
             ? ($plannedExceeded ?? $request->boolean('planned_exceeded'))
             : false;
@@ -159,7 +176,7 @@ class WorkEventController extends Controller
             'employee_id' => $employeeId,
             'assignment_id' => $assignmentId,
             'event_type' => $eventType,
-            'event_time' => $now,
+            'event_time' => $eventTime,
             'latitude' => $request->input('latitude'),
             'longitude' => $request->input('longitude'),
             'location_accuracy' => $request->input('location_accuracy'),
@@ -187,7 +204,7 @@ class WorkEventController extends Controller
                 'id' => $id,
                 'type' => $eventType,
                 'stored' => true,
-                'event_time' => $now->toISOString(),
+                'event_time' => $eventTime->toISOString(),
                 'employee_id' => $employeeId,
                 'assignment_id' => $assignmentId,
                 'latitude' => $request->input('latitude'),

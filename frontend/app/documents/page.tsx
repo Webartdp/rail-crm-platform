@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import RoleGuard from '../components/RoleGuard';
 import { useI18n } from '../i18n';
+import { apiDownload } from '../../lib/http';
 import { getDocumentSignatures, rejectDocumentSignature, requestDocumentSignature, signDocumentSignature, type DocumentSignature, type SignatureType } from '../../lib/document-signatures';
 import { createDocument, downloadDocument, getDocuments, saveDocumentOcrText, startDocumentOcr, uploadDocument, type DocumentRow } from '../../lib/documents';
 
@@ -108,8 +109,9 @@ export default function DocumentsPage() {
 
   async function markOcrPending(item: DocumentRow) {
     try {
-      await startDocumentOcr(item.id);
-      setMessage(t('docOcrStarted'));
+      const response = await startDocumentOcr(item.id);
+      setMessage(response.message);
+      if (response.data.extracted_text) setOcrText(response.data.extracted_text);
       await load();
     } catch (error) {
       setMessage(errorText(error, t('docOcrStartFailed')));
@@ -349,6 +351,7 @@ export default function DocumentsPage() {
                 {item.file_path && canPreview(item) ? <button className="action-link" onClick={() => preview(item)} type="button">{t('docPreview')}</button> : null}
                 {item.file_path ? <button className="action-link" onClick={() => download(item)} type="button">{t('docDownload')}</button> : null}
                 <a className="action-link" href={`/documents/${item.id}/print`}>{t('commonPrint')}</a>
+                <button className="action-link" onClick={() => apiDownload(`/documents/${item.id}/signature-pdf`, `Unterschriftsprotokoll_${item.id}.pdf`).catch((error) => setMessage(errorText(error, t('docDownloadFailed'))))} type="button">{t('docSignaturePdf')}</button>
                 <button className="action-link" onClick={() => markOcrPending(item)} type="button">{t('docStartOcr')}</button>
                 <button className="action-link" onClick={() => saveOcr(item)} type="button">{t('docSaveOcr')}</button>
                 <button className="action-link" onClick={() => openSignatures(item)} type="button">{t('docSignatures')}</button>
