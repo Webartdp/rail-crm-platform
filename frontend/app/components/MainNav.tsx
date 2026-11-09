@@ -53,7 +53,7 @@ const navGroups: NavGroup[] = [
   {
     titleKey: 'groupSettings',
     items: [
-      { href: '/mail-settings', labelKey: 'mailSettings', code: 'ML', roles: ['admin'] },
+      { href: '/admin/mail', labelKey: 'mailSettings', code: 'ML', roles: ['admin'] },
     ],
   },
 ];
@@ -64,6 +64,7 @@ function canSee(item: NavItem, user: AuthUser) {
 
 function isActive(pathname: string, href: string) {
   if (href === '/') return pathname === '/';
+  if (href === '/admin') return pathname === '/admin' || pathname === '/admin/';
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 

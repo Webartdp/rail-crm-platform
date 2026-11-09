@@ -1,8 +1,8 @@
 'use client';
 
-import RoleGuard from '../components/RoleGuard';
-import MailSettingsForm from '../components/MailSettingsForm';
-import { useI18n } from '../i18n';
+import RoleGuard from '../../components/RoleGuard';
+import MailSettingsForm from '../../components/MailSettingsForm';
+import { useI18n } from '../../i18n';
 
 export default function MailSettingsPage() {
   const { t } = useI18n();
