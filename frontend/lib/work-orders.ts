@@ -1,10 +1,11 @@
-import { getStoredToken } from './auth';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+import { apiRequest } from './http';
 
 export type WorkOrder = {
   id: number;
+  client_id?: number | null;
+  object_id?: number | null;
   employee_id?: number | null;
+  employee_ids?: number[];
   title: string;
   reference_number?: string | null;
   status?: string | null;
@@ -16,129 +17,54 @@ export type WorkOrder = {
 };
 
 export type WorkOrderInput = {
-  employee_id: number;
+  client_id: number;
+  object_id: number;
+  employee_ids: number[];
   title: string;
   reference_number?: string;
-  status?: string;
-  object_name?: string;
-  object_address?: string;
-  customer_name?: string;
-  work_title?: string;
   leistungsart?: string;
   zugnummer?: string;
-  einsatzort?: string;
-  planned_start_at?: string;
-  planned_end_at?: string;
+  planned_start_at: string;
+  planned_end_at: string;
+  status?: string;
+  notes?: string;
 };
 
-function authHeaders(json = false): HeadersInit {
-  const headers: Record<string, string> = {
-    Accept: 'application/json',
-  };
+type Filters = { employeeId?: number; clientId?: number; dateFrom?: string; dateTo?: string };
 
-  if (json) {
-    headers['Content-Type'] = 'application/json';
-  }
-
-  const token = getStoredToken();
-
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-
-  return headers;
-}
-
-async function readErrorMessage(response: Response, fallback: string) {
-  const data = await response.json().catch(() => null);
-  return typeof data?.message === 'string' ? data.message : fallback;
-}
-
-export async function getWorkOrders(filters: { employeeId?: number } | number = {}): Promise<{ data: WorkOrder[] }> {
+export function getWorkOrders(filters: Filters | number = {}): Promise<{ data: WorkOrder[] }> {
+  const normalized: Filters = typeof filters === 'number' ? { employeeId: filters } : filters;
   const params = new URLSearchParams();
-  const employeeId = typeof filters === 'number' ? filters : filters.employeeId;
-
-  if (employeeId) {
-    params.set('employee_id', String(employeeId));
-  }
-
+  if (normalized.employeeId) params.set('employee_id', String(normalized.employeeId));
+  if (normalized.clientId) params.set('client_id', String(normalized.clientId));
+  if (normalized.dateFrom) params.set('date_from', normalized.dateFrom);
+  if (normalized.dateTo) params.set('date_to', normalized.dateTo);
   const query = params.toString() ? `?${params.toString()}` : '';
-
-  const response = await fetch(`${API_URL}/work-orders${query}`, {
-    headers: authHeaders(false),
-    cache: 'no-store',
-  });
-
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Could not load work orders'));
-  }
-
-  return response.json();
+  return apiRequest(`/work-orders${query}`);
 }
 
-export async function getWorkOrder(id: number): Promise<{ data: WorkOrder }> {
-  const response = await fetch(`${API_URL}/work-orders/${id}`, {
-    headers: authHeaders(false),
-    cache: 'no-store',
-  });
-
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Could not load work order'));
-  }
-
-  return response.json();
+export function getWorkOrder(id: number): Promise<{ data: WorkOrder }> {
+  return apiRequest(`/work-orders/${id}`);
 }
 
-export async function createWorkOrder(payload: WorkOrderInput): Promise<{ data: WorkOrder }> {
-  const response = await fetch(`${API_URL}/work-orders`, {
-    method: 'POST',
-    headers: authHeaders(true),
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Could not create work order'));
-  }
-
-  return response.json();
+export function createWorkOrder(payload: WorkOrderInput): Promise<{ data: WorkOrder; message: string }> {
+  return apiRequest('/work-orders', { body: payload });
 }
 
-export async function updateWorkOrder(id: number, payload: WorkOrderInput): Promise<{ data: WorkOrder }> {
-  const response = await fetch(`${API_URL}/work-orders/${id}`, {
-    method: 'PUT',
-    headers: authHeaders(true),
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Could not update work order'));
-  }
-
-  return response.json();
+export function updateWorkOrder(id: number, payload: WorkOrderInput): Promise<{ data: WorkOrder; message: string }> {
+  return apiRequest(`/work-orders/${id}`, { method: 'PUT', body: payload });
 }
-
 
 export async function deleteWorkOrder(id: number): Promise<void> {
-  const response = await fetch(`${API_URL}/work-orders/${id}`, {
-    method: 'DELETE',
-    headers: authHeaders(false),
-  });
-
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Could not delete work order'));
-  }
+  await apiRequest(`/work-orders/${id}`, { method: 'DELETE' });
 }
 
-export async function closeWorkOrder(id: number, source = 'manual'): Promise<{ data: WorkOrder }> {
-  const response = await fetch(`${API_URL}/work-orders/${id}/close`, {
-    method: 'POST',
-    headers: authHeaders(true),
-    body: JSON.stringify({ source }),
-  });
+export function closeWorkOrder(id: number, source = 'manual'): Promise<{ data: WorkOrder }> {
+  return apiRequest(`/work-orders/${id}/close`, { body: { source } });
+}
 
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Could not close work order'));
-  }
-
-  return response.json();
+/** Employees assigned to an order (several since multi-employee orders). */
+export function orderEmployeeIds(order: Pick<WorkOrder, 'employee_ids' | 'employee_id'>): number[] {
+  if (order.employee_ids && order.employee_ids.length) return order.employee_ids;
+  return order.employee_id ? [Number(order.employee_id)] : [];
 }

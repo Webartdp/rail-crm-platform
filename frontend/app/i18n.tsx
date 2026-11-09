@@ -510,7 +510,10 @@ export function translate(locale: Locale, key: string, params: Params = {}) {
 
 function toDate(value: DateInput): Date | null {
   if (value === null || value === undefined || value === '') return null;
-  const date = value instanceof Date ? value : new Date(value);
+  // API times are Europe/Berlin wall-clock strings "YYYY-MM-DD HH:MM:SS"; Safari needs the "T".
+  const date = value instanceof Date
+    ? value
+    : new Date(typeof value === 'string' && /^\d{4}-\d{2}-\d{2} \d/.test(value) ? value.replace(' ', 'T') : value);
   return Number.isNaN(date.getTime()) ? null : date;
 }
 

@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\Api\V1\AuditController;
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\ClientController;
+use App\Http\Controllers\Api\V1\ObjectController;
+use App\Http\Controllers\Api\V1\TimesheetController;
 use App\Http\Controllers\Api\V1\DocumentController;
 use App\Http\Controllers\Api\V1\DocumentSignatureController;
 use App\Http\Controllers\Api\V1\EmployeeFieldStateController;
@@ -192,6 +195,17 @@ Route::prefix('v1')->group(function () {
     Route::get('/employee-profiles/{id}', [EmployeeProfileController::class, 'show'])->middleware('role:employee,manager,admin');
     Route::put('/employee-profiles/{id}', [EmployeeProfileController::class, 'update'])->middleware('role:admin');
 
+    Route::get('/clients', [ClientController::class, 'index'])->middleware('role:manager,admin');
+    Route::post('/clients', [ClientController::class, 'store'])->middleware('role:manager,admin');
+    Route::put('/clients/{id}', [ClientController::class, 'update'])->middleware('role:manager,admin');
+    Route::delete('/clients/{id}', [ClientController::class, 'destroy'])->middleware('role:manager,admin');
+    Route::get('/objects', [ObjectController::class, 'index'])->middleware('role:manager,admin');
+    Route::post('/objects', [ObjectController::class, 'store'])->middleware('role:manager,admin');
+    Route::put('/objects/{id}', [ObjectController::class, 'update'])->middleware('role:manager,admin');
+    Route::delete('/objects/{id}', [ObjectController::class, 'destroy'])->middleware('role:manager,admin');
+
+    Route::get('/reports/timesheet', TimesheetController::class)->middleware('role:employee,manager,admin');
+
     Route::get('/work-orders', [WorkOrderController::class, 'index'])->middleware('role:employee,manager,admin');
     Route::post('/work-orders', [WorkOrderController::class, 'store'])->middleware('role:manager,admin');
     Route::get('/work-orders/{id}', [WorkOrderController::class, 'show'])->middleware('role:manager,admin');
@@ -229,5 +243,6 @@ Route::prefix('v1')->group(function () {
     Route::post('/work-events/dienstbeginn', [WorkEventController::class, 'dienstbeginn'])->middleware('role:employee,manager,admin');
     Route::post('/work-events/arbeit/stop', [WorkEventController::class, 'stopArbeit'])->middleware('role:employee,manager,admin');
     Route::post('/work-events/dienstfahrt/start', [WorkEventController::class, 'startDienstfahrt'])->middleware('role:employee,manager,admin');
+    Route::post('/work-events/correct', [WorkEventController::class, 'correct'])->middleware('role:employee,manager,admin');
     Route::post('/work-events/dienstfahrt/stop', [WorkEventController::class, 'stopDienstfahrt'])->middleware('role:employee,manager,admin');
 });

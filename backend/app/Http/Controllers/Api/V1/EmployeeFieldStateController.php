@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Support\CurrentUser;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,7 +13,7 @@ class EmployeeFieldStateController extends Controller
 {
     public function __invoke(Request $request): JsonResponse
     {
-        $employeeId = (int) $request->input('employee_id', 1);
+        $employeeId = (int) (CurrentUser::actingEmployeeId($request) ?? 0);
         $assignmentId = $request->input('assignment_id');
 
         // Workflow is employee-wide: one work day has one event chain.
@@ -36,6 +37,7 @@ class EmployeeFieldStateController extends Controller
             'allowed_actions' => [$state['action']],
             'next_button' => $state['button'],
             'required_fields' => $requiresBemerkung ? ['bemerkung'] : $state['required_fields'],
+            'planned_start_at' => $planned['planned_start_at'],
             'planned_end_at' => $planned['planned_end_at'],
             'planned_exceeded' => $planned['planned_exceeded'],
             'requires_bemerkung' => $requiresBemerkung,
@@ -55,16 +57,17 @@ class EmployeeFieldStateController extends Controller
     private function plannedStatus($assignmentId): array
     {
         if (!$assignmentId) {
-            return ['planned_end_at' => null, 'planned_exceeded' => false];
+            return ['planned_start_at' => null, 'planned_end_at' => null, 'planned_exceeded' => false];
         }
 
         $workOrder = DB::table('work_orders')->where('id', $assignmentId)->first();
 
         if (!$workOrder?->planned_end_at) {
-            return ['planned_end_at' => null, 'planned_exceeded' => false];
+            return ['planned_start_at' => $workOrder?->planned_start_at, 'planned_end_at' => null, 'planned_exceeded' => false];
         }
 
         return [
+            'planned_start_at' => $workOrder->planned_start_at,
             'planned_end_at' => $workOrder->planned_end_at,
             'planned_exceeded' => now()->greaterThan(Carbon::parse($workOrder->planned_end_at)),
         ];

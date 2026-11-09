@@ -17,8 +17,14 @@ class WorkOrderDocumentTest extends TestCase
         $employeeToken = $this->tokenForRole('employee');
         $managerToken = $this->tokenForRole('manager');
 
+        DB::table('employee_profiles')->insert(['id' => 1, 'first_name' => 'Max', 'last_name' => 'Müller', 'created_at' => now(), 'updated_at' => now()]);
+        $clientId = DB::table('clients')->insertGetId(['name' => 'DB Cargo', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+        $objectId = DB::table('objects')->insertGetId(['client_id' => $clientId, 'name' => 'Berlin Hbf', 'address' => 'Europaplatz 1, Berlin', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()]);
+
         $payload = [
-            'employee_id' => 1,
+            'client_id' => $clientId,
+            'object_id' => $objectId,
+            'employee_ids' => [1],
             'title' => 'WTU / ICE 204 / Gleis 12',
             'reference_number' => 'REF-TEST-001',
             'leistungsart' => 'WTU',
@@ -35,7 +41,10 @@ class WorkOrderDocumentTest extends TestCase
         $this->withHeader('Authorization', 'Bearer '.$managerToken)
             ->postJson('/api/v1/work-orders', $payload)
             ->assertCreated()
-            ->assertJsonPath('data.status', 'planned');
+            ->assertJsonPath('data.status', 'planned')
+            ->assertJsonPath('data.employee_ids', [1]);
+
+        $this->assertDatabaseHas('work_order_employees', ['employee_id' => 1]);
     }
 
     public function test_manager_can_close_work_order_and_audit_is_written(): void

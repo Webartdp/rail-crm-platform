@@ -12,13 +12,29 @@ class WorkOrderController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = DB::table('work_orders')->orderByDesc('id')->limit(100);
+        $query = DB::table('work_orders')->orderByDesc('planned_start_at')->orderByDesc('id')->limit(1000);
 
-        if ($request->filled('employee_id')) {
-            $query->where('employee_id', $request->input('employee_id'));
+        $employeeId = CurrentUser::isEmployee($request)
+            ? (CurrentUser::actingEmployeeId($request) ?? -1)
+            : ($request->filled('employee_id') ? (int) $request->input('employee_id') : null);
+
+        if ($employeeId !== null) {
+            $query->where(function ($where) use ($employeeId) {
+                $where->where('employee_id', $employeeId)
+                    ->orWhereIn('id', DB::table('work_order_employees')->select('work_order_id')->where('employee_id', $employeeId));
+            });
+        }
+        if ($request->filled('client_id')) {
+            $query->where('client_id', (int) $request->input('client_id'));
+        }
+        if ($request->filled('date_from')) {
+            $query->where('planned_start_at', '>=', $request->input('date_from').' 00:00:00');
+        }
+        if ($request->filled('date_to')) {
+            $query->where('planned_start_at', '<=', $request->input('date_to').' 23:59:59');
         }
 
-        return response()->json(['data' => $query->get()]);
+        return response()->json(['data' => $this->withEmployees($query->get())]);
     }
 
     public function show(Request $request, int $id): JsonResponse
@@ -35,7 +51,7 @@ class WorkOrderController extends Controller
             return response()->json(['message' => __('Work order not found.')], 404);
         }
 
-        return response()->json(['data' => $workOrder]);
+        return response()->json(['data' => $this->withEmployees(collect([$workOrder]))->first()]);
     }
 
     public function store(Request $request): JsonResponse
@@ -46,34 +62,31 @@ class WorkOrderController extends Controller
             return response()->json(['message' => __('Only manager or admin can create work orders.')], 403);
         }
 
-        $title = trim((string) $request->input('title', ''));
-
-        if ($title === '') {
-            return response()->json([
-                'message' => __('Work order title is required.'),
-                'errors' => ['title' => ['Title is required.']],
-            ], 422);
+        $data = $this->validatedOrder($request);
+        if ($data instanceof JsonResponse) {
+            return $data;
         }
-
+        $title = $data['title'];
         $now = now();
 
-        $details = $this->detailsFromRequest($request, $title);
-
         $id = DB::table('work_orders')->insertGetId([
-            'employee_id' => $request->input('employee_id'),
+            'client_id' => $data['client_id'],
+            'object_id' => $data['object_id'],
+            'employee_id' => $data['employee_ids'][0],
             'title' => $title,
-            'reference_number' => $request->input('reference_number'),
-            'status' => $request->input('status', 'planned'),
-            'planned_start_at' => $request->input('planned_start_at'),
-            'planned_end_at' => $request->input('planned_end_at'),
-            'details' => json_encode($details),
+            'reference_number' => $data['reference_number'] ?? null,
+            'status' => $data['status'] ?? 'planned',
+            'planned_start_at' => $data['planned_start_at'],
+            'planned_end_at' => $data['planned_end_at'],
+            'details' => json_encode($this->details($data), JSON_UNESCAPED_UNICODE),
             'created_at' => $now,
             'updated_at' => $now,
         ]);
+        $this->syncEmployees($id, $data['employee_ids']);
 
         DB::table('audit_logs')->insert([
             'user_id' => $user->id,
-            'employee_id' => $request->input('employee_id'),
+            'employee_id' => $data['employee_ids'][0],
             'action' => 'work_order_created',
             'entity_type' => 'work_order',
             'entity_id' => $id,
@@ -84,7 +97,7 @@ class WorkOrderController extends Controller
 
         return response()->json([
             'message' => __('Work order created.'),
-            'data' => DB::table('work_orders')->where('id', $id)->first(),
+            'data' => $this->withEmployees(DB::table('work_orders')->where('id', $id)->get())->first(),
         ], 201);
     }
 
@@ -102,31 +115,29 @@ class WorkOrderController extends Controller
             return response()->json(['message' => __('Work order not found.')], 404);
         }
 
-        $title = trim((string) $request->input('title', ''));
-
-        if ($title === '') {
-            return response()->json([
-                'message' => __('Work order title is required.'),
-                'errors' => ['title' => ['Title is required.']],
-            ], 422);
+        $data = $this->validatedOrder($request);
+        if ($data instanceof JsonResponse) {
+            return $data;
         }
-
         $now = now();
 
         DB::table('work_orders')->where('id', $id)->update([
-            'employee_id' => $request->input('employee_id'),
-            'title' => $title,
-            'reference_number' => $request->input('reference_number'),
-            'status' => $request->input('status', $workOrder->status ?: 'planned'),
-            'planned_start_at' => $request->input('planned_start_at'),
-            'planned_end_at' => $request->input('planned_end_at'),
-            'details' => json_encode($this->detailsFromRequest($request, $title)),
+            'client_id' => $data['client_id'],
+            'object_id' => $data['object_id'],
+            'employee_id' => $data['employee_ids'][0],
+            'title' => $data['title'],
+            'reference_number' => $data['reference_number'] ?? null,
+            'status' => $data['status'] ?? ($workOrder->status ?: 'planned'),
+            'planned_start_at' => $data['planned_start_at'],
+            'planned_end_at' => $data['planned_end_at'],
+            'details' => json_encode($this->details($data), JSON_UNESCAPED_UNICODE),
             'updated_at' => $now,
         ]);
+        $this->syncEmployees($id, $data['employee_ids']);
 
         DB::table('audit_logs')->insert([
             'user_id' => $user->id,
-            'employee_id' => $request->input('employee_id'),
+            'employee_id' => $data['employee_ids'][0],
             'action' => 'work_order_updated',
             'entity_type' => 'work_order',
             'entity_id' => $id,
@@ -140,7 +151,7 @@ class WorkOrderController extends Controller
 
         return response()->json([
             'message' => __('Work order updated.'),
-            'data' => DB::table('work_orders')->where('id', $id)->first(),
+            'data' => $this->withEmployees(DB::table('work_orders')->where('id', $id)->get())->first(),
         ]);
     }
 
@@ -190,6 +201,7 @@ class WorkOrderController extends Controller
 
             DB::table('work_event_approvals')->where('assignment_id', $id)->delete();
             DB::table('work_events')->where('assignment_id', $id)->delete();
+            DB::table('work_order_employees')->where('work_order_id', $id)->delete();
             DB::table('work_orders')->where('id', $id)->delete();
 
             DB::table('audit_logs')->insert([
@@ -261,16 +273,88 @@ class WorkOrderController extends Controller
         ]);
     }
 
-    private function detailsFromRequest(Request $request, string $title): array
+    /** @return array<string, mixed>|JsonResponse */
+    private function validatedOrder(Request $request): array|JsonResponse
+    {
+        // Older clients send a single employee_id.
+        if (!$request->has('employee_ids') && $request->filled('employee_id')) {
+            $request->merge(['employee_ids' => [(int) $request->input('employee_id')]]);
+        }
+
+        $data = $request->validate([
+            'client_id' => ['required', 'integer', 'exists:clients,id'],
+            'object_id' => ['required', 'integer', 'exists:objects,id'],
+            'employee_ids' => ['required', 'array', 'min:1'],
+            'employee_ids.*' => ['integer', 'exists:employee_profiles,id'],
+            'title' => ['required', 'string', 'max:255'],
+            'reference_number' => ['nullable', 'string', 'max:255'],
+            'leistungsart' => ['nullable', 'string', 'max:100'],
+            'zugnummer' => ['nullable', 'string', 'max:100'],
+            'planned_start_at' => ['required', 'date'],
+            'planned_end_at' => ['required', 'date', 'after:planned_start_at'],
+            'status' => ['sometimes', 'in:planned,in_progress,waiting_approval,approved,rejected,invoiced,closed,cancelled'],
+            'notes' => ['nullable', 'string', 'max:5000'],
+        ]);
+
+        $object = DB::table('objects')->where('id', $data['object_id'])->first();
+        if ((int) $object->client_id !== (int) $data['client_id']) {
+            return response()->json([
+                'message' => __('The object does not belong to this client.'),
+                'errors' => ['object_id' => [__('The object does not belong to this client.')]],
+            ], 422);
+        }
+
+        $data['employee_ids'] = array_values(array_unique(array_map('intval', $data['employee_ids'])));
+        $data['planned_start_at'] = date('Y-m-d H:i:s', strtotime($data['planned_start_at']));
+        $data['planned_end_at'] = date('Y-m-d H:i:s', strtotime($data['planned_end_at']));
+        $data['object'] = $object;
+        $data['client'] = DB::table('clients')->where('id', $data['client_id'])->first();
+
+        return $data;
+    }
+
+    /** Names are copied into details so existing screens and history keep working. */
+    private function details(array $data): array
     {
         return [
-            'object_name' => $request->input('object_name'),
-            'object_address' => $request->input('object_address'),
-            'customer_name' => $request->input('customer_name'),
-            'work_title' => $request->input('work_title', $title),
-            'leistungsart' => $request->input('leistungsart'),
-            'zugnummer' => $request->input('zugnummer'),
-            'einsatzort' => $request->input('einsatzort'),
+            'object_name' => $data['object']->name,
+            'object_address' => $data['object']->address,
+            'customer_name' => $data['client']->name,
+            'work_title' => $data['title'],
+            'leistungsart' => $data['leistungsart'] ?? null,
+            'zugnummer' => $data['zugnummer'] ?? null,
+            'einsatzort' => $data['object']->address,
+            'notes' => $data['notes'] ?? null,
         ];
+    }
+
+    private function syncEmployees(int $orderId, array $employeeIds): void
+    {
+        DB::table('work_order_employees')->where('work_order_id', $orderId)->whereNotIn('employee_id', $employeeIds)->delete();
+        $now = now();
+        foreach ($employeeIds as $employeeId) {
+            DB::table('work_order_employees')->insertOrIgnore([
+                'work_order_id' => $orderId,
+                'employee_id' => $employeeId,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+        }
+    }
+
+    private function withEmployees($orders)
+    {
+        $ids = $orders->pluck('id')->all();
+        $assigned = $ids === [] ? collect() : DB::table('work_order_employees')->whereIn('work_order_id', $ids)->get()->groupBy('work_order_id');
+
+        return $orders->map(function ($order) use ($assigned) {
+            $employeeIds = ($assigned[$order->id] ?? collect())->pluck('employee_id')->map(fn ($id) => (int) $id)->all();
+            if ($employeeIds === [] && $order->employee_id) {
+                $employeeIds = [(int) $order->employee_id];
+            }
+            $order->employee_ids = $employeeIds;
+
+            return $order;
+        });
     }
 }

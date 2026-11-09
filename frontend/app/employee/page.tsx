@@ -69,8 +69,8 @@ const avatarStyle = {
   alignItems: 'center',
   justifyContent: 'center',
   background: 'rgba(37, 99, 235, 0.1)',
-  color: '#2554d9',
-  fontWeight: 800,
+  color: 'var(--ink)',
+  fontWeight: 600,
   fontSize: '1.35rem',
   flex: '0 0 auto',
 } as const;
@@ -111,7 +111,7 @@ const rowLastStyle = {
 
 const valueStyle = {
   fontWeight: 700,
-  color: '#0f172a',
+  color: 'var(--ink)',
 } as const;
 
 const noteGridStyle = {
@@ -147,10 +147,10 @@ const profileHeroButtonStyle = {
   padding: '0 1rem',
   borderRadius: '0.95rem',
   border: '1px solid rgba(15, 23, 42, 0.16)',
-  background: '#0f172a',
+  background: 'var(--ink)',
   color: '#ffffff',
   fontSize: '0.95rem',
-  fontWeight: 800,
+  fontWeight: 600,
   lineHeight: 1,
   textDecoration: 'none',
   whiteSpace: 'nowrap',
@@ -160,7 +160,7 @@ const profileHeroButtonStyle = {
 } as const;
 
 const profileHeroButtonPrimaryStyle = {
-  background: '#2554d9',
+  background: 'var(--ink)',
   borderColor: 'rgba(37, 99, 235, 0.35)',
 } as const;
 
@@ -301,38 +301,6 @@ export default function EmployeeProfilePage() {
             </div>
           </div>
 
-          <div className="panel">
-            <div className="field-panel-head">
-              <p className="eyebrow">{t('empCalculation')}</p>
-              <h2>{t('empWorkParams')}</h2>
-              <p className="hint">{t('empWorkParamsHint')}</p>
-            </div>
-
-            <div style={rowStyle}>
-              <strong>{t('empStandardRate')}</strong>
-              <span style={valueStyle}>{value(profile, ['standard_hourly_rate', 'standard_rate', 'hourly_rate', 'base_rate'])}</span>
-            </div>
-
-            <div style={rowStyle}>
-              <strong>{t('empTravelRate')}</strong>
-              <span style={valueStyle}>{value(profile, ['travel_hourly_rate', 'travel_rate', 'drive_rate'])}</span>
-            </div>
-
-            <div style={rowStyle}>
-              <strong>{t('empNightCoef')}</strong>
-              <span style={valueStyle}>{coefficient(profile, ['night_coefficient', 'night_coef'])}</span>
-            </div>
-
-            <div style={rowStyle}>
-              <strong>{t('empSundayCoef')}</strong>
-              <span style={valueStyle}>{coefficient(profile, ['sunday_coefficient', 'sunday_coef'])}</span>
-            </div>
-
-            <div style={rowLastStyle}>
-              <strong>{t('empHolidayCoef')}</strong>
-              <span style={valueStyle}>{coefficient(profile, ['holiday_coefficient', 'holiday_coef'])}</span>
-            </div>
-          </div>
         </section>
 
         <section className="panel">
@@ -348,11 +316,6 @@ export default function EmployeeProfilePage() {
             <div style={noteCardStyle}>
               <strong>{t('empCanChangeByRequest')}</strong>
               <p className="hint">{t('empCanChangeByRequestHint')}</p>
-            </div>
-
-            <div style={noteCardStyle}>
-              <strong>{t('empReadonly')}</strong>
-              <p className="hint">{t('empReadonlyHint')}</p>
             </div>
 
             <div style={noteCardStyle}>

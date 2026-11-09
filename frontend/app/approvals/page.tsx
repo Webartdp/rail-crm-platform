@@ -166,8 +166,8 @@ export default function ApprovalsPage() {
                 gap: '0.45rem',
                 padding: '0.55rem 0.9rem',
                 borderRadius: '0.75rem',
-                border: '1px solid rgba(37, 99, 235, 0.35)',
-                background: '#2554d9',
+                border: '1px solid var(--ink)',
+                background: 'var(--ink)',
                 color: '#ffffff',
                 fontWeight: 700,
                 lineHeight: 1,
@@ -215,6 +215,11 @@ export default function ApprovalsPage() {
                 <span>
                   <small>{formatDateTime(item.start_time)}</small><br />
                   <small>{formatDateTime(item.stop_time)}</small>
+                  {item.minutes ? <><br /><strong>{fmt.duration(item.minutes)}</strong></> : null}
+                  {item.corrected ? (
+                    <><br /><small className="ts-note" title={t('apprOriginal', { from: formatDateTime(item.original_start_time), to: formatDateTime(item.original_stop_time) })}>{t('tsCorrected')}</small></>
+                  ) : null}
+                  {item.bemerkung ? <><br /><small className="hint">{item.bemerkung}</small></> : null}
                 </span>
 
                 <span>{fmt.status(item.status)}</span>

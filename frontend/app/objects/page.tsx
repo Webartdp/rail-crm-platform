@@ -3,46 +3,34 @@
 import { useEffect, useMemo, useState } from 'react';
 import RoleGuard from '../components/RoleGuard';
 import { useI18n } from '../i18n';
-import { getWorkOrders, type WorkOrder } from '../../lib/work-orders';
-import { orderDetails } from '../../lib/order-details';
+import { getClients, getObjects, type Client, type WorkObject } from '../../lib/clients';
 
-type ObjectRow = { key: string; name: string; address: string; customers: Set<string>; orders: number; open: number };
-
-const CLOSED = ['closed', 'invoiced', 'cancelled', 'completed', 'done'];
-
+/** All objects of all clients. Objects are added and edited inside the client card. */
 export default function ObjectsPage() {
   const { t } = useI18n();
-  const [orders, setOrders] = useState<WorkOrder[]>([]);
+  const [objects, setObjects] = useState<WorkObject[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [clientId, setClientId] = useState('');
+  const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [query, setQuery] = useState('');
 
   useEffect(() => {
-    getWorkOrders()
-      .then((response) => setOrders(response.data))
+    Promise.all([getObjects(), getClients()])
+      .then(([objectsResponse, clientsResponse]) => {
+        setObjects(objectsResponse.data);
+        setClients(clientsResponse.data);
+      })
       .catch((loadError) => setError(t('commonLoadFailed', { error: loadError instanceof Error ? loadError.message : t('commonUnknownError') })))
       .finally(() => setLoading(false));
   }, []);
 
   const rows = useMemo(() => {
-    const map = new Map<string, ObjectRow>();
-    orders.forEach((order) => {
-      const details = orderDetails(order);
-      const name = (details.object_name || '').trim();
-      if (!name) return;
-      const address = (details.object_address || '').trim();
-      const key = `${name}__${address}`;
-      const row = map.get(key) || { key, name, address, customers: new Set<string>(), orders: 0, open: 0 };
-      if (details.customer_name) row.customers.add(details.customer_name);
-      row.orders += 1;
-      if (!CLOSED.includes(order.status || '')) row.open += 1;
-      map.set(key, row);
-    });
     const needle = query.trim().toLowerCase();
-    return [...map.values()]
-      .filter((row) => !needle || `${row.name} ${row.address} ${[...row.customers].join(' ')}`.toLowerCase().includes(needle))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [orders, query]);
+    return objects.filter((object) => object.status !== 'inactive'
+      && (!clientId || String(object.client_id) === clientId)
+      && (!needle || `${object.name} ${object.address || ''} ${object.client_name || ''}`.toLowerCase().includes(needle)));
+  }, [objects, clientId, query]);
 
   return (
     <main className="page-shell">
@@ -51,50 +39,54 @@ export default function ObjectsPage() {
           <div>
             <p className="eyebrow">{t('objEyebrow')}</p>
             <h1>{t('objects')}</h1>
-            <p className="hero-text">{t('objHero')}</p>
+            <p className="hero-text">{t('objHeroList')}</p>
           </div>
-          <a className="action-link" href="/work-orders/new">{t('asgCreate')}</a>
+          <a className="action-link" href="/clients">{t('objManageInClients')}</a>
         </section>
 
         {error ? <p className="notice error" role="alert">{error}</p> : null}
 
         <section className="panel">
-          <div className="field-panel-head split-head">
-            <h2>{t('objCount', { count: rows.length })}</h2>
-            <input className="search-input" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('commonSearch')} aria-label={t('commonSearch')} />
+          <div className="filter-bar">
+            <label>{t('commonCustomer')}
+              <select value={clientId} onChange={(event) => setClientId(event.target.value)}>
+                <option value="">{t('durAllCustomers')}</option>
+                {clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
+              </select>
+            </label>
+            <label>{t('commonSearch')}
+              <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('objSearch')} />
+            </label>
           </div>
+
           <div className="data-table-scroll">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>{t('commonObject')}</th>
-                  <th>{t('commonAddress')}</th>
-                  <th>{t('clients')}</th>
-                  <th className="num">{t('assignments')}</th>
-                  <th className="num">{t('cliOpenOrders')}</th>
+                  <th>{t('objName')}</th>
+                  <th>{t('objAddress')}</th>
+                  <th>{t('commonCustomer')}</th>
                   <th />
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
-                  <tr key={row.key}>
-                    <td><strong>{row.name}</strong></td>
-                    <td>{row.address || '—'}</td>
-                    <td>{[...row.customers].join(', ') || '—'}</td>
-                    <td className="num">{row.orders}</td>
-                    <td className="num">{row.open}</td>
+                {rows.map((object) => (
+                  <tr key={object.id}>
+                    <td><strong>{object.name}</strong></td>
                     <td>
-                      {row.address ? (
-                        <a className="small-button" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(row.address)}`} rel="noreferrer" target="_blank">{t('mapsMap')}</a>
-                      ) : null}
+                      {object.address ? (
+                        <a className="text-link" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(object.address)}`} rel="noreferrer" target="_blank">{object.address}</a>
+                      ) : '—'}
                     </td>
+                    <td>{object.client_name || '—'}</td>
+                    <td><a className="small-button" href={`/work-orders/new?client=${object.client_id}&object=${object.id}`}>{t('asgCreate')}</a></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
           {loading ? <p className="hint">{t('commonLoadingDots')}</p> : null}
-          {!loading && !rows.length ? <p className="hint">{t('objNone')}</p> : null}
+          {!loading && !rows.length ? <p className="empty-state">{t('objNone')}</p> : null}
         </section>
       </RoleGuard>
     </main>

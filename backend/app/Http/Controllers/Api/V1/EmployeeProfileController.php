@@ -41,6 +41,13 @@ class EmployeeProfileController extends Controller
             return response()->json(['message' => __('Employee profile not found.')], 404);
         }
 
+        if ($role === 'employee') {
+            // Tariffs are internal: employees see their personal data only.
+            foreach (['standard_hourly_rate', 'travel_hourly_rate', 'night_coefficient', 'night_20_24_coefficient', 'night_00_04_coefficient', 'night_04_06_coefficient', 'sunday_coefficient', 'holiday_coefficient'] as $field) {
+                unset($profile->{$field});
+            }
+        }
+
         return response()->json(['data' => $profile]);
     }
 
@@ -100,7 +107,10 @@ class EmployeeProfileController extends Controller
             'phone' => $request->input('phone'),
             'standard_hourly_rate' => $request->input('standard_hourly_rate', 0),
             'travel_hourly_rate' => $request->input('travel_hourly_rate', 0),
-            'night_coefficient' => $request->input('night_coefficient', 1),
+            'night_coefficient' => $request->input('night_20_24_coefficient', $request->input('night_coefficient', 1)),
+            'night_20_24_coefficient' => $request->input('night_20_24_coefficient', 1.25),
+            'night_00_04_coefficient' => $request->input('night_00_04_coefficient', 1.40),
+            'night_04_06_coefficient' => $request->input('night_04_06_coefficient', 1.25),
             'sunday_coefficient' => $request->input('sunday_coefficient', 1),
             'holiday_coefficient' => $request->input('holiday_coefficient', 1),
             'home_location' => $request->input('home_location'),

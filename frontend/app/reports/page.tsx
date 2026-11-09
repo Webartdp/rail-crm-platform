@@ -1,4 +1,7 @@
 'use client';
+
+import RoleGuard from '../components/RoleGuard';
+import TimesheetView from '../components/TimesheetView';
 import { useI18n } from '../i18n';
 
 export default function ReportsPage() {
@@ -6,13 +9,9 @@ export default function ReportsPage() {
 
   return (
     <main className="page-shell">
-      <section className="panel" style={{ padding: '1.25rem' }}>
-        <p className="eyebrow">{t('reports')}</p>
-        <h1 style={{ margin: '0.2rem 0 0.5rem' }}>{t('reportsTitle')}</h1>
-        <p style={{ color: '#64748b', maxWidth: 680 }}>
-          {t('reportsEmpty')}
-        </p>
-      </section>
+      <RoleGuard allowedRoles={['employee', 'manager', 'admin']} title={t('tsTitle')}>
+        <TimesheetView heading={t('tsTitle')} intro={t('tsIntroManager')} />
+      </RoleGuard>
     </main>
   );
 }

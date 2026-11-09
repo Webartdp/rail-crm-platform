@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Support\CurrentUser;
+use App\Support\TimeLedger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,11 +19,28 @@ class WorkEventApprovalController extends Controller
 
     public function index(): JsonResponse
     {
-        $this->syncPendingApprovals();
+        TimeLedger::syncApprovals();
 
-        return response()->json([
-            'data' => DB::table('work_event_approvals')->orderByDesc('id')->limit(200)->get(),
-        ]);
+        // Attach the ledger view: minutes, employee note and whether the employee corrected the time.
+        $pairs = [];
+        foreach (TimeLedger::pairs() as $pair) {
+            if ($pair['approval_id']) {
+                $pairs[$pair['approval_id']] = $pair;
+            }
+        }
+
+        $rows = DB::table('work_event_approvals')->orderByDesc('id')->limit(300)->get()->map(function ($row) use ($pairs) {
+            $pair = $pairs[$row->id] ?? null;
+            $row->minutes = $pair['minutes'] ?? null;
+            $row->bemerkung = $pair['bemerkung'] ?? null;
+            $row->corrected = $pair['corrected'] ?? false;
+            $row->original_start_time = $pair['original_start_time'] ?? null;
+            $row->original_stop_time = $pair['original_stop_time'] ?? null;
+
+            return $row;
+        });
+
+        return response()->json(['data' => $rows]);
     }
 
     public function approve(Request $request, int $id): JsonResponse
@@ -101,76 +119,5 @@ class WorkEventApprovalController extends Controller
             'status' => $status,
             'updated_at' => $now,
         ]);
-    }
-
-    private function syncPendingApprovals(): void
-    {
-        foreach ($this->completedPairs() as $item) {
-            $exists = DB::table('work_event_approvals')
-                ->where('employee_id', $item['employee_id'])
-                ->where('assignment_id', $item['assignment_id'])
-                ->where('pair_type', $item['pair_type'])
-                ->where('start_time', $item['start_time'])
-                ->where('stop_time', $item['stop_time'])
-                ->exists();
-
-            if ($exists) {
-                continue;
-            }
-
-            $now = now();
-            DB::table('work_event_approvals')->insert([
-                'employee_id' => $item['employee_id'],
-                'assignment_id' => $item['assignment_id'],
-                'pair_type' => $item['pair_type'],
-                'start_time' => $item['start_time'],
-                'stop_time' => $item['stop_time'],
-                'status' => 'pending',
-                'comment' => null,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ]);
-        }
-    }
-
-    private function completedPairs(): array
-    {
-        $events = DB::table('work_events')
-            ->whereIn('event_type', ['gasfahrt_start', 'gasfahrt_stop', 'dienstbeginn', 'arbeit_stop', 'dienstfahrt_start', 'dienstfahrt_stop'])
-            ->orderBy('employee_id')
-            ->orderBy('assignment_id')
-            ->orderBy('event_time')
-            ->get();
-
-        $open = [];
-        $items = [];
-
-        foreach ($events as $event) {
-            $key = $event->employee_id.'-'.$event->assignment_id;
-
-            if (isset($this->pairs[$event->event_type])) {
-                $open[$key][$event->event_type] = $event;
-                continue;
-            }
-
-            foreach ($this->pairs as $startType => $pair) {
-                if ($event->event_type !== $pair['stop'] || !isset($open[$key][$startType])) {
-                    continue;
-                }
-
-                $start = $open[$key][$startType];
-                $items[] = [
-                    'employee_id' => $event->employee_id,
-                    'assignment_id' => $event->assignment_id,
-                    'pair_type' => $pair['type'],
-                    'start_time' => $start->event_time,
-                    'stop_time' => $event->event_time,
-                ];
-
-                unset($open[$key][$startType]);
-            }
-        }
-
-        return $items;
     }
 }

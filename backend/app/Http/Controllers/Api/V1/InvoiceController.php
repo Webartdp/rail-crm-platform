@@ -4,18 +4,13 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Support\CurrentUser;
+use App\Support\TimeLedger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class InvoiceController extends Controller
 {
-    private array $pairs = [
-        'gasfahrt_start' => ['stop' => 'gasfahrt_stop', 'type' => 'gasfahrt', 'rate' => 'travel'],
-        'dienstbeginn' => ['stop' => 'arbeit_stop', 'type' => 'arbeit', 'rate' => 'work'],
-        'dienstfahrt_start' => ['stop' => 'dienstfahrt_stop', 'type' => 'dienstfahrt', 'rate' => 'travel'],
-    ];
-
     public function index(): JsonResponse
     {
         return response()->json([
@@ -44,7 +39,18 @@ class InvoiceController extends Controller
             return response()->json(['message' => __('Only manager or admin can create invoice drafts.')], 403);
         }
 
-        $items = $this->approvedCostItems();
+        $items = array_map(fn (array $line) => [
+            'approval_id' => $line['approval_id'],
+            'employee_id' => $line['employee_id'],
+            'assignment_id' => $line['assignment_id'],
+            'type' => $line['type'],
+            'tariff_zone' => $line['tariff_zone'],
+            'day_type' => $line['day_type'],
+            'hours' => $line['hours'],
+            'hourly_rate' => $line['hourly_rate'],
+            'coefficient' => $line['coefficient'],
+            'amount' => $line['amount'],
+        ], TimeLedger::billableLines());
 
         if ($items === []) {
             return response()->json(['message' => __('No approved cost items to invoice.')], 422);
@@ -93,109 +99,5 @@ class InvoiceController extends Controller
             'data' => DB::table('invoices')->where('id', $invoiceId)->first(),
             'items' => DB::table('invoice_items')->where('invoice_id', $invoiceId)->get(),
         ], 201);
-    }
-
-    private function approvedCostItems(): array
-    {
-        $events = DB::table('work_events')
-            ->whereIn('event_type', ['gasfahrt_start', 'gasfahrt_stop', 'dienstbeginn', 'arbeit_stop', 'dienstfahrt_start', 'dienstfahrt_stop'])
-            ->orderBy('employee_id')
-            ->orderBy('assignment_id')
-            ->orderBy('event_time')
-            ->get();
-
-        $open = [];
-        $items = [];
-
-        foreach ($events as $event) {
-            $key = $event->employee_id.'-'.$event->assignment_id;
-
-            if (isset($this->pairs[$event->event_type])) {
-                $open[$key][$event->event_type] = $event;
-                continue;
-            }
-
-            foreach ($this->pairs as $startType => $pair) {
-                if ($event->event_type !== $pair['stop'] || !isset($open[$key][$startType])) {
-                    continue;
-                }
-
-                $start = $open[$key][$startType];
-                $approval = DB::table('work_event_approvals')
-                    ->where('employee_id', $event->employee_id)
-                    ->where('assignment_id', $event->assignment_id)
-                    ->where('pair_type', $pair['type'])
-                    ->where('start_time', $start->event_time)
-                    ->where('stop_time', $event->event_time)
-                    ->where('status', 'approved')
-                    ->first();
-
-                if (!$approval) {
-                    unset($open[$key][$startType]);
-                    continue;
-                }
-
-                $alreadyInvoiced = DB::table('invoice_items')->where('approval_id', $approval->id)->exists();
-                if ($alreadyInvoiced) {
-                    unset($open[$key][$startType]);
-                    continue;
-                }
-
-                $profile = DB::table('employee_profiles')->where('id', $event->employee_id)->first();
-                $seconds = max(0, strtotime($event->event_time) - strtotime($start->event_time));
-                $hours = round($seconds / 3600, 2);
-
-                if ($hours <= 0) {
-                    unset($open[$key][$startType]);
-                    continue;
-                }
-
-                $rate = $pair['rate'] === 'travel'
-                    ? (float) ($profile->travel_hourly_rate ?? 0)
-                    : (float) ($profile->standard_hourly_rate ?? 0);
-                $coefficient = $pair['rate'] === 'work' ? $this->coefficient($event, $profile) : 1.0;
-
-                $amount = round($hours * $rate * $coefficient, 2);
-
-                if ($amount <= 0) {
-                    unset($open[$key][$startType]);
-                    continue;
-                }
-
-                $items[] = [
-                    'approval_id' => $approval->id,
-                    'employee_id' => $event->employee_id,
-                    'assignment_id' => $event->assignment_id,
-                    'type' => $pair['type'],
-                    'hours' => $hours,
-                    'hourly_rate' => $rate,
-                    'coefficient' => $coefficient,
-                    'amount' => $amount,
-                ];
-
-                unset($open[$key][$startType]);
-            }
-        }
-
-        return $items;
-    }
-
-    private function coefficient(object $event, ?object $profile): float
-    {
-        $payload = json_decode($event->payload ?? '{}', true) ?: [];
-
-        if (($payload['is_holiday'] ?? false) === true) {
-            return (float) ($profile->holiday_coefficient ?? 1);
-        }
-
-        if (($payload['is_sunday'] ?? false) === true) {
-            return (float) ($profile->sunday_coefficient ?? 1);
-        }
-
-        if (($payload['is_night'] ?? false) === true) {
-            return (float) ($profile->night_coefficient ?? 1);
-        }
-
-        return 1.0;
     }
 }

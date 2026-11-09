@@ -24,7 +24,9 @@ export default function EmployeeForm({ initial, submitLabel, onSubmit }: Props) 
     phone: text(initial?.phone),
     standard_hourly_rate: text(initial?.standard_hourly_rate, '0'),
     travel_hourly_rate: text(initial?.travel_hourly_rate, '0'),
-    night_coefficient: text(initial?.night_coefficient, '1'),
+    night_20_24_coefficient: text(initial?.night_20_24_coefficient, '1.25'),
+    night_00_04_coefficient: text(initial?.night_00_04_coefficient, '1.40'),
+    night_04_06_coefficient: text(initial?.night_04_06_coefficient, '1.25'),
     sunday_coefficient: text(initial?.sunday_coefficient, '1'),
     holiday_coefficient: text(initial?.holiday_coefficient, '1'),
     home_location: text(initial?.home_location),
@@ -51,7 +53,9 @@ export default function EmployeeForm({ initial, submitLabel, onSubmit }: Props) 
         phone: form.phone.trim(),
         standard_hourly_rate: number(form.standard_hourly_rate),
         travel_hourly_rate: number(form.travel_hourly_rate),
-        night_coefficient: number(form.night_coefficient),
+        night_20_24_coefficient: number(form.night_20_24_coefficient),
+        night_00_04_coefficient: number(form.night_00_04_coefficient),
+        night_04_06_coefficient: number(form.night_04_06_coefficient),
         sunday_coefficient: number(form.sunday_coefficient),
         holiday_coefficient: number(form.holiday_coefficient),
         home_location: form.home_location.trim(),
@@ -85,7 +89,9 @@ export default function EmployeeForm({ initial, submitLabel, onSubmit }: Props) 
       <div className="form-grid">
         <label>{t('empWorkRate')}<input inputMode="decimal" value={form.standard_hourly_rate} onChange={set('standard_hourly_rate')} /></label>
         <label>{t('empTravelRate')}<input inputMode="decimal" value={form.travel_hourly_rate} onChange={set('travel_hourly_rate')} /></label>
-        <label>{t('empNightCoefficient')}<input inputMode="decimal" value={form.night_coefficient} onChange={set('night_coefficient')} /></label>
+        <label>{t('empZone2024')}<input inputMode="decimal" value={form.night_20_24_coefficient} onChange={set('night_20_24_coefficient')} /></label>
+        <label>{t('empZone0004')}<input inputMode="decimal" value={form.night_00_04_coefficient} onChange={set('night_00_04_coefficient')} /></label>
+        <label>{t('empZone0406')}<input inputMode="decimal" value={form.night_04_06_coefficient} onChange={set('night_04_06_coefficient')} /></label>
         <label>{t('empSundayCoefficient')}<input inputMode="decimal" value={form.sunday_coefficient} onChange={set('sunday_coefficient')} /></label>
         <label>{t('empHolidayCoefficient')}<input inputMode="decimal" value={form.holiday_coefficient} onChange={set('holiday_coefficient')} /></label>
       </div>

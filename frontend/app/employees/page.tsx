@@ -68,7 +68,7 @@ export default function EmployeesPage() {
                     <td className="num">{fmt.money(item.travel_hourly_rate)}</td>
                     <td className="num">
                       {t('empSurchargeShort', {
-                        night: fmt.number(item.night_coefficient, 2),
+                        night: `${fmt.number(item.night_20_24_coefficient ?? item.night_coefficient, 2)}/${fmt.number(item.night_00_04_coefficient ?? item.night_coefficient, 2)}/${fmt.number(item.night_04_06_coefficient ?? item.night_coefficient, 2)}`,
                         sunday: fmt.number(item.sunday_coefficient, 2),
                         holiday: fmt.number(item.holiday_coefficient, 2),
                       })}

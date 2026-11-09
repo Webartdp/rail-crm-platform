@@ -12,12 +12,12 @@ import {
 import { me } from '../../lib/auth';
 import { getFieldState, type FieldState } from '../../lib/field-state';
 import { useI18n } from '../i18n';
+import { monthEndIso, monthStartIso } from '../../lib/period';
 const leistungsartOptions = ['', 'WTU', 'WSU', 'E-WU', 'Rb', 'Azf', 'RID-Kontrolle', 'Zugbeschtreifung'];
 
 const workdayAllowedStatuses = ['planned', 'in_progress', 'waiting_approval', 'approved', 'invoiced'];
 
 type WorkStatusFilter = 'current' | 'completed' | 'all';
-type CompletedDateFilter = 'today' | 'last7' | 'date';
 
 const completedWorkStatuses = ['waiting_approval', 'approved', 'invoiced', 'rejected', 'cancelled', 'closed'];
 
@@ -327,7 +327,7 @@ const myTimeMetricCardStyle = {
   borderRadius: '1rem',
   border: '1px solid rgba(148, 163, 184, 0.22)',
   background: '#ffffff',
-  boxShadow: '0 14px 35px rgba(15, 23, 42, 0.07)',
+  boxShadow: 'var(--shadow-1)',
 } as const;
 
 const myTimeMetricValueStyle = {
@@ -347,7 +347,7 @@ const myTimeRowStyle = {
 } as const;
 
 export default function WorkdayPage() {
-  const { locale, t } = useI18n();
+  const { locale, t, fmt } = useI18n();
   const [orders, setOrders] = useState<DemoWorkOrder[]>([]);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
@@ -367,9 +367,6 @@ export default function WorkdayPage() {
   const [einsatzort, setEinsatzort] = useState('');
   const [plannedStart, setPlannedStart] = useState('');
   const [plannedStop, setPlannedStop] = useState('');
-  const [isNight, setIsNight] = useState(false);
-  const [isSunday, setIsSunday] = useState(false);
-  const [isHoliday, setIsHoliday] = useState(false);
   const [bemerkung, setBemerkung] = useState('');
   const [message, setMessage] = useState(t('loadingAssignments'));
   const [geoMessage, setGeoMessage] = useState(t('geoWillAsk'));
@@ -392,37 +389,28 @@ export default function WorkdayPage() {
   const realLeistungsart = leistungsart === '' ? leistungsartCustom.trim() : leistungsart;
   const plannedExceeded = Boolean(fieldState?.planned_exceeded);
   const stopBlocked = currentAction === 'arbeit_stop' && Boolean(fieldState?.requires_bemerkung) && bemerkung.trim() === '';
-  const dienstbeginnBlocked = currentAction === 'dienstbeginn' && (!selectedOrderId || !date || !realLeistungsart || !referenznummer.trim() || !zugnummer.trim() || !einsatzort.trim());
+  const dienstbeginnBlocked = currentAction === 'dienstbeginn' && (!selectedOrderId || !date || !realLeistungsart);
   const disabled = saving || !employeeId || stopBlocked || dienstbeginnBlocked || !selectedOrderId;
 
   const [sortMode, setSortMode] = useState<'time_asc' | 'time_desc' | 'object' | 'customer'>('time_asc');
   const [workStatusFilter, setWorkStatusFilter] = useState<WorkStatusFilter>('current');
-  const [completedDateFilter, setCompletedDateFilter] = useState<CompletedDateFilter>('today');
-  const [selectedCompletedDate, setSelectedCompletedDate] = useState(localDateIso());
+  const [completedFrom, setCompletedFrom] = useState(monthStartIso());
+  const [completedTo, setCompletedTo] = useState(monthEndIso());
 
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
       const completed = isCompletedOrder(order);
 
       if (workStatusFilter === 'current') return !completed;
-      if (workStatusFilter === 'all') return true;
+      const orderDate = getOrderDateIso(order);
+      const inPeriod = !orderDate || ((!completedFrom || orderDate >= completedFrom) && (!completedTo || orderDate <= completedTo));
 
+      if (workStatusFilter === 'all') return inPeriod;
       if (!completed) return false;
 
-      const orderDate = getOrderDateIso(order);
-      if (!orderDate) return false;
-
-      if (completedDateFilter === 'today') {
-        return orderDate === localDateIso();
-      }
-
-      if (completedDateFilter === 'last7') {
-        return orderDate >= daysAgoIso(6) && orderDate <= localDateIso();
-      }
-
-      return orderDate === selectedCompletedDate;
+      return inPeriod;
     });
-  }, [orders, workStatusFilter, completedDateFilter, selectedCompletedDate]);
+  }, [orders, workStatusFilter, completedFrom, completedTo]);
 
 
   const objectGroups = useMemo(() => {
@@ -580,7 +568,7 @@ export default function WorkdayPage() {
     setLeistungsart(details.leistungsart || 'WTU');
     setLeistungsartCustom('');
     setZugnummer(details.zugnummer || '');
-    setEinsatzort(details.einsatzort || '');
+    setEinsatzort(details.object_address || details.einsatzort || '');
     setPlannedStart(order.planned_start_at ? order.planned_start_at.slice(11, 16) : '');
     setPlannedStop(order.planned_end_at ? order.planned_end_at.slice(11, 16) : '');
     setBemerkung('');
@@ -702,9 +690,6 @@ const first = response.data[0];
           einsatzort,
           planned_start: plannedStart,
           planned_stop: plannedStop,
-          is_night: isNight,
-          is_sunday: isSunday,
-          is_holiday: isHoliday,
           bemerkung,
           client_time: timeNow(locale),
         },
@@ -756,9 +741,9 @@ const first = response.data[0];
                 border: 0,
                 borderRadius: '999px',
                 padding: '0.65rem 1rem',
-                fontWeight: 800,
+                fontWeight: 600,
                 cursor: 'pointer',
-                background: workStatusFilter === item.key ? '#2563eb' : '#f1f5f9',
+                background: workStatusFilter === item.key ? 'var(--ink)' : '#f1f5f9',
                 color: workStatusFilter === item.key ? '#ffffff' : '#334155',
               }}
             >
@@ -767,45 +752,11 @@ const first = response.data[0];
           ))}
         </div>
 
-        {workStatusFilter === 'completed' ? (
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            {([
-              { key: 'today', label: t('workDateToday') },
-              { key: 'last7', label: t('workDateLast7') },
-              { key: 'date', label: t('workDatePick') },
-            ] as const).map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => setCompletedDateFilter(item.key)}
-                style={{
-                  border: 0,
-                  borderRadius: '999px',
-                  padding: '0.55rem 0.9rem',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  background: completedDateFilter === item.key ? '#0f172a' : '#f8fafc',
-                  color: completedDateFilter === item.key ? '#ffffff' : '#334155',
-                }}
-              >
-                {item.label}
-              </button>
-            ))}
-
-            {completedDateFilter === 'date' ? (
-              <input
-                type="date"
-                value={selectedCompletedDate}
-                onChange={(event) => setSelectedCompletedDate(event.target.value)}
-                style={{
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '999px',
-                  padding: '0.55rem 0.9rem',
-                  fontWeight: 800,
-                  color: '#0f172a',
-                }}
-              />
-            ) : null}
+        {workStatusFilter !== 'current' ? (
+          <div className="period-picker">
+            <label>{t('commonDateFrom')}<input type="date" value={completedFrom} max={completedTo || undefined} onChange={(event) => setCompletedFrom(event.target.value)} /></label>
+            <label>{t('commonDateTo')}<input type="date" value={completedTo} min={completedFrom || undefined} onChange={(event) => setCompletedTo(event.target.value)} /></label>
+            <button className="small-button" type="button" onClick={() => { setCompletedFrom(monthStartIso()); setCompletedTo(monthEndIso()); }}>{t('periodThisMonth')}</button>
           </div>
         ) : null}
       </section>
@@ -899,18 +850,18 @@ const first = response.data[0];
 
                             <div className="workday-v2-clean-work-meta">
                               <strong>{order.reference_number || `#${order.id}`}</strong>
-                              <small>{details.leistungsart || '—'} · Zug {details.zugnummer || '—'} · {details.einsatzort || '—'}</small>
+                              <small>{details.leistungsart || '—'} · {t('wdTrainShort')} {details.zugnummer || '—'} · {details.object_address || details.einsatzort || '—'}</small>
                               <em>
-                                {order.planned_start_at ? order.planned_start_at.slice(0, 10) : '—'}
+                                {t('wdPlanned')}: {fmt.date(order.planned_start_at)}
                                 {' · '}
-                                {order.planned_start_at ? order.planned_start_at.slice(11, 16) : '—'}
+                                {fmt.time(order.planned_start_at)}
                                 {' — '}
-                                {order.planned_end_at ? order.planned_end_at.slice(11, 16) : '—'}
+                                {fmt.time(order.planned_end_at)}
                               </em>
                             </div>
 
                             <b className={workFinished ? 'done-badge' : 'planned-badge'}>
-                              {workFinished ? t('done') : order.status || 'planned'}
+                              {workFinished ? t('done') : fmt.status(order.status || 'planned')}
                             </b>
                           </button>
 
@@ -964,15 +915,12 @@ const first = response.data[0];
 
                                   {leistungsart === '' ? <label>{t('customWorkType')}<input value={leistungsartCustom} onChange={(event) => setLeistungsartCustom(event.target.value)} placeholder={t('customWorkTypePlaceholder')} /></label> : null}
 
-                                  <label>{t('wdReferenceNumber')}<input value={referenznummer} onChange={(event) => setReferenznummer(event.target.value)} /></label>
-                                  <label>{t('wdTrainNumber')}<input value={zugnummer} onChange={(event) => setZugnummer(event.target.value)} /></label>
-                                  <label>{t('wdWorkLocation')}<input value={einsatzort} onChange={(event) => setEinsatzort(event.target.value)} /></label>
-                                  <label>{t('plannedStart')}<input value={plannedStart} onChange={(event) => setPlannedStart(event.target.value)} type="time" /></label>
-                                  <label>{t('plannedStop')}<input value={plannedStop} onChange={(event) => setPlannedStop(event.target.value)} type="time" /></label>
-
-                                  <label className="workday-v2-clean-check"><input checked={isNight} onChange={(event) => setIsNight(event.target.checked)} type="checkbox" /> {t('nightWork')}</label>
-                                  <label className="workday-v2-clean-check"><input checked={isSunday} onChange={(event) => setIsSunday(event.target.checked)} type="checkbox" /> {t('sunday')}</label>
-                                  <label className="workday-v2-clean-check"><input checked={isHoliday} onChange={(event) => setIsHoliday(event.target.checked)} type="checkbox" /> {t('holiday')}</label>
+                                  <div className="readonly-field"><span>{t('wdReferenceNumber')}</span><strong>{referenznummer || '—'}</strong></div>
+                                  <div className="readonly-field"><span>{t('wdTrainNumber')}</span><strong>{zugnummer || '—'}</strong></div>
+                                  <div className="readonly-field workday-v2-clean-wide"><span>{t('wdWorkLocation')}</span><strong>{einsatzort || '—'}</strong></div>
+                                  <div className="readonly-field"><span>{t('wdPlannedStart')}</span><strong>{order.planned_start_at ? fmt.dateTime(order.planned_start_at) : '—'}</strong></div>
+                                  <div className="readonly-field"><span>{t('wdPlannedEnd')}</span><strong>{order.planned_end_at ? fmt.dateTime(order.planned_end_at) : '—'}</strong></div>
+                                  <p className="hint workday-v2-clean-wide">{t('wdAutoTariffHint')}</p>
 
                                   <label className="workday-v2-clean-wide">{t('bemerkung')}<textarea value={bemerkung} onChange={(event) => setBemerkung(event.target.value)} placeholder={t('bemerkungPlaceholder')} /></label>
                                 </div>

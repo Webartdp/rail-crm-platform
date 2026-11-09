@@ -37,6 +37,17 @@ return [
     'unique' => 'Такое значение поля «:attribute» уже занято.',
 
     'attributes' => [
+        'client_id' => 'Клиент',
+        'object_id' => 'Объект',
+        'employee_ids.*' => 'Сотрудник',
+        'start_time' => 'Начало',
+        'stop_time' => 'Конец',
+        'address' => 'Адрес',
+        'contact_person' => 'Контактное лицо',
+        'phone' => 'Телефон',
+        'bemerkung' => 'Примечание',
+        'zugnummer' => 'Номер поезда',
+        'leistungsart' => 'Вид работ',
         'name' => 'Имя',
         'email' => 'E-mail',
         'password' => 'Пароль',

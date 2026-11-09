@@ -1,118 +1,164 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useMemo, useState } from 'react';
 import RoleGuard from '../../components/RoleGuard';
-import { getEmployeeProfiles, employeeProfileName, type EmployeeProfile } from '../../../lib/employee-profiles';
-import { getWorkOrder, type WorkOrder } from '../../../lib/work-orders';
 import { useI18n } from '../../i18n';
-type PageProps = {
-  params: Promise<{ id: string }>;
-};
+import { getWorkEvents, type WorkEvent } from '../../../lib/api';
+import { employeeProfileName, getEmployeeProfiles, type EmployeeProfile } from '../../../lib/employee-profiles';
+import { orderDetails } from '../../../lib/order-details';
+import { closeWorkOrder, deleteWorkOrder, getWorkOrder, orderEmployeeIds, type WorkOrder } from '../../../lib/work-orders';
 
-function parseDetails(value: unknown): Record<string, string> {
-  if (!value) return {};
+type PageProps = { params: Promise<{ id: string }> };
 
-  if (typeof value === 'object') {
-    return value as Record<string, string>;
-  }
-
-  if (typeof value === 'string') {
-    try {
-      return JSON.parse(value) as Record<string, string>;
-    } catch {
-      return {};
-    }
-  }
-
-  return {};
-}
-
-function formatDateTime(value?: string | null) {
-  if (!value) return '—';
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date);
-}
+type Actual = { employeeId: number; start?: string; stop?: string; minutes: number };
 
 export default function WorkOrderViewPage({ params }: PageProps) {
-  const { t } = useI18n();
-  const resolvedParams = use(params);
-  const id = Number(resolvedParams.id);
-
-  const [item, setItem] = useState<WorkOrder | null>(null);
+  const { t, fmt } = useI18n();
+  const id = Number(use(params).id);
+  const [order, setOrder] = useState<WorkOrder | null>(null);
   const [employees, setEmployees] = useState<EmployeeProfile[]>([]);
-  const [message, setMessage] = useState('Загрузка задания...');
+  const [events, setEvents] = useState<WorkEvent[]>([]);
+  const [notice, setNotice] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
+
+  async function load() {
+    try {
+      const [orderResponse, employeesResponse, eventsResponse] = await Promise.all([
+        getWorkOrder(id),
+        getEmployeeProfiles(),
+        getWorkEvents({ assignmentId: id }).catch(() => ({ data: [] as WorkEvent[] })),
+      ]);
+      setOrder(orderResponse.data);
+      setEmployees(employeesResponse.data);
+      setEvents(eventsResponse.data);
+    } catch (error) {
+      setNotice({ tone: 'error', text: t('commonLoadFailed', { error: error instanceof Error ? error.message : t('commonUnknownError') }) });
+    }
+  }
 
   useEffect(() => {
-    async function load() {
-      try {
-        const [employeeResponse, orderResponse] = await Promise.all([
-          getEmployeeProfiles(),
-          getWorkOrder(id),
-        ]);
-
-        setEmployees(employeeResponse.data);
-        setItem(orderResponse.data);
-        setMessage('Задание загружено.');
-      } catch (error) {
-        const errorText = error instanceof Error ? error.message : 'Unbekannter Fehler';
-        setMessage(`Ошибка загрузки: ${errorText}`);
-      }
-    }
-
     load();
   }, [id]);
 
-  const details = parseDetails(item?.details);
-  const employee = employees.find((profile) => profile.id === item?.employee_id);
+  const names = useMemo(() => new Map(employees.map((employee) => [employee.id, employeeProfileName(employee)])), [employees]);
+  const details = orderDetails(order);
+  const plannedMinutes = order?.planned_start_at && order?.planned_end_at
+    ? Math.max(0, Math.round((new Date(order.planned_end_at.replace(' ', 'T')).getTime() - new Date(order.planned_start_at.replace(' ', 'T')).getTime()) / 60000))
+    : 0;
+
+  // Actual work per employee: first Dienstbeginn → last Stop on this order.
+  const actuals = useMemo<Actual[]>(() => {
+    if (!order) return [];
+    return orderEmployeeIds(order).map((employeeId) => {
+      const own = events.filter((event) => Number(event.employee_id) === employeeId).sort((a, b) => String(a.event_time).localeCompare(String(b.event_time)));
+      const start = own.find((event) => event.event_type === 'dienstbeginn')?.event_time;
+      const stop = [...own].reverse().find((event) => event.event_type === 'arbeit_stop')?.event_time;
+      const minutes = start && stop ? Math.max(0, Math.round((new Date(stop.replace(' ', 'T')).getTime() - new Date(start.replace(' ', 'T')).getTime()) / 60000)) : 0;
+      return { employeeId, start, stop, minutes };
+    });
+  }, [order, events]);
+
+  async function act(action: () => Promise<unknown>, success: string) {
+    try {
+      await action();
+      setNotice({ tone: 'success', text: success });
+      await load();
+    } catch (error) {
+      setNotice({ tone: 'error', text: error instanceof Error ? error.message : t('commonUnknownError') });
+    }
+  }
 
   return (
     <main className="page-shell">
       <RoleGuard allowedRoles={['manager', 'admin']} title={t('woViewTitle', { id })}>
         <section className="hero-card">
           <div>
-            <p className="eyebrow">{t('woViewEyebrow')}</p>
-            <h1>{t('woViewTitle', { id })}</h1>
-            <p className="hero-text">{message}</p>
+            <p className="eyebrow">{order?.reference_number || t('woViewEyebrow')} · {fmt.status(order?.status || 'planned')}</p>
+            <h1>{details.work_title || order?.title || t('woViewTitle', { id })}</h1>
+            <p className="hero-text">{[details.customer_name, details.object_name].filter(Boolean).join(' — ')}</p>
           </div>
-          <div className="row-actions-inline">
-            <a className="icon-action icon-action-xs" href="/assignments" title={t('commonBack')}>
-              <i className="las la-arrow-left" aria-hidden="true" />
-            </a>
-            <a className="icon-action icon-action-xs" href={`/work-orders/${id}/edit`} title={t('commonEdit')}>
-              <i className="las la-pen" aria-hidden="true" />
-            </a>
+          <div className="row-actions">
+            <a className="action-button secondary" href="/assignments">{t('woBackToAssignments')}</a>
+            <a className="action-button primary" href={`/work-orders/${id}/edit`}>{t('commonEdit')}</a>
           </div>
         </section>
 
-        {item ? (
-          <section className="panel">
-            <div className="details-grid">
-              <div><strong>Referenznummer</strong><span>{item.reference_number || '—'}</span></div>
-              <div><strong>{t('commonStatus')}</strong><span>{item.status || 'planned'}</span></div>
-              <div><strong>{t('commonEmployee')}</strong><span>{employee ? employeeProfileName(employee) : item.employee_id ? `Mitarbeiter #${item.employee_id}` : '—'}</span></div>
-              <div><strong>{t('asgWorkTitle')}</strong><span>{details.work_title || item.title}</span></div>
-              <div><strong>{t('commonCustomer')}</strong><span>{details.customer_name || '—'}</span></div>
-              <div><strong>{t('commonObject')}</strong><span>{details.object_name || '—'}</span></div>
-              <div><strong>{t('woAddress')}</strong><span>{details.object_address || '—'}</span></div>
-              <div><strong>Leistungsart</strong><span>{details.leistungsart || '—'}</span></div>
-              <div><strong>Zugnummer</strong><span>{details.zugnummer || '—'}</span></div>
-              <div><strong>Einsatzort</strong><span>{details.einsatzort || '—'}</span></div>
-              <div><strong>{t('asgPlannedStart')}</strong><span>{formatDateTime(item.planned_start_at)}</span></div>
-              <div><strong>{t('asgPlannedStop')}</strong><span>{formatDateTime(item.planned_end_at)}</span></div>
+        {notice ? <p className={`notice ${notice.tone}`} role={notice.tone === 'error' ? 'alert' : 'status'}>{notice.text}</p> : null}
+
+        {order ? (
+          <>
+            <div className="fact-grid">
+              <section className="panel">
+                <h2>{t('woWhere')}</h2>
+                <dl className="facts">
+                  <dt>{t('commonCustomer')}</dt><dd>{details.customer_name || '—'}</dd>
+                  <dt>{t('commonObject')}</dt><dd>{details.object_name || '—'}</dd>
+                  <dt>{t('wdWorkLocation')}</dt>
+                  <dd>{details.object_address ? <a className="text-link" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(details.object_address)}`} rel="noreferrer" target="_blank">{details.object_address}</a> : '—'}</dd>
+                  <dt>{t('asgServiceType')}</dt><dd>{details.leistungsart || '—'}</dd>
+                  <dt>{t('wdTrainNumber')}</dt><dd>{details.zugnummer || '—'}</dd>
+                  <dt>{t('wdReferenceNumber')}</dt><dd>{order.reference_number || '—'}</dd>
+                </dl>
+              </section>
+
+              <section className="panel">
+                <h2>{t('woPlannedTime')}</h2>
+                <p className="big-figure">{fmt.time(order.planned_start_at)}–{fmt.time(order.planned_end_at)}</p>
+                <p className="hint">{fmt.date(order.planned_start_at)} · {fmt.duration(plannedMinutes)}</p>
+                {String((details as Record<string, unknown>).notes || '') ? <p>{String((details as Record<string, unknown>).notes)}</p> : null}
+              </section>
             </div>
-          </section>
+
+            <section className="panel">
+              <h2>{t('woPlannedVsActual')}</h2>
+              <div className="data-table-scroll">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>{t('commonEmployee')}</th>
+                      <th>{t('woPlanned')}</th>
+                      <th>{t('woActual')}</th>
+                      <th className="num">{t('woActualDuration')}</th>
+                      <th className="num">{t('woDifference')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {actuals.map((row) => {
+                      const diff = row.minutes && plannedMinutes ? row.minutes - plannedMinutes : 0;
+                      return (
+                        <tr key={row.employeeId}>
+                          <td><strong>{names.get(row.employeeId) || t('commonEmployeeNumber', { id: row.employeeId })}</strong></td>
+                          <td>{fmt.time(order.planned_start_at)}–{fmt.time(order.planned_end_at)}</td>
+                          <td>{row.start ? `${fmt.time(row.start)}–${row.stop ? fmt.time(row.stop) : '…'}` : t('woNotStarted')}</td>
+                          <td className="num">{row.minutes ? fmt.duration(row.minutes) : '—'}</td>
+                          <td className={`num ${diff > 0 ? 'text-warn' : ''}`}>{diff ? `${diff > 0 ? '+' : '−'}${fmt.duration(Math.abs(diff))}` : '—'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section className="panel danger-zone">
+              <h2>{t('woActions')}</h2>
+              <div className="row-actions">
+                {order.status !== 'closed' ? (
+                  <button className="action-button secondary" onClick={() => act(() => closeWorkOrder(id), t('docPrintOrderClosed'))} type="button">{t('docPrintCloseOrder')}</button>
+                ) : null}
+                <button
+                  className="action-button secondary danger-button"
+                  onClick={() => {
+                    if (window.confirm(t('asgDeleteConfirm', { label: order.reference_number || `#${id}` }))) {
+                      act(() => deleteWorkOrder(id), t('asgDeleted', { label: order.reference_number || `#${id}` })).then(() => { window.location.href = '/assignments'; });
+                    }
+                  }}
+                  type="button"
+                >
+                  {t('commonDelete')}
+                </button>
+              </div>
+            </section>
+          </>
         ) : null}
       </RoleGuard>
     </main>

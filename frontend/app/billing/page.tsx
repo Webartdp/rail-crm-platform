@@ -47,11 +47,11 @@ const billingPrimaryButtonStyle = {
   height: '46px',
   padding: '0 1.1rem',
   borderRadius: '0.95rem',
-  border: '1px solid rgba(37, 99, 235, 0.35)',
-  background: '#2554d9',
+  border: '1px solid var(--ink)',
+  background: 'var(--ink)',
   color: '#ffffff',
   fontSize: '0.95rem',
-  fontWeight: 800,
+  fontWeight: 600,
   lineHeight: 1,
   cursor: 'pointer',
   whiteSpace: 'nowrap',
@@ -73,7 +73,7 @@ const metricCardStyle = {
   borderRadius: '1.15rem',
   border: '1px solid rgba(148, 163, 184, 0.22)',
   background: '#ffffff',
-  boxShadow: '0 14px 35px rgba(15, 23, 42, 0.07)',
+  boxShadow: 'var(--shadow-1)',
 } as const;
 
 const metricValueStyle = {

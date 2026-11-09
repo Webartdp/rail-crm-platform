@@ -2,173 +2,86 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import RoleGuard from '../components/RoleGuard';
-import { getEmployeeProfiles, employeeProfileName, type EmployeeProfile } from '../../lib/employee-profiles';
-import { deleteWorkOrder, getWorkOrders, type WorkOrder } from '../../lib/work-orders';
 import { useI18n } from '../i18n';
-function parseDetails(item?: WorkOrder | null): Record<string, string> {
-  if (!item?.details) return {};
+import { employeeProfileName, getEmployeeProfiles, type EmployeeProfile } from '../../lib/employee-profiles';
+import { orderDetails } from '../../lib/order-details';
+import { monthEndIso, monthStartIso } from '../../lib/period';
+import { deleteWorkOrder, getWorkOrders, orderEmployeeIds, type WorkOrder } from '../../lib/work-orders';
 
-  if (typeof item.details === 'object') {
-    return item.details as Record<string, string>;
-  }
-
-  try {
-    return JSON.parse(item.details) as Record<string, string>;
-  } catch {
-    return {};
-  }
-}
-
-
-const rowStyle = {
-  display: 'grid',
-  gridTemplateColumns: '180px minmax(380px, 1fr) 170px 110px 120px',
-  alignItems: 'center',
-  gap: '1rem',
-  padding: '0.9rem 0',
-  borderBottom: '1px solid rgba(148, 163, 184, 0.28)',
-} as const;
-
-const actionStyle = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  width: '1.35rem',
-  height: '1.35rem',
-  minWidth: '1.35rem',
-  minHeight: '1.35rem',
-  padding: 0,
-  borderRadius: '0.35rem',
-  border: '1px solid rgba(148, 163, 184, 0.45)',
-  background: 'rgba(15, 23, 42, 0.06)',
-  color: '#111827',
-  textDecoration: 'none',
-  lineHeight: 1,
-  cursor: 'pointer',
-} as const;
-
-const actionsWrapStyle = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: '0.32rem',
-  whiteSpace: 'nowrap',
-} as const;
-
-const modalBackdropStyle = {
-  position: 'fixed',
-  inset: 0,
-  zIndex: 1000,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: '1.5rem',
-  background: 'rgba(15, 23, 42, 0.55)',
-  backdropFilter: 'blur(8px)',
-} as const;
-
-const modalStyle = {
-  width: 'min(760px, 100%)',
-  maxHeight: '86vh',
-  overflow: 'auto',
-  borderRadius: '1.25rem',
-  border: '1px solid rgba(148, 163, 184, 0.3)',
-  background: '#ffffff',
-  boxShadow: '0 24px 80px rgba(15, 23, 42, 0.35)',
-  padding: '1.4rem',
-} as const;
-
-const modalHeaderStyle = {
-  display: 'flex',
-  alignItems: 'flex-start',
-  justifyContent: 'space-between',
-  gap: '1rem',
-  marginBottom: '1.1rem',
-} as const;
-
-const modalGridStyle = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-  gap: '0.75rem',
-} as const;
-
-const modalFieldStyle = {
-  display: 'grid',
-  gap: '0.25rem',
-  padding: '0.8rem',
-  borderRadius: '0.75rem',
-  border: '1px solid rgba(148, 163, 184, 0.2)',
-  background: 'rgba(248, 250, 252, 0.9)',
-} as const;
+const STATUS_CLASS: Record<string, string> = {
+  approved: 'is-approved',
+  invoiced: 'is-approved',
+  closed: 'is-approved',
+  waiting_approval: 'is-waiting',
+  in_progress: 'is-progress',
+  rejected: 'is-rejected',
+  cancelled: 'is-rejected',
+};
 
 export default function AssignmentsPage() {
   const { t, fmt } = useI18n();
-  const formatDateTime = (value?: string | null) => fmt.dateTime(value);
-  const [items, setItems] = useState<WorkOrder[]>([]);
+  const [orders, setOrders] = useState<WorkOrder[]>([]);
   const [employees, setEmployees] = useState<EmployeeProfile[]>([]);
-  const [selectedItem, setSelectedItem] = useState<WorkOrder | null>(null);
-  const [message, setMessage] = useState('');
+  const [from, setFrom] = useState(monthStartIso());
+  const [to, setTo] = useState(monthEndIso());
+  const [status, setStatus] = useState('');
+  const [employeeId, setEmployeeId] = useState('');
+  const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
-
-  const employeeMap = useMemo(() => {
-    const map = new Map<number, string>();
-
-    employees.forEach((employee) => {
-      map.set(employee.id, employeeProfileName(employee));
-    });
-
-    return map;
-  }, [employees]);
+  const [notice, setNotice] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
 
   async function load() {
     setLoading(true);
-
     try {
       const [ordersResponse, employeesResponse] = await Promise.all([
-        getWorkOrders(),
-        getEmployeeProfiles(),
+        getWorkOrders({ dateFrom: from || undefined, dateTo: to || undefined }),
+        employees.length ? Promise.resolve({ data: employees }) : getEmployeeProfiles(),
       ]);
-
-      setItems(ordersResponse.data);
+      setOrders(ordersResponse.data);
       setEmployees(employeesResponse.data);
-      setMessage(ordersResponse.data.length ? '' : t('asgNoItems'));
     } catch (error) {
-      const errorText = error instanceof Error ? error.message : t('commonUnknownError');
-      setItems([]);
-      setMessage(t('commonLoadFailed', { error: errorText }));
+      setNotice({ tone: 'error', text: t('commonLoadFailed', { error: error instanceof Error ? error.message : t('commonUnknownError') }) });
     } finally {
       setLoading(false);
     }
   }
 
-  async function deleteOrder(item: WorkOrder) {
-    const label = item.reference_number || `#${item.id}`;
-
-    if (!window.confirm(t('asgDeleteConfirm', { label }))) {
-      return;
-    }
-
-    try {
-      await deleteWorkOrder(item.id);
-      setMessage(t('asgDeleted', { label }));
-      await load();
-    } catch (error) {
-      const errorText = error instanceof Error ? error.message : t('commonUnknownError');
-      setMessage(t('asgDeleteFailed', { error: errorText }));
-    }
-  }
-
   useEffect(() => {
     load();
-  }, []);
+  }, [from, to]);
 
-  const pending = items.filter((item) => item.status === 'planned').length;
-  const waiting = items.filter((item) => item.status === 'waiting_approval').length;
-  const approved = items.filter((item) => item.status === 'approved').length;
+  const names = useMemo(() => new Map(employees.map((employee) => [employee.id, employeeProfileName(employee)])), [employees]);
 
-  const selectedDetails = parseDetails(selectedItem);
-  const selectedEmployeeName = selectedItem?.employee_id
-    ? employeeMap.get(selectedItem.employee_id) || t('commonEmployeeNumber', { id: selectedItem.employee_id })
-    : '—';
+  const rows = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return orders
+      .filter((order) => !status || order.status === status)
+      .filter((order) => !employeeId || orderEmployeeIds(order).includes(Number(employeeId)))
+      .filter((order) => {
+        if (!needle) return true;
+        const details = orderDetails(order);
+        return `${order.reference_number || ''} ${details.work_title || order.title} ${details.customer_name || ''} ${details.object_name || ''}`.toLowerCase().includes(needle);
+      })
+      .sort((a, b) => String(a.planned_start_at || '').localeCompare(String(b.planned_start_at || '')));
+  }, [orders, status, employeeId, query]);
+
+  const counts = useMemo(() => ({
+    planned: orders.filter((order) => order.status === 'planned').length,
+    progress: orders.filter((order) => order.status === 'in_progress').length,
+    waiting: orders.filter((order) => order.status === 'waiting_approval').length,
+  }), [orders]);
+
+  async function remove(order: WorkOrder) {
+    const label = order.reference_number || `#${order.id}`;
+    if (!window.confirm(t('asgDeleteConfirm', { label }))) return;
+    try {
+      await deleteWorkOrder(order.id);
+      setNotice({ tone: 'success', text: t('asgDeleted', { label }) });
+      await load();
+    } catch (error) {
+      setNotice({ tone: 'error', text: t('asgDeleteFailed', { error: error instanceof Error ? error.message : t('commonUnknownError') }) });
+    }
+  }
 
   return (
     <main className="page-shell">
@@ -177,187 +90,85 @@ export default function AssignmentsPage() {
           <div>
             <p className="eyebrow">{t('asgEyebrow')}</p>
             <h1>{t('asgTitle')}</h1>
-            <p className="hero-text">{t('asgHero')}</p>
+            <p className="hero-text">{t('asgHeroNew', { planned: counts.planned, progress: counts.progress, waiting: counts.waiting })}</p>
           </div>
-          <div className="field-status-stack">
-            <div className="status-pill">{t('apprTotal', { count: items.length })}</div>
-            <span>{fmt.status('planned')}: {pending} · {fmt.status('waiting_approval')}: {waiting} · {fmt.status('approved')}: {approved}</span>
-          </div>
+          <a className="action-button primary" href="/work-orders/new">{t('asgCreate')}</a>
         </section>
+
+        {notice ? <p className={`notice ${notice.tone}`} role={notice.tone === 'error' ? 'alert' : 'status'}>{notice.text}</p> : null}
 
         <section className="panel">
-          <div className="field-panel-head split-head">
-            <div>
-              <h2>{t('asgList')}</h2>
-              <p className="hint">{loading ? t('commonLoading') : message}</p>
-            </div>
-            <a
-              className="small-create-button"
-              href="/work-orders/new"
-              style={{
-                width: 'auto',
-                maxWidth: 'max-content',
-                minWidth: 0,
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.45rem',
-                padding: '0.65rem 1rem',
-                borderRadius: '0.85rem',
-                border: '1px solid rgba(37, 99, 235, 0.35)',
-                background: '#2554d9',
-                color: '#ffffff',
-                fontWeight: 800,
-                lineHeight: 1,
-                whiteSpace: 'nowrap',
-                cursor: 'pointer',
-                textDecoration: 'none',
-                flex: '0 0 auto',
-                justifySelf: 'end',
-                alignSelf: 'center',
-              }}
-            >
-              <i className="las la-plus" aria-hidden="true" style={{ fontSize: '1rem', lineHeight: 1 }} />
-              <span>{t('asgCreate')}</span>
-            </a>
+          <div className="filter-bar">
+            <label>{t('commonDateFrom')}<input type="date" value={from} onChange={(event) => setFrom(event.target.value)} /></label>
+            <label>{t('commonDateTo')}<input type="date" value={to} onChange={(event) => setTo(event.target.value)} /></label>
+            <label>{t('commonEmployee')}
+              <select value={employeeId} onChange={(event) => setEmployeeId(event.target.value)}>
+                <option value="">{t('durAllEmployees')}</option>
+                {employees.map((employee) => <option key={employee.id} value={employee.id}>{employeeProfileName(employee)}</option>)}
+              </select>
+            </label>
+            <label>{t('commonStatus')}
+              <select value={status} onChange={(event) => setStatus(event.target.value)}>
+                <option value="">{t('durAllStatuses')}</option>
+                {['planned', 'in_progress', 'waiting_approval', 'approved', 'rejected', 'invoiced', 'closed'].map((item) => <option key={item} value={item}>{fmt.status(item)}</option>)}
+              </select>
+            </label>
+            <label className="grow">{t('commonSearch')}<input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={t('asgSearch')} /></label>
           </div>
 
-          <div style={rowStyle}>
-            <strong>{t('asgReferenceNumber')}</strong>
-            <strong>{t('commonAssignment')}</strong>
-            <strong>{t('commonEmployee')}</strong>
-            <strong>{t('commonStatus')}</strong>
-            <strong>{t('commonActions')}</strong>
+          <div className="data-table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>{t('woPlanned')}</th>
+                  <th>{t('commonAssignment')}</th>
+                  <th>{t('commonCustomer')} / {t('commonObject')}</th>
+                  <th>{t('employees')}</th>
+                  <th>{t('commonStatus')}</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((order) => {
+                  const details = orderDetails(order);
+                  const assigned = orderEmployeeIds(order);
+                  return (
+                    <tr key={order.id}>
+                      <td className="nowrap">
+                        <strong>{fmt.date(order.planned_start_at)}</strong><br />
+                        <small className="hint">{fmt.time(order.planned_start_at)}–{fmt.time(order.planned_end_at)}</small>
+                      </td>
+                      <td>
+                        <a className="text-link strong" href={`/work-orders/${order.id}`}>{details.work_title || order.title}</a><br />
+                        <small className="hint">{[order.reference_number, details.leistungsart].filter(Boolean).join(' · ') || `#${order.id}`}</small>
+                      </td>
+                      <td>
+                        {details.customer_name || '—'}<br />
+                        <small className="hint">{details.object_name || '—'}</small>
+                      </td>
+                      <td>
+                        {assigned.length ? (
+                          <ul className="name-list">
+                            {assigned.map((id) => <li key={id}>{names.get(id) || t('commonEmployeeNumber', { id })}</li>)}
+                          </ul>
+                        ) : '—'}
+                      </td>
+                      <td><span className={`report-status-badge ${STATUS_CLASS[order.status || ''] || ''}`}>{fmt.status(order.status || 'planned')}</span></td>
+                      <td>
+                        <div className="row-actions">
+                          <a className="small-button" href={`/work-orders/${order.id}/edit`}>{t('commonEdit')}</a>
+                          <button className="small-button danger" onClick={() => remove(order)} type="button">{t('commonDelete')}</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-
-          {items.map((item) => {
-            const details = parseDetails(item);
-            const employeeName = item.employee_id ? employeeMap.get(item.employee_id) || t('commonEmployeeNumber', { id: item.employee_id }) : '—';
-
-            return (
-              <div style={rowStyle} key={item.id}>
-                <span>
-                  <strong>{item.reference_number || `#${item.id}`}</strong><br />
-                  <small>{formatDateTime(item.planned_start_at)} → {formatDateTime(item.planned_end_at)}</small>
-                </span>
-
-                <span>
-                  <strong>{details.work_title || item.title}</strong><br />
-                  <small>{details.customer_name || '—'} · {details.object_name || '—'}</small><br />
-                  <small>{details.leistungsart || '—'} · {details.zugnummer || '—'} · {details.einsatzort || '—'}</small>
-                </span>
-
-                <span>{employeeName}</span>
-
-                <span>{fmt.status(item.status || 'planned')}</span>
-
-                <span style={actionsWrapStyle}>
-                  <button style={actionStyle} onClick={() => setSelectedItem(item)} type="button" aria-label={t('commonView')} title={t('commonView')}>
-                    <i className="las la-eye" aria-hidden="true" />
-                  </button>
-
-                  <a style={actionStyle} href={`/work-orders/${item.id}/edit`} aria-label={t('commonEdit')} title={t('commonEdit')}>
-                    <i className="las la-pen" aria-hidden="true" />
-                  </a>
-
-                  <button style={actionStyle} onClick={() => deleteOrder(item)} type="button" aria-label={t('commonDelete')} title={t('commonDelete')}>
-                    <i className="las la-trash" aria-hidden="true" />
-                  </button>
-                </span>
-              </div>
-            );
-          })}
-
-          {!loading && !items.length ? (
-            <p className="hint">{t('asgNoItems')}</p>
-          ) : null}
+          {loading ? <p className="hint">{t('commonLoadingDots')}</p> : null}
+          {!loading && !rows.length ? <p className="empty-state">{t('asgNoneInPeriod')}</p> : null}
         </section>
-
-        {selectedItem ? (
-          <div style={modalBackdropStyle} onClick={() => setSelectedItem(null)}>
-            <div style={modalStyle} role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
-              <div style={modalHeaderStyle}>
-                <div>
-                  <p className="eyebrow">{t('asgShow')}</p>
-                  <h2>{selectedDetails.work_title || selectedItem.title}</h2>
-                  <p className="hint">{selectedItem.reference_number || `#${selectedItem.id}`} · {fmt.status(selectedItem.status || 'planned')}</p>
-                </div>
-
-                <span style={actionsWrapStyle}>
-                  <a style={actionStyle} href={`/work-orders/${selectedItem.id}/edit`} title={t('commonEdit')}>
-                    <i className="las la-pen" aria-hidden="true" />
-                  </a>
-
-                  <button style={actionStyle} onClick={() => setSelectedItem(null)} type="button" title={t('commonClose')}>
-                    <i className="las la-times" aria-hidden="true" />
-                  </button>
-                </span>
-              </div>
-
-              <div style={modalGridStyle}>
-                <div style={modalFieldStyle}>
-                  <strong>{t('asgReferenceNumber')}</strong>
-                  <span>{selectedItem.reference_number || '—'}</span>
-                </div>
-
-                <div style={modalFieldStyle}>
-                  <strong>{t('commonStatus')}</strong>
-                  <span>{fmt.status(selectedItem.status || 'planned')}</span>
-                </div>
-
-                <div style={modalFieldStyle}>
-                  <strong>{t('commonEmployee')}</strong>
-                  <span>{selectedEmployeeName}</span>
-                </div>
-
-                <div style={modalFieldStyle}>
-                  <strong>{t('asgWorkTitle')}</strong>
-                  <span>{selectedDetails.work_title || selectedItem.title}</span>
-                </div>
-
-                <div style={modalFieldStyle}>
-                  <strong>{t('commonCustomer')}</strong>
-                  <span>{selectedDetails.customer_name || '—'}</span>
-                </div>
-
-                <div style={modalFieldStyle}>
-                  <strong>{t('commonObject')}</strong>
-                  <span>{selectedDetails.object_name || '—'}</span>
-                </div>
-
-                <div style={modalFieldStyle}>
-                  <strong>{t('asgObjectAddress')}</strong>
-                  <span>{selectedDetails.object_address || '—'}</span>
-                </div>
-
-                <div style={modalFieldStyle}>
-                  <strong>{t('asgServiceType')}</strong>
-                  <span>{selectedDetails.leistungsart || '—'}</span>
-                </div>
-
-                <div style={modalFieldStyle}>
-                  <strong>{t('wdTrainNumber')}</strong>
-                  <span>{selectedDetails.zugnummer || '—'}</span>
-                </div>
-
-                <div style={modalFieldStyle}>
-                  <strong>{t('wdWorkLocation')}</strong>
-                  <span>{selectedDetails.einsatzort || '—'}</span>
-                </div>
-
-                <div style={modalFieldStyle}>
-                  <strong>{t('asgPlannedStart')}</strong>
-                  <span>{formatDateTime(selectedItem.planned_start_at)}</span>
-                </div>
-
-                <div style={modalFieldStyle}>
-                  <strong>{t('asgPlannedStop')}</strong>
-                  <span>{formatDateTime(selectedItem.planned_end_at)}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : null}
       </RoleGuard>
     </main>
   );

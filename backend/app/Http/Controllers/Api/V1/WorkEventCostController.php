@@ -3,135 +3,16 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Support\TimeLedger;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
 
+/** Approved, not yet invoiced time priced with the employee tariff and night zones. */
 class WorkEventCostController extends Controller
 {
-    private array $pairs = [
-        'gasfahrt_start' => ['stop' => 'gasfahrt_stop', 'type' => 'gasfahrt', 'rate' => 'travel'],
-        'dienstbeginn' => ['stop' => 'arbeit_stop', 'type' => 'arbeit', 'rate' => 'work'],
-        'dienstfahrt_start' => ['stop' => 'dienstfahrt_stop', 'type' => 'dienstfahrt', 'rate' => 'travel'],
-    ];
-
     public function __invoke(): JsonResponse
     {
-        $events = DB::table('work_events')
-            ->whereIn('event_type', ['gasfahrt_start', 'gasfahrt_stop', 'dienstbeginn', 'arbeit_stop', 'dienstfahrt_start', 'dienstfahrt_stop'])
-            ->orderBy('employee_id')
-            ->orderBy('assignment_id')
-            ->orderBy('event_time')
-            ->get();
+        $lines = array_map(fn (array $line) => $line + ['approval_status' => 'approved'], TimeLedger::billableLines());
 
-        $open = [];
-        $items = [];
-
-        foreach ($events as $event) {
-            $key = $event->employee_id.'-'.$event->assignment_id;
-
-            if (isset($this->pairs[$event->event_type])) {
-                $open[$key][$event->event_type] = $event;
-                continue;
-            }
-
-            foreach ($this->pairs as $startType => $pair) {
-                if ($event->event_type !== $pair['stop'] || !isset($open[$key][$startType])) {
-                    continue;
-                }
-
-                $start = $open[$key][$startType];
-                $approval = $this->approvedApproval($event, $start, $pair['type']);
-
-                if (!$approval) {
-                    unset($open[$key][$startType]);
-                    continue;
-                }
-
-                $alreadyInvoiced = DB::table('invoice_items')
-                    ->where('approval_id', $approval->id)
-                    ->exists();
-
-                if ($alreadyInvoiced) {
-                    unset($open[$key][$startType]);
-                    continue;
-                }
-
-                $profile = DB::table('employee_profiles')->where('id', $event->employee_id)->first();
-                $seconds = max(0, strtotime($event->event_time) - strtotime($start->event_time));
-                $hours = round($seconds / 3600, 2);
-
-                if ($hours <= 0) {
-                    unset($open[$key][$startType]);
-                    continue;
-                }
-
-                $rate = $this->rate($profile, $pair['rate']);
-                $coefficient = $pair['rate'] === 'work' ? $this->coefficient($event, $profile) : 1.0;
-                $amount = round($hours * $rate * $coefficient, 2);
-
-                if ($amount <= 0) {
-                    unset($open[$key][$startType]);
-                    continue;
-                }
-
-                $items[] = [
-                    'approval_id' => $approval->id,
-                    'type' => $pair['type'],
-                    'employee_id' => $event->employee_id,
-                    'assignment_id' => $event->assignment_id,
-                    'start_time' => $start->event_time,
-                    'stop_time' => $event->event_time,
-                    'hours' => $hours,
-                    'hourly_rate' => $rate,
-                    'coefficient' => $coefficient,
-                    'amount' => $amount,
-                    'approval_status' => 'approved',
-                ];
-
-                unset($open[$key][$startType]);
-            }
-        }
-
-        return response()->json(['data' => array_reverse($items)]);
-    }
-
-    private function approvedApproval(object $event, object $start, string $type): ?object
-    {
-        return DB::table('work_event_approvals')
-            ->where('employee_id', $event->employee_id)
-            ->where('assignment_id', $event->assignment_id)
-            ->where('pair_type', $type)
-            ->where('start_time', $start->event_time)
-            ->where('stop_time', $event->event_time)
-            ->where('status', 'approved')
-            ->first();
-    }
-
-    private function rate(?object $profile, string $rateType): float
-    {
-        if ($rateType === 'travel') {
-            return (float) ($profile->travel_hourly_rate ?? 0);
-        }
-
-        return (float) ($profile->standard_hourly_rate ?? 0);
-    }
-
-    private function coefficient(object $event, ?object $profile): float
-    {
-        $payload = json_decode($event->payload ?? '{}', true) ?: [];
-
-        if (($payload['is_holiday'] ?? false) === true) {
-            return (float) ($profile->holiday_coefficient ?? 1);
-        }
-
-        if (($payload['is_sunday'] ?? false) === true) {
-            return (float) ($profile->sunday_coefficient ?? 1);
-        }
-
-        if (($payload['is_night'] ?? false) === true) {
-            return (float) ($profile->night_coefficient ?? 1);
-        }
-
-        return 1.0;
+        return response()->json(['data' => array_reverse($lines)]);
     }
 }

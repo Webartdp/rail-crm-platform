@@ -10,6 +10,9 @@ export type EmployeeProfile = {
   standard_hourly_rate?: number | string | null;
   travel_hourly_rate?: number | string | null;
   night_coefficient?: number | string | null;
+  night_20_24_coefficient?: number | string | null;
+  night_00_04_coefficient?: number | string | null;
+  night_04_06_coefficient?: number | string | null;
   sunday_coefficient?: number | string | null;
   holiday_coefficient?: number | string | null;
   home_location?: string | null;
@@ -25,6 +28,9 @@ export type EmployeeProfileInput = {
   standard_hourly_rate?: number;
   travel_hourly_rate?: number;
   night_coefficient?: number;
+  night_20_24_coefficient?: number;
+  night_00_04_coefficient?: number;
+  night_04_06_coefficient?: number;
   sunday_coefficient?: number;
   holiday_coefficient?: number;
   home_location?: string;

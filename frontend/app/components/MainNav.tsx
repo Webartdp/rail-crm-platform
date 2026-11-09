@@ -23,7 +23,6 @@ const navGroups: NavGroup[] = [
     items: [
       { href: '/workday', labelKey: 'fieldDay', code: 'FD', roles: ['employee'] },
       { href: '/my-time', labelKey: 'time', code: 'TM', roles: ['employee'] },
-{ href: '/reports', labelKey: 'reports', code: 'RP', roles: ['employee'] },
       { href: '/employee', labelKey: 'employeeCabinet', code: 'PR', roles: ['employee'] },
     ],
   },
@@ -33,6 +32,7 @@ const navGroups: NavGroup[] = [
       { href: '/manager-dashboard', labelKey: 'managerDashboard', code: 'DB', roles: ['manager', 'admin'] },
       { href: '/assignments', labelKey: 'assignments', code: 'AS', roles: ['manager', 'admin'] },
       { href: '/approvals', labelKey: 'approvals', code: 'OK', roles: ['manager', 'admin'] },
+      { href: '/reports', labelKey: 'tsNav', code: 'SZ', roles: ['manager', 'admin'] },
       { href: '/durations', labelKey: 'time', code: 'TM', roles: ['manager', 'admin'] },
       { href: '/work-events', labelKey: 'workEvents', code: 'EV', roles: ['manager', 'admin'] },
       { href: '/maps', labelKey: 'gpsMap', code: 'MP', roles: ['manager', 'admin'] },

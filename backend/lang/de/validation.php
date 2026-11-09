@@ -37,6 +37,17 @@ return [
     'unique' => ':attribute ist bereits vergeben.',
 
     'attributes' => [
+        'client_id' => 'Kunde',
+        'object_id' => 'Objekt',
+        'employee_ids.*' => 'Mitarbeiter',
+        'start_time' => 'Beginn',
+        'stop_time' => 'Ende',
+        'address' => 'Adresse',
+        'contact_person' => 'Ansprechpartner',
+        'phone' => 'Telefon',
+        'bemerkung' => 'Bemerkung',
+        'zugnummer' => 'Zugnummer',
+        'leistungsart' => 'Leistungsart',
         'name' => 'Name',
         'email' => 'E-Mail',
         'password' => 'Passwort',

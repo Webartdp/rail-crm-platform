@@ -13,6 +13,11 @@ export type WorkEventApproval = {
   approved_by?: number | null;
   approved_at?: string | null;
   comment?: string | null;
+  minutes?: number | null;
+  bemerkung?: string | null;
+  corrected?: boolean;
+  original_start_time?: string | null;
+  original_stop_time?: string | null;
 };
 
 function authHeaders(json = false): HeadersInit {

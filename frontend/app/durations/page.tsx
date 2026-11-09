@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import RoleGuard from '../components/RoleGuard';
 import { useI18n } from '../i18n';
+import { monthEndIso, monthStartIso } from '../../lib/period';
 import { getEmployeeProfiles, employeeProfileName, type EmployeeProfile } from '../../lib/employee-profiles';
 import { getWorkOrders, type WorkOrder } from '../../lib/work-orders';
 import { getWorkEvents, type WorkEvent } from '../../lib/work-events';
@@ -32,16 +33,6 @@ type DurationRow = {
   totalMinutes: number;
   status: string;
 };
-
-function today() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function last7Days() {
-  const date = new Date();
-  date.setDate(date.getDate() - 6);
-  return date.toISOString().slice(0, 10);
-}
 
 function parseDetails(order?: WorkOrder | null): WorkDetails {
   const details = order?.details;
@@ -198,11 +189,11 @@ const refreshButtonStyle = {
   height: '44px',
   padding: '0 1rem',
   borderRadius: '0.9rem',
-  border: '1px solid rgba(37, 99, 235, 0.35)',
-  background: '#2554d9',
+  border: '1px solid var(--ink)',
+  background: 'var(--ink)',
   color: '#ffffff',
   fontSize: '0.95rem',
-  fontWeight: 800,
+  fontWeight: 600,
   lineHeight: 1,
   cursor: 'pointer',
   whiteSpace: 'nowrap',
@@ -222,7 +213,7 @@ const metricCardStyle = {
   borderRadius: '1.15rem',
   border: '1px solid rgba(148, 163, 184, 0.22)',
   background: '#ffffff',
-  boxShadow: '0 14px 35px rgba(15, 23, 42, 0.07)',
+  boxShadow: 'var(--shadow-1)',
 } as const;
 
 const metricValueStyle = {
@@ -249,8 +240,8 @@ export default function DurationsPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
 
-  const [dateFrom, setDateFrom] = useState(last7Days());
-  const [dateTo, setDateTo] = useState(today());
+  const [dateFrom, setDateFrom] = useState(monthStartIso());
+  const [dateTo, setDateTo] = useState(monthEndIso());
   const [filterEmployeeId, setFilterEmployeeId] = useState('');
   const [filterObject, setFilterObject] = useState('');
   const [filterCustomer, setFilterCustomer] = useState('');
@@ -320,8 +311,8 @@ export default function DurationsPage() {
   }
 
   function resetFilters() {
-    setDateFrom(last7Days());
-    setDateTo(today());
+    setDateFrom(monthStartIso());
+    setDateTo(monthEndIso());
     setFilterEmployeeId('');
     setFilterObject('');
     setFilterCustomer('');

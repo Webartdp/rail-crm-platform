@@ -33,6 +33,33 @@ class CurrentUser
             ->first();
     }
 
+    /**
+     * Employee profile the request acts for. Employees can only act for their own profile;
+     * managers and admins may pass employee_id explicitly.
+     */
+    public static function actingEmployeeId(Request $request): ?int
+    {
+        $user = $request->attributes->get('current_user') ?? self::fromRequest($request);
+
+        if ($user && ($user->role ?? null) === 'employee') {
+            return $user->employee_profile_id ? (int) $user->employee_profile_id : null;
+        }
+
+        $requested = $request->input('employee_id');
+        if ($requested !== null && $requested !== '') {
+            return (int) $requested;
+        }
+
+        return $user && $user->employee_profile_id ? (int) $user->employee_profile_id : null;
+    }
+
+    public static function isEmployee(Request $request): bool
+    {
+        $user = $request->attributes->get('current_user') ?? self::fromRequest($request);
+
+        return ($user->role ?? null) === 'employee';
+    }
+
     public static function hasRole(?object $user, array $roles): bool
     {
         return $user !== null && in_array($user->role, $roles, true);
