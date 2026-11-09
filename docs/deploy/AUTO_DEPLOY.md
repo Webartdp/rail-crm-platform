@@ -27,16 +27,16 @@ Log: `/home/admin/backups/rail-crm/deploy.log`
 ## One-time server setup (as admin)
 
 ```bash
-mkdir -p ~/bin ~/backups/rail-crm
-cat > ~/bin/rail-crm-autodeploy.sh <<'EOF'
+mkdir -p ~/.local/bin ~/backups/rail-crm
+cat > ~/.local/bin/rail-crm-autodeploy.sh <<'EOF'
 #!/usr/bin/env bash
 cd /home/admin/web/rlci.ridnovir.in.ua/public_html/_source || exit 1
 git fetch -q origin main || exit 1
 [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] && exit 0
 git show origin/main:deploy/deploy.sh | bash -s
 EOF
-chmod +x ~/bin/rail-crm-autodeploy.sh
-(crontab -l 2>/dev/null | grep -v rail-crm-autodeploy; echo '* * * * * flock -n $HOME/backups/rail-crm/deploy.lock $HOME/bin/rail-crm-autodeploy.sh >> $HOME/backups/rail-crm/deploy.log 2>&1') | crontab -
+chmod +x ~/.local/bin/rail-crm-autodeploy.sh
+(crontab -l 2>/dev/null | grep -v rail-crm-autodeploy; echo '* * * * * flock -n $HOME/backups/rail-crm/deploy.lock $HOME/.local/bin/rail-crm-autodeploy.sh >> $HOME/backups/rail-crm/deploy.log 2>&1') | crontab -
 ```
 
 Disable: `crontab -l | grep -v rail-crm-autodeploy | crontab -`
